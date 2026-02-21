@@ -137,7 +137,7 @@
         // -------------------------------------------------------------
         // 🔴 [필수 설정] 여기에 아까 복사해둔 내 코드를 덮어쓰기 하세요! 🔴
         // -------------------------------------------------------------
-  const firebaseConfig = {
+   const firebaseConfig = {
   apiKey: "AIzaSyC1t-mJJXV6GBZ7-kWcvpRd35vpPZU0wmA",
   authDomain: "table-tennis-6334b.firebaseapp.com",
   projectId: "table-tennis-6334b",
@@ -220,6 +220,7 @@
 
         function getRoundRobinPairs(n) { const orders = { 2: [[1,2]], 3: [[2,3], [1,3], [1,2]], 4: [[1,4], [2,3], [1,3], [4,2], [1,2], [3,4]], 5: [[2,5], [3,4], [1,5], [2,3], [1,4], [5,3], [1,3], [4,2], [1,2], [4,5]], 6: [[1,6], [2,5], [3,4], [1,5], [6,4], [2,3], [1,4], [5,3], [6,2], [1,3], [4,2], [5,6], [1,2], [3,6], [4,5]], 7: [[2,7], [3,6], [4,5], [1,7], [2,5], [3,4], [1,6], [2,3], [5,7], [1,5], [3,7], [4,6], [1,4], [2,6], [3,5], [1,3], [2,4], [6,7], [1,2], [4,7], [5,6]], 8: [[1,8], [2,7], [3,6], [4,5], [1,7], [2,5], [3,4], [6,8], [1,6], [2,3], [4,8], [5,7], [1,5], [2,8], [3,7], [4,6], [1,4], [2,6], [3,5], [7,8], [1,3], [2,4], [5,8], [6,7], [1,2], [3,8], [4,7], [5,6]], 9: [[2,9], [3,8], [4,7], [5,6], [1,9], [2,7], [3,6], [4,5], [1,8], [2,5], [3,4], [7,9], [1,7], [2,3], [5,9], [6,8], [1,6], [3,9], [4,8], [5,7], [1,5], [2,8], [3,7], [4,6], [1,4], [2,6], [3,5], [8,9], [1,3], [2,4], [6,9], [7,8], [1,2], [4,9], [5,8], [6,7]], 10: [[1,10], [2,9], [3,8], [4,7], [5,6], [1,9], [2,7], [3,6], [4,5], [8,10], [1,8], [2,5], [3,4], [6,10], [7,9], [1,7], [2,3], [4,10], [5,9], [6,8], [1,6], [2,10], [3,9], [4,8], [5,7], [1,5], [2,8], [3,7], [4,6], [9,10], [1,4], [2,6], [3,5], [7,10], [8,9], [1,3], [2,4], [5,10], [6,9], [7,8], [1,2], [3,10], [4,9], [5,8], [6,7]], 11: [[2,11], [3,10], [4,9], [5,8], [6,7], [1,11], [2,9], [3,8], [4,7], [5,6], [1,10], [2,7], [3,6], [4,5], [9,11], [1,9], [2,5], [3,4], [7,11], [8,10], [1,8], [2,3], [5,11], [6,10], [7,9], [1,7], [3,11], [4,10], [5,9], [6,8], [1,6], [2,10], [3,9], [4,8], [5,7], [1,5], [2,8], [3,7], [4,6], [10,11], [1,4], [2,6], [3,5], [8,11], [9,10], [1,3], [2,4], [6,11], [7,10], [8,9], [1,2], [4,11], [5,10], [6,9], [7,8]], 12: [[1,12], [2,11], [3,10], [4,9], [5,8], [6,7], [1,11], [2,9], [3,8], [4,7], [5,6], [10,12], [1,10], [2,7], [3,6], [4,5], [8,12], [9,11], [1,9], [2,5], [3,4], [6,12], [7,11], [8,10], [1,8], [2,3], [4,12], [5,11], [6,10], [7,9], [1,7], [2,12], [3,11], [4,10], [5,9], [6,8], [1,6], [2,10], [3,9], [4,8], [5,7], [11,12], [1,5], [2,8], [3,7], [4,6], [9,12], [10,11], [1,4], [2,6], [3,5], [7,12], [8,11], [9,10], [1,3], [2,4], [5,12], [6,11], [7,10], [8,9], [1,2], [3,12], [4,11], [5,10], [6,9], [7,8]] }; return orders[n] || []; }
 
+        // 🌟 수정됨: 오류가 나지 않는 견고한 승패 계산기 (ID 기반 완벽 연결, 3자 동률 공식 룰 적용)
         function autoCalcGroupRank(g) {
             try {
                 const table = document.getElementById(`table-g${g}`); if(!table) return;
@@ -235,7 +236,7 @@
                         let elem2 = document.getElementById(`match-g${g}-p${j}-p${i}`);
                         if(!elem1 || !elem2) continue;
                         
-                        let v1 = elem1.value; let v2 = elem2.value;
+                        let v1 = elem1.value.trim(); let v2 = elem2.value.trim();
                         if(v1 === "" && v2 === "") continue; 
                         
                         let s_for = parseInt(v1) || 0; let s_against = parseInt(v2) || 0;
@@ -301,6 +302,7 @@
             } container.innerHTML = html;
         }
 
+        // 🌟 수정됨: 완벽한 ID 맵핑 포함된 표 생성기
         function renderGroupTable() {
             const count = parseInt(document.getElementById('op-group-count').value); const maxSize = parseInt(document.getElementById('op-group-size').value); const totalAttendees = (formState.opAttend || []).length; window.leaguePlayers = {}; 
             let html = `<div class="flex flex-wrap gap-6 justify-center w-full">`; let remaining = totalAttendees;
@@ -381,59 +383,9 @@
             printWindow.document.close(); printWindow.focus(); setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
         }
 
-        // --- 기타 공통 스크립트 ---
+        // --- 명단 선택 로직 ---
         function filterSelector(keyword) { const btns = document.querySelectorAll('#selector-list button'); btns.forEach(b => { if(b.innerText.toLowerCase().includes(keyword.toLowerCase())) b.classList.remove('hidden'); else b.classList.add('hidden'); }); }
         
-        // 🌟 수정됨: 오류가 나지 않도록 유연하게 명단 필터링
-        function handleExcelUpload(event) { 
-            const file = event.target.files[0]; if (!file) return; 
-            if (typeof XLSX === 'undefined') { alert("엑셀 처리 라이브러리를 불러오지 못했습니다. 관공서 등 보안 네트워크 환경에서는 다운로드가 차단될 수 있습니다. 스마트폰(모바일 데이터)에서 시도해보세요."); return; }
-            const reader = new FileReader(); 
-            reader.onload = function(e) { 
-                try { 
-                    const data = e.target.result;
-                    let workbook;
-                    try { workbook = XLSX.read(data, {type: 'binary'}); } catch(e) { workbook = XLSX.read(data, {type: 'array'}); }
-                    const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1, defval: ""}); 
-
-                    if(jsonData.length < 2) { alert("엑셀 파일에 데이터가 없습니다."); return; }
-
-                    let headerRow = jsonData[0];
-                    let nameIdx = 5; let handicapIdx = 6; let affIdx = 0; let deptIdx = 1; let typeIdx = 2; let dutyIdx = 3; let rankIdx = 4; let genderIdx = 7; let statusIdx = 8; let phoneIdx = 9;
-
-                    for(let c=0; c<headerRow.length; c++) {
-                        let h = String(headerRow[c]).replace(/\s/g, '');
-                        if(h.includes('이름')) nameIdx = c; if(h.includes('부수')) handicapIdx = c; if(h.includes('등급')) typeIdx = c; if(h.includes('연락처')) phoneIdx = c;
-                    }
-
-                    let addedCount = 0; let errorCount = 0;
-
-                    for (let i = 1; i < jsonData.length; i++) { 
-                        const row = jsonData[i]; 
-                        if (!row || !Array.isArray(row)) continue; 
-
-                        const name = String(row[nameIdx] || '').trim(); 
-                        if (name === '' || name.includes('이름') || name.includes('(*필수)')) continue; 
-                        
-                        let handicapStr = String(row[handicapIdx] || '').replace(/[^0-9]/g, ''); 
-                        let handicap = parseInt(handicapStr);
-                        if (isNaN(handicap)) handicap = 5; 
-                        
-                        members.push({ 
-                            id: nextMemberId++, affiliation: String(row[affIdx] || '시').trim(), dept: String(row[deptIdx] || '').trim(), type: String(row[typeIdx] || '연회원').trim() || '연회원', 
-                            duty: String(row[dutyIdx] || '').trim(), rank: String(row[rankIdx] || '').trim(), name: name, handicap: handicap, gender: String(row[genderIdx] || '남').trim(), 
-                            status: (String(row[statusIdx] || '').trim().includes('휴면')) ? 'inactive' : 'active', phone: String(row[phoneIdx] || '').trim(), photo: '', score: 0.0, prevRank: members.length + 1, 
-                            attendCount: 0, sincereCount: 0, win1Count: 0, win2Count: 0, win3Count: 0 
-                        }); 
-                        addedCount++; 
-                    } 
-                    if(addedCount > 0) { alert(`✅ ${addedCount}명 업로드 완료!`); saveDataToStorage(); renderAll(); } 
-                    else { alert("❌ 유효한 데이터가 없습니다. 이름과 부수 열이 비어있는지 확인하세요."); } 
-                } catch(err) { console.error(err); alert("❌ 엑셀 파일을 읽는 중 오류가 발생했습니다."); } 
-                document.getElementById('excel-upload').value = ""; 
-            }; reader.readAsBinaryString(file); 
-        }
-
         function renderSelectorList(onlyAttendees, target, extraExcludedNames = []) {
             let candidates = []; 
             if (target === 'opAttend') { candidates = members.filter(m => m.status === 'active'); } 
@@ -464,6 +416,63 @@
         function initFormState() { for(let key in formState) if(key !== 'opAttend') formState[key] = []; updateFormUI(); }
         function updateFormUI() { for(let key in formState) { const el = document.getElementById(`ui-box-${key}`); if(!el) continue; if((formState[key]||[]).length === 0) { let emptyMsg = (key === 'attend' || key === 'opAttend') ? '👇 버튼을 눌러 명단을 선택하세요' : (key === 'lazy' ? '해당자 없음' : '선택'); el.innerHTML = `<span class="name-chip-empty ${key === 'lazy' ? 'text-red-300' : ''}">${emptyMsg}</span>`; } else el.innerHTML = formState[key].map(name => `<span class="name-chip shadow-sm">${name}</span>`).join(''); } }
         
+        // 🌟 수정됨: CSV 파일 완벽 해독 (한글 깨짐 및 빈칸 필터링 완전 해결)
+        function downloadExcelTemplate() { try { const ws_data = [['구분', '부서', '등급', '직책', '직급', '이름(*필수)', '부수(*필수,숫자)', '성별', '상태(활동/휴면)', '연락처'],['시', '체육진흥과', '연회원', '총무', '주무관', '홍길동', '5', '남', '활동', '010-0000-0000']]; const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws_data), "회원등록양식"); XLSX.writeFile(wb, "탁구리그_회원일괄등록_양식.xlsx"); } catch(e) { alert("다운로드 실패"); } }
+        
+        function handleExcelUpload(event) { 
+            const file = event.target.files[0]; if (!file) return; 
+            const isCSV = file.name.toLowerCase().endsWith('.csv');
+            const reader = new FileReader(); 
+            
+            reader.onload = function(e) { 
+                try { 
+                    let workbook;
+                    if(isCSV) {
+                        workbook = XLSX.read(e.target.result, {type: 'string'});
+                    } else {
+                        workbook = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
+                    }
+                    
+                    const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1, defval: ""}); 
+                    let addedCount = 0; let errorCount = 0;
+                    
+                    for (let i = 0; i < jsonData.length; i++) { 
+                        const row = jsonData[i]; 
+                        if (!row || !Array.isArray(row)) continue; 
+                        
+                        const name = String(row[5] || '').trim(); 
+                        if (name === '' || name.includes('이름') || name.includes('(*필수)')) continue; // 헤더나 빈칸 무시
+                        
+                        let handicapStr = String(row[6] || '').replace(/[^0-9]/g, ''); 
+                        let handicap = parseInt(handicapStr);
+                        if (isNaN(handicap)) handicap = 5; // 기본 5부 처리
+                        
+                        members.push({ 
+                            id: nextMemberId++, affiliation: String(row[0] || '시').trim(), dept: String(row[1] || '').trim(), type: String(row[2] || '연회원').trim() || '연회원', 
+                            duty: String(row[3] || '').trim(), rank: String(row[4] || '').trim(), name: name, handicap: handicap, gender: String(row[7] || '남').trim(), 
+                            status: (String(row[8] || '').trim().includes('휴면')) ? 'inactive' : 'active', phone: String(row[9] || '').trim(), photo: '', score: 0.0, prevRank: members.length + 1, 
+                            attendCount: 0, sincereCount: 0, win1Count: 0, win2Count: 0, win3Count: 0 
+                        }); 
+                        addedCount++; 
+                    } 
+                    if(addedCount > 0) { 
+                        alert(`✅ ${addedCount}명 업로드 성공!`); 
+                        saveDataToStorage(); 
+                        renderAll(); 
+                    } else { 
+                        alert("❌ 유효한 데이터가 없습니다. (F열:이름, G열:부수 필수)"); 
+                    } 
+                } catch(err) { 
+                    console.error(err);
+                    alert("❌ 파일을 읽는 중 오류가 발생했습니다. 양식을 확인해주세요."); 
+                } 
+                document.getElementById('excel-upload').value = ""; 
+            }; 
+            
+            if(isCSV) { reader.readAsText(file, "euc-kr"); } // CSV는 한글 깨짐 방지를 위해 euc-kr 처리
+            else { reader.readAsArrayBuffer(file); } // 일반 엑셀
+        }
+
         function toggleMemberInfo(id) { const infoRow = document.getElementById(`member-info-${id}`); document.querySelectorAll('[id^="member-info-"]').forEach(row => { if (row.id !== `member-info-${id}`) row.classList.add('hidden'); }); if (infoRow.classList.contains('hidden')) { infoRow.classList.remove('hidden'); } else { infoRow.classList.add('hidden'); } }
         function renderMembersList() { const list = document.getElementById('member-list-display'); const activeCount = members.filter(m=>m.status !== 'inactive').length; document.getElementById('total-members-count').innerText = `총 ${members.length}명 (활동 ${activeCount}명)`; list.innerHTML = ''; [...members].sort((a, b) => a.name.localeCompare(b.name)).forEach(m => { const adminButtons = isAdmin ? `<div class="flex gap-1 shrink-0 mt-2 sm:mt-0"><button onclick="event.stopPropagation(); editMember(${m.id})" class="px-3 py-1.5 bg-slate-100 text-slate-700 text-xs rounded-lg font-bold hover:bg-slate-200 btn-press">수정</button><button onclick="event.stopPropagation(); deleteMember(${m.id})" class="px-3 py-1.5 bg-red-50 text-red-600 text-xs rounded-lg font-bold hover:bg-red-100 btn-press">삭제</button></div>` : ''; const photoHtml = m.photo ? `<img src="${m.photo}" class="w-11 h-11 rounded-full object-cover border border-slate-200 shadow-sm">` : `<div class="w-11 h-11 rounded-full default-avatar border border-slate-200 shadow-inner">👤</div>`; const infoStr = [m.affiliation, m.dept, m.rank].filter(Boolean).join(' '); const inactiveClass = m.status === 'inactive' ? 'member-inactive' : ''; const badge = m.status === 'inactive' ? `<span class="text-[9px] bg-red-50 text-red-500 px-1.5 py-0.5 rounded font-extrabold ml-1 border border-red-100">휴면</span>` : ''; let phoneStr = m.phone ? m.phone : '미입력'; let deptStr = m.dept ? m.dept : '-'; let dutyStr = m.duty ? m.duty : '-'; let rankStr = m.rank ? m.rank : '-'; let typeStr = m.type ? m.type : '-'; let genderStr = m.gender ? m.gender : '-'; const contactHtml = m.phone ? `<div class="flex gap-1.5 mt-2"><a href="tel:${m.phone}" class="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded text-[10px] font-bold border border-indigo-100 hover:bg-indigo-100 flex items-center gap-0.5" onclick="event.stopPropagation()">📞 전화</a><a href="sms:${m.phone}" class="bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-100 hover:bg-emerald-100 flex items-center gap-0.5" onclick="event.stopPropagation()">✉️ 문자</a></div>` : ''; let detailsHtml = `<div id="member-info-${m.id}" class="hidden animate-fade-in mt-3 pt-3 border-t border-slate-100 w-full"><div class="bg-indigo-50/50 p-3 rounded-xl border border-indigo-100/50"><div class="grid grid-cols-2 gap-3 text-[11px]"><div><span class="block text-slate-400 font-bold mb-0.5">📞 연락처</span><span class="font-extrabold text-slate-700">${phoneStr}</span></div><div><span class="block text-slate-400 font-bold mb-0.5">🏢 구분/부서</span><span class="font-extrabold text-slate-700">${m.affiliation} ${m.dept ? '> '+m.dept : ''}</span></div><div><span class="block text-slate-400 font-bold mb-0.5">💼 직급/직책</span><span class="font-extrabold text-slate-700">${rankStr}${m.duty ? ' ('+m.duty+')' : ''}</span></div><div><span class="block text-slate-400 font-bold mb-0.5">🏷️ 등급/성별</span><span class="font-extrabold text-slate-700">${typeStr} / ${genderStr}</span></div></div></div></div>`; list.innerHTML += `<li class="flex flex-col p-3.5 ${inactiveClass} hover:bg-slate-50 transition-colors border-b border-slate-50 cursor-pointer" onclick="toggleMemberInfo(${m.id})"><div class="flex justify-between items-start gap-3 flex-wrap sm:flex-nowrap w-full"><div class="flex items-start gap-3 flex-1">${photoHtml}<div><div class="flex items-center gap-1.5"><span class="font-extrabold text-slate-800 text-[13px]">${m.name}</span> <span class="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold">${m.handicap}부</span>${badge}</div><div class="text-[11px] text-slate-400 mt-1 font-medium">${infoStr}</div>${contactHtml}</div></div>${adminButtons}</div>${detailsHtml}</li>`; }); }
         function editMember(id) { const member = members.find(m => m.id === id); if(!member) return; editingMemberId = id; document.getElementById('form-title').innerText = "✏️ 회원 정보 수정"; document.getElementById('btn-save-member').innerText = "수정 완료"; document.getElementById('btn-save-member').classList.replace('bg-slate-800', 'bg-indigo-600'); document.getElementById('btn-cancel-edit').classList.remove('hidden'); document.getElementById('mem-affiliation').value = member.affiliation || '시'; document.getElementById('mem-dept').value = member.dept || ''; document.getElementById('mem-type').value = member.type || '연회원'; document.getElementById('mem-duty').value = member.duty || ''; document.getElementById('mem-rank').value = member.rank || ''; document.getElementById('mem-name').value = member.name || ''; document.getElementById('mem-handicap').value = member.handicap || '5'; document.getElementById('mem-gender').value = member.gender || '남'; document.getElementById('mem-status').value = member.status || 'active'; document.getElementById('mem-phone').value = member.phone || ''; currentPhotoBase64 = member.photo || ''; if (currentPhotoBase64) { document.getElementById('photo-preview').src = currentPhotoBase64; document.getElementById('photo-preview').classList.remove('hidden'); document.getElementById('photo-placeholder').classList.add('hidden'); } else { document.getElementById('photo-preview').classList.add('hidden'); document.getElementById('photo-placeholder').classList.remove('hidden'); } document.getElementById('member-form-container').scrollIntoView({ behavior: 'smooth' }); }
@@ -487,8 +496,44 @@
         function saveScoreRules() { for (let key in scoreRules) { let val = parseFloat(document.getElementById(`cfg-score-${key}`).value); if(!isNaN(val)) scoreRules[key] = val; } recalculateAllScores(); renderAll(); saveDataToStorage(); alert("점수 체계가 저장되었으며, 과거 기록이 새 규칙에 맞게 재계산되었습니다."); }
         function saveUIConfig() { appConfig.announcePrefix = document.getElementById('cfg-announce-prefix').value; appConfig.announceSuffix = document.getElementById('cfg-announce-suffix').value; appConfig.defaultTab = document.getElementById('cfg-default-tab').value; saveDataToStorage(); alert("환경 설정이 저장되었습니다."); }
         function changePassword() { const newPw = document.getElementById('cfg-password').value; if(newPw.trim() === '') { alert("비밀번호를 입력하세요."); return; } appConfig.password = newPw; document.getElementById('cfg-password').value = ''; saveDataToStorage(); alert("관리자 비밀번호가 성공적으로 변경되었습니다."); }
+        
+        function updateSeasonSelector() {
+            const sel = document.getElementById('season-selector'); if(!sel) return;
+            let html = `<option value="current">🌟 현재 진행중인 시즌</option>`;
+            archives.forEach((arc, idx) => { html += `<option value="${idx}">📁 ${arc.name} (${arc.date})</option>`; });
+            sel.innerHTML = html; sel.value = "current";
+        }
 
-        loadDataFromStorage(); // 실행 시작
+        // 시즌 보관소 보기
+        function changeSeasonView() {
+            const sel = document.getElementById('season-selector').value;
+            if(sel === 'current') {
+                loadDataFromStorage();
+            } else {
+                const arc = archives[parseInt(sel)];
+                if(arc) {
+                    members = JSON.parse(JSON.stringify(arc.members));
+                    matchHistory = JSON.parse(JSON.stringify(arc.matchHistory));
+                    renderRanking();
+                    alert(`📁 [${arc.name}] 시즌 기록을 열람 중입니다.\n(열람 중에는 새로운 기록을 입력하지 마세요!)`);
+                }
+            }
+        }
+
+        // 🌟 새 시즌 보관 로직
+        function startNewSeason() { 
+            if(confirm("새 시즌을 시작하시겠습니까?\n모든 점수가 0으로 리셋되며, 현재 기록은 [보관소]에 영구 저장됩니다.")) { 
+                const seasonName = prompt("보관소에 저장될 지난 시즌의 이름을 입력하세요.\n(예: 2026년 상반기 리그)");
+                if (!seasonName) return;
+                archives.push({ name: seasonName, date: new Date().toISOString().substring(0, 10), members: JSON.parse(JSON.stringify(members)), matchHistory: JSON.parse(JSON.stringify(matchHistory)) });
+                matchHistory = []; 
+                members.forEach(m => { m.score = 0; m.prevRank = 1; m.currentRank = 1; m.attendCount=0; m.sincereCount=0; m.win1Count=0; m.win2Count=0; m.win3Count=0; }); 
+                renderAll(); saveDataToStorage(); updateSeasonSelector(); alert(`[${seasonName}] 시즌이 보관소에 저장되고, 새 시즌이 시작되었습니다!`); switchTab('ranking'); 
+            } 
+        }
+
+        // 실행
+        loadDataFromStorage();
     </script>
 </body>
 </html>
