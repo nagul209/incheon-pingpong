@@ -89,39 +89,25 @@
             </div>
 
             <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6">
-                <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
-                    <div>
-                        <h3 class="font-extrabold text-slate-800 text-base">📝 예선 조별 리그전표</h3>
-                        <p class="text-[10px] text-slate-400 font-medium mt-0.5">참석 인원에 맞게 각 조별 인원을 조정할 수 있습니다.</p>
-                    </div>
-                </div>
-                
+                <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3"><div><h3 class="font-extrabold text-slate-800 text-base">📝 예선 조별 리그전표</h3><p class="text-[10px] text-slate-400 font-medium mt-0.5">선수 칸을 터치하여 명단을 배치하세요.</p></div></div>
                 <div class="flex flex-col gap-3 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
                     <div class="flex flex-wrap items-center justify-between w-full gap-2">
                         <div class="flex items-center gap-1.5">
                             <span class="text-xs font-bold text-slate-600">조 개수</span>
-                            <select id="op-group-count" onchange="generateGroupSizeInputs()" class="text-xs border border-slate-200 rounded p-1.5 font-bold text-indigo-700 bg-white">
-                                <option value="1">1조</option><option value="2" selected>2조</option><option value="3">3조</option><option value="4">4조</option><option value="5">5조</option><option value="6">6조</option><option value="7">7조</option><option value="8">8조</option>
-                            </select>
+                            <select id="op-group-count" onchange="generateGroupSizeInputs()" class="text-xs border border-slate-200 rounded p-1.5 font-bold text-indigo-700 bg-white"><option value="1">1조</option><option value="2" selected>2조</option><option value="3">3조</option><option value="4">4조</option><option value="5">5조</option><option value="6">6조</option><option value="7">7조</option><option value="8">8조</option></select>
                         </div>
                         <div class="ml-auto flex gap-1.5">
                             <button onclick="sortGroupPlayers()" class="text-[11px] bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm btn-press">🔀 자동 정렬</button>
                             <button onclick="renderGroupTable()" class="text-[11px] bg-slate-800 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm btn-press">표 생성</button>
                         </div>
                     </div>
-                    
                     <div class="w-full h-px bg-slate-200"></div>
-                    
                     <div class="flex items-start gap-2">
                         <span class="text-[10px] font-bold text-slate-500 whitespace-nowrap mt-2 leading-tight">조별 인원<br>(수동 입력)</span>
-                        <div id="dynamic-group-sizes" class="flex flex-wrap gap-2 items-center w-full">
-                            </div>
+                        <div id="dynamic-group-sizes" class="flex flex-wrap gap-2 items-center w-full"></div>
                     </div>
                 </div>
-
-                <div id="op-group-container" class="w-full overflow-x-auto pb-4">
-                    <div class="text-center text-slate-400 text-xs py-8 bg-slate-50 rounded-xl border border-dashed border-slate-200">조 개수와 인원을 확인하고 표 생성을 눌러주세요.</div>
-                </div>
+                <div id="op-group-container" class="w-full overflow-x-auto pb-4"><div class="text-center text-slate-400 text-xs py-8 bg-slate-50 rounded-xl border border-dashed border-slate-200">조건을 선택하고 표 생성을 눌러주세요.</div></div>
             </div>
 
             <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6">
@@ -189,7 +175,7 @@
         function restoreAdminState() { if (sessionStorage.getItem('isAdminLoggedIn') === 'true') { isAdmin = true; document.getElementById('app-body').classList.add('admin-mode-active'); document.getElementById('btn-admin-lock').innerText = "🔓"; } applyViewMode(); }
         restoreAdminState();
 
-        // 🌟 수정됨: 엑셀이나 데이터 로드 시 빈 값(Undefined)을 걸러주는 안전 장치 (에러 방어막)
+        // 🌟 수정됨: 오류 방어(Undefined) 캐싱 로직
         function cleanData(data) { return JSON.parse(JSON.stringify(data)); }
 
         function applyParsedData(parsed) {
@@ -209,7 +195,6 @@
             } else { loadLocalFallback(); } 
         }
 
-        // 🌟 수정됨: 저장 시 클린 데이터만 넘겨 Firebase 오류 원천 차단
         function saveDataToStorage() { 
             const payload = cleanData({ members: members, matchHistory: matchHistory, archives: archives, appConfig: appConfig, scoreRules: scoreRules, nextMemberId: nextMemberId, nextMatchId: nextMatchId });
             try { localStorage.setItem('pingpongLocalData', JSON.stringify(payload)); } catch(e) {}
@@ -238,39 +223,109 @@
             if(tabName === 'input' && !editingMatchId) cancelInputStep2(); if(tabName === 'member' && editingMemberId) cancelEdit(); window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // 임시저장
         function saveOperationDraft() { document.querySelectorAll('#view-operation input').forEach(el => { if(el.value) el.setAttribute('value', el.value); }); const html1 = document.getElementById('op-group-container').innerHTML; const html2 = document.getElementById('op-tourn-container').innerHTML; localStorage.setItem('op_draft_group', html1); localStorage.setItem('op_draft_tourn', html2); localStorage.setItem('op_draft_players', JSON.stringify(window.leaguePlayers)); alert("✅ 작성 중인 대진표가 기기에 임시저장되었습니다."); }
         function loadOperationDraft() { const html1 = localStorage.getItem('op_draft_group'); const html2 = localStorage.getItem('op_draft_tourn'); const players = localStorage.getItem('op_draft_players'); if(!html1 && !html2) return alert("저장된 대진표가 없습니다."); if(html1) document.getElementById('op-group-container').innerHTML = html1; if(html2) document.getElementById('op-tourn-container').innerHTML = html2; if(players) window.leaguePlayers = JSON.parse(players); alert("📂 대진표를 성공적으로 불러왔습니다."); }
 
         function getRoundRobinPairs(n) { const orders = { 2: [[1,2]], 3: [[2,3], [1,3], [1,2]], 4: [[1,4], [2,3], [1,3], [4,2], [1,2], [3,4]], 5: [[2,5], [3,4], [1,5], [2,3], [1,4], [5,3], [1,3], [4,2], [1,2], [4,5]], 6: [[1,6], [2,5], [3,4], [1,5], [6,4], [2,3], [1,4], [5,3], [6,2], [1,3], [4,2], [5,6], [1,2], [3,6], [4,5]], 7: [[2,7], [3,6], [4,5], [1,7], [2,5], [3,4], [1,6], [2,3], [5,7], [1,5], [3,7], [4,6], [1,4], [2,6], [3,5], [1,3], [2,4], [6,7], [1,2], [4,7], [5,6]], 8: [[1,8], [2,7], [3,6], [4,5], [1,7], [2,5], [3,4], [6,8], [1,6], [2,3], [4,8], [5,7], [1,5], [2,8], [3,7], [4,6], [1,4], [2,6], [3,5], [7,8], [1,3], [2,4], [5,8], [6,7], [1,2], [3,8], [4,7], [5,6]], 9: [[2,9], [3,8], [4,7], [5,6], [1,9], [2,7], [3,6], [4,5], [1,8], [2,5], [3,4], [7,9], [1,7], [2,3], [5,9], [6,8], [1,6], [3,9], [4,8], [5,7], [1,5], [2,8], [3,7], [4,6], [1,4], [2,6], [3,5], [8,9], [1,3], [2,4], [6,9], [7,8], [1,2], [4,9], [5,8], [6,7]], 10: [[1,10], [2,9], [3,8], [4,7], [5,6], [1,9], [2,7], [3,6], [4,5], [8,10], [1,8], [2,5], [3,4], [6,10], [7,9], [1,7], [2,3], [4,10], [5,9], [6,8], [1,6], [2,10], [3,9], [4,8], [5,7], [1,5], [2,8], [3,7], [4,6], [9,10], [1,4], [2,6], [3,5], [7,10], [8,9], [1,3], [2,4], [5,10], [6,9], [7,8], [1,2], [3,10], [4,9], [5,8], [6,7]], 11: [[2,11], [3,10], [4,9], [5,8], [6,7], [1,11], [2,9], [3,8], [4,7], [5,6], [1,10], [2,7], [3,6], [4,5], [9,11], [1,9], [2,5], [3,4], [7,11], [8,10], [1,8], [2,3], [5,11], [6,10], [7,9], [1,7], [3,11], [4,10], [5,9], [6,8], [1,6], [2,10], [3,9], [4,8], [5,7], [1,5], [2,8], [3,7], [4,6], [10,11], [1,4], [2,6], [3,5], [8,11], [9,10], [1,3], [2,4], [6,11], [7,10], [8,9], [1,2], [4,11], [5,10], [6,9], [7,8]], 12: [[1,12], [2,11], [3,10], [4,9], [5,8], [6,7], [1,11], [2,9], [3,8], [4,7], [5,6], [10,12], [1,10], [2,7], [3,6], [4,5], [8,12], [9,11], [1,9], [2,5], [3,4], [6,12], [7,11], [8,10], [1,8], [2,3], [4,12], [5,11], [6,10], [7,9], [1,7], [2,12], [3,11], [4,10], [5,9], [6,8], [1,6], [2,10], [3,9], [4,8], [5,7], [11,12], [1,5], [2,8], [3,7], [4,6], [9,12], [10,11], [1,4], [2,6], [3,5], [7,12], [8,11], [9,10], [1,3], [2,4], [5,12], [6,11], [7,10], [8,9], [1,2], [3,12], [4,11], [5,10], [6,9], [7,8]] }; return orders[n] || []; }
 
-        function autoCalcGroupRank(g) { const table = document.getElementById(`table-g${g}`); if(!table) return; const rows = Array.from(table.querySelectorAll('tbody tr')); let data = rows.map((row, idx) => { let wlInput = row.querySelector('.group-wl').value; let ptsInput = row.querySelector('.group-pts').value; let wl = wlInput.split('/'); let pts = ptsInput.split('/'); let w = parseInt(wl[0]) || 0; let l = parseInt(wl[1]) || 0; let pW = parseInt(pts[0]) || 0; let pL = parseInt(pts[1]) || 0; return { row, w, l, pW, pL, origIdx: idx }; }); data.sort((a, b) => { if (b.w !== a.w) return b.w - a.w; if (a.l !== b.l) return a.l - b.l; let aDiff = a.pW - a.pL; let bDiff = b.pW - b.pL; if (bDiff !== aDiff) return bDiff - aDiff; return a.origIdx - b.origIdx; }); data.forEach((item, index) => { let rankInput = item.row.querySelector('.group-rank'); rankInput.value = index + 1; syncText(rankInput); }); }
+        // 🌟 수정됨: 완벽한 3명 이상 동률 득실차 적용 로직
+        function autoCalcGroupRank(g) { 
+            const table = document.getElementById(`table-g${g}`); if(!table) return; 
+            const rows = Array.from(table.querySelectorAll('tbody tr')); 
+            const currentSize = rows.length;
+            let playersInfo = [];
 
-        // 🌟 수정됨: 수동/자동 입력 필드 렌더링 로직 연동
-        function generateGroupSizeInputs() {
-            const count = parseInt(document.getElementById('op-group-count').value);
-            const container = document.getElementById('dynamic-group-sizes');
-            const totalAttendees = (formState.opAttend || []).length;
-            
-            let html = ''; let remaining = totalAttendees; let baseSize = totalAttendees > 0 ? Math.ceil(totalAttendees / count) : 4;
-
-            for(let i=1; i<=count; i++) {
-                let size = 4;
-                if (totalAttendees > 0) { size = Math.min(baseSize, remaining); remaining -= size; }
-                if (size < 2 && totalAttendees > 0 && remaining >= 0) size = 2; 
-                if (size < 2 && totalAttendees === 0) size = 4; if (size > 12) size = 12;
-
-                html += `<div class="flex items-center gap-1 text-[11px] font-bold bg-white px-2 py-1.5 rounded shadow-sm border border-slate-200"><span class="text-indigo-700">${i}조</span><input type="number" id="g-size-${i}" class="w-9 text-center bg-slate-50 border border-slate-200 rounded outline-none focus:border-indigo-500 font-black text-slate-700 py-0.5" value="${size}" min="2" max="12">명</div>`;
+            // 1단계: 경기 데이터 파싱 및 승/패, 득/실 1차 계산
+            for(let i=1; i<=currentSize; i++) {
+                let wins = 0, losses = 0, ptsFor = 0, ptsAgainst = 0;
+                for(let j=1; j<=currentSize; j++) {
+                    if(i === j) continue;
+                    let v1 = document.getElementById(`match-g${g}-p${i}-p${j}`).value;
+                    let v2 = document.getElementById(`match-g${g}-p${j}-p${i}`).value;
+                    if(v1 === "" && v2 === "") continue; // 미진행 경기
+                    
+                    let s_for = parseInt(v1) || 0;
+                    let s_against = parseInt(v2) || 0;
+                    
+                    if(s_for > s_against) wins++;
+                    else if(s_for < s_against) losses++;
+                    
+                    ptsFor += s_for; 
+                    ptsAgainst += s_against;
+                }
+                
+                let wlInput = document.getElementById(`wl-g${g}-p${i}`);
+                let ptsInput = document.getElementById(`pts-g${g}-p${i}`);
+                
+                wlInput.value = `${wins}/${losses}`; syncText(wlInput);
+                ptsInput.value = `${ptsFor}/${ptsAgainst}`; syncText(ptsInput);
+                
+                playersInfo.push({ id: i, wins, losses, ptsFor, ptsAgainst });
             }
-            container.innerHTML = html;
+
+            // 2단계: 탁구 협회 룰에 따른 정렬 (승점 -> 동률시 득실차)
+            playersInfo.sort((a, b) => {
+                if (b.wins !== a.wins) return b.wins - a.wins; // 1. 다승 우선
+                if (a.losses !== b.losses) return a.losses - b.losses; // 2. 적은 패배 우선
+                
+                let tiedPlayers = playersInfo.filter(p => p.wins === a.wins && p.losses === a.losses);
+                
+                if (tiedPlayers.length === 2) {
+                    // 2명 동률: 승자승
+                    let vA = parseInt(document.getElementById(`match-g${g}-p${a.id}-p${b.id}`).value) || 0;
+                    let vB = parseInt(document.getElementById(`match-g${g}-p${b.id}-p${a.id}`).value) || 0;
+                    if (vA !== vB) return vB - vA; // vA가 크면 음수 반환(a가 위로)
+                } 
+                else if (tiedPlayers.length >= 3) {
+                    // 3명 이상 동률: 그들 간의 세트 득실차
+                    let getTiedDiff = (pId) => {
+                        let tFor = 0, tAgainst = 0;
+                        tiedPlayers.forEach(tp => {
+                            if(tp.id !== pId) {
+                                tFor += parseInt(document.getElementById(`match-g${g}-p${pId}-p${tp.id}`).value) || 0;
+                                tAgainst += parseInt(document.getElementById(`match-g${g}-p${tp.id}-p${pId}`).value) || 0;
+                            }
+                        });
+                        return tFor - tAgainst;
+                    };
+                    
+                    let aDiff = getTiedDiff(a.id);
+                    let bDiff = getTiedDiff(b.id);
+                    if (aDiff !== bDiff) return bDiff - aDiff; // 득실차 큰 사람 우선
+                }
+                
+                // 최후의 수단: 전체 득실차
+                let aTotalDiff = a.ptsFor - a.ptsAgainst;
+                let bTotalDiff = b.ptsFor - b.ptsAgainst;
+                if (aTotalDiff !== bTotalDiff) return bTotalDiff - aTotalDiff;
+                
+                return a.id - b.id; // 그래도 같으면 번호순
+            });
+
+            // 3단계: 순위 기입
+            playersInfo.forEach((p, index) => {
+                let rankInput = document.getElementById(`rank-g${g}-p${p.id}`);
+                rankInput.value = index + 1;
+                syncText(rankInput);
+            });
         }
 
+        function generateGroupSizeInputs() {
+            const count = parseInt(document.getElementById('op-group-count').value); const container = document.getElementById('dynamic-group-sizes'); const totalAttendees = (formState.opAttend || []).length;
+            let html = ''; let remaining = totalAttendees; let baseSize = totalAttendees > 0 ? Math.ceil(totalAttendees / count) : 4;
+            for(let i=1; i<=count; i++) {
+                let size = 4; if (totalAttendees > 0) { size = Math.min(baseSize, remaining); remaining -= size; }
+                if (size < 2 && totalAttendees > 0 && remaining >= 0) size = 2; if (size < 2 && totalAttendees === 0) size = 4; if (size > 12) size = 12;
+                html += `<div class="flex items-center gap-1 text-[11px] font-bold bg-white px-2 py-1.5 rounded shadow-sm border border-slate-200"><span class="text-indigo-700">${i}조</span><input type="number" id="g-size-${i}" class="w-9 text-center bg-slate-50 border border-slate-200 rounded outline-none focus:border-indigo-500 font-black text-slate-700 py-0.5" value="${size}" min="2" max="12">명</div>`;
+            } container.innerHTML = html;
+        }
+
+        // 🌟 HTML 렌더링에 match ID 추가 적용
         function renderGroupTable() {
             const count = parseInt(document.getElementById('op-group-count').value); window.leaguePlayers = {}; 
             let html = `<div class="flex flex-wrap gap-6 justify-center w-full">`; 
             for(let g=1; g<=count; g++) {
-                let sizeInput = document.getElementById(`g-size-${g}`);
-                let currentSize = sizeInput ? parseInt(sizeInput.value) : 4;
+                let sizeInput = document.getElementById(`g-size-${g}`); let currentSize = sizeInput ? parseInt(sizeInput.value) : 4;
                 if(isNaN(currentSize) || currentSize < 2) currentSize = 2; if(currentSize > 12) currentSize = 12;
 
                 html += `<div class="border-2 border-slate-800/80 rounded-xl overflow-hidden bg-white flex-1 min-w-[320px] max-w-full shadow-sm"><div class="bg-slate-100 p-2 flex justify-end items-center gap-1 border-b border-slate-200"><span class="text-xs font-bold text-slate-500 mr-auto ml-1">${g}조 관리</span><button onclick="autoCalcGroupRank(${g})" class="text-[10px] bg-amber-500 hover:bg-amber-400 text-white px-2 py-1 rounded font-bold transition-colors btn-press no-print shadow-sm flex items-center">🧮 자동 순위</button><button onclick="copyGroupTableImage(${g})" id="btn-copy-g${g}" class="text-[10px] bg-emerald-500 hover:bg-emerald-400 text-white px-2 py-1 rounded font-bold transition-colors btn-press no-print shadow-sm flex items-center">📸 카톡 복사</button><button onclick="openPrintModal(${g})" class="text-[10px] bg-indigo-500 hover:bg-indigo-400 text-white px-2 py-1 rounded font-bold transition-colors btn-press no-print shadow-sm">🖨️ 조별 인쇄</button></div><div id="table-container-g${g}" class="bg-white relative"><div class="bg-slate-800 p-2.5 text-white flex items-center justify-between"><div class="flex items-center gap-1.5"><span class="font-extrabold text-sm tracking-wide">${g}조 예선 리그</span><span class="text-[10px] bg-white/20 px-2 py-0.5 rounded font-bold ml-1">${currentSize}명 풀리그</span><span class="text-[10px] bg-emerald-500/80 px-2 py-0.5 rounded font-bold">총 ${getRoundRobinPairs(currentSize).length}경기</span></div></div><table class="w-full text-center text-xs border-collapse" id="table-g${g}"><thead><tr class="bg-slate-50 border-b-2 border-slate-300 text-slate-700 font-extrabold"><th class="p-2 border-r border-slate-200 bg-slate-100 w-24 whitespace-nowrap">선수명</th>`;
@@ -278,8 +333,11 @@
                 html += `<th class="p-2 border-r border-slate-200 w-10 whitespace-nowrap">승/패</th><th class="p-2 border-r border-slate-200 w-10 whitespace-nowrap">득/실</th><th class="p-2 w-10 bg-rose-50 text-rose-600 whitespace-nowrap">순위</th></tr></thead><tbody>`;
                 for(let i=1; i<=currentSize; i++) {
                     html += `<tr class="border-b border-slate-200"><td class="p-0 border-r border-slate-200 bg-slate-50" id="td-g${g}-p${i}"><input type="text" class="w-full h-full text-center outline-none cursor-pointer hover:bg-indigo-50 font-bold text-[11px] text-slate-700 p-2 break-keep bg-transparent" placeholder="터치👉" readonly onclick="selectLeaguePlayer(this, ${g}, ${i})"><span class="capture-text font-bold text-[11px] text-slate-700 p-2 break-keep bg-slate-50">터치👉</span></td>`;
-                    for(let j=1; j<=currentSize; j++) { if(i === j) html += `<td class="border-r border-slate-200 diagonal-strike"></td>`; else html += `<td class="border-r border-slate-200 p-0"><input type="text" class="w-full h-full p-2 text-center bg-transparent outline-none font-medium text-slate-600 focus:bg-yellow-50" placeholder="" oninput="syncText(this)"><span class="capture-text font-medium text-slate-600 p-2 bg-white"></span></td>`; }
-                    html += `<td class="border-r border-slate-200 p-0"><input type="text" class="group-wl w-full h-full p-2 text-center outline-none font-bold text-slate-700 bg-transparent" placeholder="/" oninput="syncText(this)"><span class="capture-text font-bold text-slate-700 p-2 bg-white">/</span></td><td class="border-r border-slate-200 p-0"><input type="text" class="group-pts w-full h-full p-2 text-center outline-none font-bold text-slate-700 bg-transparent" placeholder="/" oninput="syncText(this)"><span class="capture-text font-bold text-slate-700 p-2 bg-white">/</span></td><td class="bg-rose-50/30 p-0"><input type="text" class="group-rank w-full h-full p-2 text-center outline-none font-black text-rose-600 text-sm bg-transparent" placeholder="" oninput="syncText(this)"><span class="capture-text font-black text-rose-600 p-2 bg-rose-50"></span></td></tr>`;
+                    for(let j=1; j<=currentSize; j++) { 
+                        if(i === j) html += `<td class="border-r border-slate-200 diagonal-strike"></td>`; 
+                        else html += `<td class="border-r border-slate-200 p-0"><input type="text" id="match-g${g}-p${i}-p${j}" class="w-full h-full p-2 text-center bg-transparent outline-none font-medium text-slate-600 focus:bg-yellow-50" placeholder="" oninput="syncText(this)"><span class="capture-text font-medium text-slate-600 p-2 bg-white"></span></td>`; 
+                    }
+                    html += `<td class="border-r border-slate-200 p-0"><input type="text" id="wl-g${g}-p${i}" class="group-wl w-full h-full p-2 text-center outline-none font-bold text-slate-700 bg-transparent" placeholder="/" oninput="syncText(this)"><span class="capture-text font-bold text-slate-700 p-2 bg-white">/</span></td><td class="border-r border-slate-200 p-0"><input type="text" id="pts-g${g}-p${i}" class="group-pts w-full h-full p-2 text-center outline-none font-bold text-slate-700 bg-transparent" placeholder="/" oninput="syncText(this)"><span class="capture-text font-bold text-slate-700 p-2 bg-white">/</span></td><td class="bg-rose-50/30 p-0"><input type="text" id="rank-g${g}-p${i}" class="group-rank w-full h-full p-2 text-center outline-none font-black text-rose-600 text-sm bg-transparent" placeholder="" oninput="syncText(this)"><span class="capture-text font-black text-rose-600 p-2 bg-rose-50"></span></td></tr>`;
                 }
                 html += `</tbody></table></div><div class="bg-slate-50 border-t border-slate-200 text-[11px] text-left no-print"><div class="p-2.5 flex justify-between items-center cursor-pointer font-extrabold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors" onclick="toggleOrder(${g})"><span>🔄 게임 순서 접기/펼치기</span><span id="order-icon-${g}" class="text-xs">▼</span></div><div id="order-content-${g}" class="hidden p-3 leading-loose break-keep bg-slate-50 shadow-inner"></div></div></div>`;
             }
@@ -350,7 +408,7 @@
             else if(onlyAttendees) { 
                 if(formState.opAttend && formState.opAttend.length > 0) candidates = members.filter(m => formState.opAttend.includes(m.name)); 
                 else if(formState.attend && formState.attend.length > 0) candidates = members.filter(m => formState.attend.includes(m.name)); 
-                else { alert('먼저 [운영] 탭 상단에서 오늘 참석자를 선택해 주세요.'); return false; } 
+                else { alert('먼저 [운영] 또는 [입력] 탭에서 오늘 참석자를 선택해 주세요.'); return false; } 
             } else candidates = members.filter(m => m.status === 'active');
 
             let excludedNames = []; const prefix = target.substring(0, 2);
@@ -370,22 +428,13 @@
         function toggleSelect(name) { const idx = tempSelectorList.indexOf(name); const btn = document.getElementById(`sel-btn-${name}`); if(idx > -1) { tempSelectorList.splice(idx, 1); btn.className = "py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all bg-white text-slate-600 border-slate-200 shadow-sm hover:bg-slate-50 btn-press"; btn.querySelector('span').className = "text-[9px] text-slate-400 block mt-0.5 font-medium"; } else { tempSelectorList.push(name); btn.className = "py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all bg-indigo-600 text-white border-indigo-700 shadow-inner btn-press"; btn.querySelector('span').className = "text-[9px] text-indigo-200 block mt-0.5 font-medium"; } updateSelectorCount(); }
         function updateSelectorCount() { document.getElementById('selector-count').innerText = `${tempSelectorList.length}명 선택됨`; }
         function closeSelector() { document.getElementById('member-selector-modal').classList.add('hidden'); }
-        
-        function confirmSelector() { 
-            formState[currentSelectorTarget] = [...tempSelectorList]; 
-            if(currentSelectorTarget === 'attend' || currentSelectorTarget === 'opAttend') { 
-                for(let key in formState) { if(key !== 'attend' && key !== 'opAttend') formState[key] = (formState[key]||[]).filter(name => formState[currentSelectorTarget].includes(name)); } 
-            } 
-            updateFormUI(); 
-            if (currentSelectorTarget === 'opAttend') generateGroupSizeInputs(); // 운영탭 참석자 확정 시 조별 인원칸 재계산
-            closeSelector(); 
-        }
-        
+        function confirmSelector() { formState[currentSelectorTarget] = [...tempSelectorList]; if(currentSelectorTarget === 'attend' || currentSelectorTarget === 'opAttend') { for(let key in formState) { if(key !== 'attend' && key !== 'opAttend') formState[key] = (formState[key]||[]).filter(name => formState[currentSelectorTarget].includes(name)); } } updateFormUI(); closeSelector(); }
         function initFormState() { for(let key in formState) if(key !== 'opAttend') formState[key] = []; updateFormUI(); }
         function updateFormUI() { for(let key in formState) { const el = document.getElementById(`ui-box-${key}`); if(!el) continue; if((formState[key]||[]).length === 0) { let emptyMsg = (key === 'attend' || key === 'opAttend') ? '👇 버튼을 눌러 명단을 선택하세요' : (key === 'lazy' ? '해당자 없음' : '선택'); el.innerHTML = `<span class="name-chip-empty ${key === 'lazy' ? 'text-red-300' : ''}">${emptyMsg}</span>`; } else el.innerHTML = formState[key].map(name => `<span class="name-chip shadow-sm">${name}</span>`).join(''); } }
+
+        // 🌟 수정됨: 에러 없는 엑셀 업로드 (강력한 예외 처리)
         function downloadExcelTemplate() { try { const ws_data = [['구분', '부서', '등급', '직책', '직급', '이름(*필수)', '부수(*필수,숫자)', '성별', '상태(활동/휴면)', '연락처'],['시', '체육진흥과', '연회원', '총무', '주무관', '홍길동', '5', '남', '활동', '010-0000-0000']]; const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws_data), "회원등록양식"); XLSX.writeFile(wb, "탁구리그_회원일괄등록_양식.xlsx"); } catch(e) { alert("다운로드 실패"); } }
         
-        // 🌟 수정됨: 오류 방어 및 예외 처리 완벽 적용된 엑셀 업로드 로직
         function handleExcelUpload(event) { 
             const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); 
             reader.onload = function(e) { 
@@ -394,39 +443,30 @@
                     const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1, defval: ""}); 
                     let addedCount = 0; let errorCount = 0;
                     
-                    for (let i = 1; i < jsonData.length; i++) { 
+                    for (let i = 0; i < jsonData.length; i++) { 
                         const row = jsonData[i]; 
-                        if (!row || row.length === 0 || row.join('').trim() === '') continue; 
+                        if (!row || !Array.isArray(row) || row.length < 6) continue; 
                         
                         const name = String(row[5] || '').trim(); 
-                        let handicapStr = String(row[6] || '').replace(/[^0-9]/g, ''); 
+                        if (name === '' || name.includes('이름') || name.includes('(*필수)')) continue; // 헤더 또는 빈칸 무시
                         
-                        if (name !== '' && handicapStr !== '') { 
-                            members.push({ 
-                                id: nextMemberId++, affiliation: String(row[0] || '시').trim(), dept: String(row[1] || '').trim(), type: String(row[2] || '연회원').trim(), 
-                                duty: String(row[3] || '').trim(), rank: String(row[4] || '').trim(), name: name, handicap: parseInt(handicapStr) || 5, gender: String(row[7] || '남').trim(), 
-                                status: (String(row[8] || '').trim() === '휴면') ? 'inactive' : 'active', phone: String(row[9] || '').trim(), photo: '', score: 0.0, prevRank: members.length + 1, 
-                                attendCount: 0, sincereCount: 0, win1Count: 0, win2Count: 0, win3Count: 0 
-                            }); 
-                            addedCount++; 
-                        } else {
-                            errorCount++;
-                        }
+                        let handicapStr = String(row[6] || '').replace(/[^0-9]/g, ''); 
+                        let handicap = parseInt(handicapStr);
+                        if (isNaN(handicap)) handicap = 5;
+                        
+                        members.push({ 
+                            id: nextMemberId++, affiliation: String(row[0] || '시').trim(), dept: String(row[1] || '').trim(), type: String(row[2] || '연회원').trim(), 
+                            duty: String(row[3] || '').trim(), rank: String(row[4] || '').trim(), name: name, handicap: handicap, gender: String(row[7] || '남').trim(), 
+                            status: (String(row[8] || '').trim().includes('휴면')) ? 'inactive' : 'active', phone: String(row[9] || '').trim(), photo: '', score: 0.0, prevRank: members.length + 1, 
+                            attendCount: 0, sincereCount: 0, win1Count: 0, win2Count: 0, win3Count: 0 
+                        }); 
+                        addedCount++; 
                     } 
-                    if(addedCount > 0) { 
-                        alert(`✅ ${addedCount}명 업로드 성공!` + (errorCount > 0 ? `\n⚠️ 누락된 행: ${errorCount}건 (이름이나 부수 없음)` : "")); 
-                        saveDataToStorage(); 
-                        renderAll(); 
-                    } else { 
-                        alert("❌ 유효한 데이터가 없습니다. 이름(F열)과 부수(G열)를 확인하세요."); 
-                    } 
-                } catch(err) { 
-                    console.error(err);
-                    alert("❌ 엑셀 파일을 읽는 중 오류가 발생했습니다. 양식을 다시 확인해주세요."); 
-                } 
+                    if(addedCount > 0) { alert(`✅ ${addedCount}명 업로드 완료!`); saveDataToStorage(); renderAll(); } 
+                    else { alert("❌ 유효한 데이터가 없습니다. (F열 이름, G열 부수 필수)"); } 
+                } catch(err) { console.error(err); alert("❌ 파일 형식이 맞지 않거나 읽을 수 없습니다."); } 
                 document.getElementById('excel-upload').value = ""; 
-            }; 
-            reader.readAsArrayBuffer(file); 
+            }; reader.readAsArrayBuffer(file); 
         }
 
         function toggleMemberInfo(id) { const infoRow = document.getElementById(`member-info-${id}`); document.querySelectorAll('[id^="member-info-"]').forEach(row => { if (row.id !== `member-info-${id}`) row.classList.add('hidden'); }); if (infoRow.classList.contains('hidden')) { infoRow.classList.remove('hidden'); } else { infoRow.classList.add('hidden'); } }
@@ -452,32 +492,8 @@
         function saveScoreRules() { for (let key in scoreRules) { let val = parseFloat(document.getElementById(`cfg-score-${key}`).value); if(!isNaN(val)) scoreRules[key] = val; } recalculateAllScores(); renderAll(); saveDataToStorage(); alert("점수 체계가 저장되었으며, 과거 기록이 새 규칙에 맞게 재계산되었습니다."); }
         function saveUIConfig() { appConfig.announcePrefix = document.getElementById('cfg-announce-prefix').value; appConfig.announceSuffix = document.getElementById('cfg-announce-suffix').value; appConfig.defaultTab = document.getElementById('cfg-default-tab').value; saveDataToStorage(); alert("환경 설정이 저장되었습니다."); }
         function changePassword() { const newPw = document.getElementById('cfg-password').value; if(newPw.trim() === '') { alert("비밀번호를 입력하세요."); return; } appConfig.password = newPw; document.getElementById('cfg-password').value = ''; saveDataToStorage(); alert("관리자 비밀번호가 성공적으로 변경되었습니다."); }
-        
-        function updateSeasonSelector() {
-            const sel = document.getElementById('season-selector'); if(!sel) return;
-            let html = `<option value="current">🌟 현재 진행중인 시즌</option>`;
-            archives.forEach((arc, idx) => { html += `<option value="${idx}">📁 ${arc.name} (${arc.date})</option>`; });
-            sel.innerHTML = html; sel.value = "current";
-        }
 
-        // --- 🌟 새 시즌 보관소 로직
-        function changeSeasonView() {
-            const sel = document.getElementById('season-selector').value;
-            if(sel === 'current') {
-                loadDataFromStorage();
-            } else {
-                const arc = archives[parseInt(sel)];
-                if(arc) {
-                    members = JSON.parse(JSON.stringify(arc.members));
-                    matchHistory = JSON.parse(JSON.stringify(arc.matchHistory));
-                    renderRanking();
-                    alert(`📁 [${arc.name}] 시즌 기록을 열람 중입니다.\n(열람 중에는 새로운 기록을 입력하지 마세요!)`);
-                }
-            }
-        }
-
-        // 실행
-        loadDataFromStorage();
+        loadDataFromStorage(); // 실행 시작
     </script>
 </body>
 </html>
