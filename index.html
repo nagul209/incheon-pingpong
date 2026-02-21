@@ -42,6 +42,15 @@
         .bracket-line { border-right: 2px solid #cbd5e1; border-top: 2px solid #cbd5e1; border-bottom: 2px solid #cbd5e1; }
         .bracket-line-left { border-left: 2px solid #cbd5e1; border-top: 2px solid #cbd5e1; border-bottom: 2px solid #cbd5e1; }
         .diagonal-strike { background: linear-gradient(to top right, transparent calc(50% - 1px), #cbd5e1, transparent calc(50% + 1px)); background-color: #f1f5f9; }
+
+        /* 인쇄 전용 스타일 */
+        @media print {
+            body * { visibility: hidden; }
+            #view-operation, #view-operation * { visibility: visible; }
+            #view-operation { position: absolute; left: 0; top: 0; width: 100%; padding: 0; margin: 0; }
+            .no-print { display: none !important; }
+            header, .fixed.bottom-0 { display: none !important; }
+        }
     </style>
 </head>
 <body class="max-w-md mx-auto bg-slate-50 min-h-screen shadow-2xl relative pb-28 overflow-x-hidden" id="app-body">
@@ -65,7 +74,7 @@
                     📊 엑셀 다운로드
                 </button>
             </div>
-            <div class="shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 rounded-2xl bg-white overflow-hidden mb-6">
+            <div class="shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 rounded-2xl bg-white overflow-hidden mb-2">
                 <table class="w-full text-sm text-left text-slate-700">
                     <thead class="text-[10px] text-slate-400 uppercase bg-slate-50/80 border-b border-slate-100 font-bold tracking-wider">
                         <tr><th class="px-3 py-3 text-center w-12">순위</th><th class="px-2 py-3">선수명</th><th class="px-2 py-3 text-right">총점</th><th class="px-2 py-3 text-right w-16">점수차</th><th class="px-3 py-3 text-center w-16">변동</th></tr>
@@ -73,15 +82,19 @@
                     <tbody id="ranking-table-body" class="divide-y divide-gray-100"></tbody>
                 </table>
             </div>
+            <p class="text-[10px] text-slate-400 text-right px-2">※ 순위는 <b>연회원</b> 등급만 산정됩니다.</p>
         </div>
 
         <div id="view-operation" class="hidden animate-fade-in pb-10">
-            <h2 class="font-bold text-lg mb-4 text-gray-800 tracking-tight ml-1">🏓 경기 진행 및 대진표</h2>
+            <div class="flex justify-between items-center mb-4 ml-1">
+                <h2 class="font-bold text-lg text-gray-800 tracking-tight">🏓 경기 진행 및 대진표</h2>
+                <button onclick="printBrackets()" class="text-[11px] bg-slate-800 text-white px-3 py-1.5 rounded-lg font-bold shadow-md btn-press no-print">🖨️ 인쇄하기</button>
+            </div>
             
             <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6">
                 <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-2">
                     <h3 class="font-extrabold text-slate-700">📝 예선 리그전표</h3>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 no-print">
                         <select id="op-group-size" class="text-xs border border-slate-200 rounded-lg p-1.5 bg-slate-50 font-bold">
                             <option value="3">3명</option>
                             <option value="4" selected>4명</option>
@@ -101,7 +114,7 @@
             <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6">
                 <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-2">
                     <h3 class="font-extrabold text-slate-700">⚔️ 본선 대진표</h3>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 no-print">
                         <select id="op-tourn-size" class="text-xs border border-slate-200 rounded-lg p-1.5 bg-slate-50 font-bold">
                             <option value="4">4강</option>
                             <option value="8" selected>8강</option>
@@ -327,7 +340,7 @@
         // -------------------------------------------------------------
         // 🔴 [필수 설정] Firebase 콘솔에서 복사한 본인의 설정값으로 변경하세요 🔴
         // -------------------------------------------------------------
-  const firebaseConfig = {
+   const firebaseConfig = {
   apiKey: "AIzaSyC1t-mJJXV6GBZ7-kWcvpRd35vpPZU0wmA",
   authDomain: "table-tennis-6334b.firebaseapp.com",
   projectId: "table-tennis-6334b",
@@ -559,6 +572,11 @@
 
             html += `</div>`;
             document.getElementById('op-tourn-container').innerHTML = html;
+        }
+
+        // 🌟 인쇄 기능 추가
+        function printBrackets() {
+            window.print();
         }
 
         // --- 기존 함수들 ---
@@ -844,8 +862,41 @@
             }
         }
         
+        // 🌟 수정됨: 검색창이 포함된 명단 선택 모달
         function openSelector(target, title, onlyAttendees) {
             currentSelectorTarget = target; document.getElementById('selector-title').innerText = title; tempSelectorList = [...formState[target]]; 
+            
+            // 검색창 추가 로직
+            const headerEl = document.getElementById('member-selector-modal').querySelector('.px-5');
+            let searchContainer = document.getElementById('selector-search-container');
+            if(!searchContainer) {
+                searchContainer = document.createElement('div');
+                searchContainer.id = 'selector-search-container';
+                searchContainer.className = 'px-4 pb-2';
+                searchContainer.innerHTML = `<input type="text" id="selector-search-input" placeholder="🔍 이름 초성 검색..." class="w-full bg-slate-100 border-0 p-3 rounded-xl text-sm outline-none font-bold text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 transition-all">`;
+                headerEl.after(searchContainer);
+                
+                // 검색 이벤트 리스너
+                document.getElementById('selector-search-input').addEventListener('input', (e) => {
+                    const keyword = e.target.value.toLowerCase();
+                    const buttons = document.querySelectorAll('#selector-list button');
+                    buttons.forEach(btn => {
+                        const name = btn.innerText.toLowerCase();
+                        if(name.includes(keyword)) btn.classList.remove('hidden');
+                        else btn.classList.add('hidden');
+                    });
+                });
+            } else {
+                document.getElementById('selector-search-input').value = ''; // 초기화
+            }
+
+            renderSelectorList(onlyAttendees, target);
+            updateSelectorCount(); document.getElementById('member-selector-modal').classList.remove('hidden');
+            // 모달 열릴 때 검색창에 포커스
+            setTimeout(() => document.getElementById('selector-search-input').focus(), 100);
+        }
+
+        function renderSelectorList(onlyAttendees, target) {
             let candidates = [];
             if(onlyAttendees) {
                 if(formState.attend.length === 0) { alert('먼저 [오늘 참석자] 명단을 선택해 주세요.'); return; }
@@ -871,8 +922,8 @@
                     listEl.innerHTML += `<button onclick="toggleSelect('${m.name}')" id="sel-btn-${m.name}" class="py-3.5 px-2 border rounded-xl text-[13px] font-extrabold transition-all btn-press ${bgClass}">${m.name}</button>`;
                 });
             }
-            updateSelectorCount(); document.getElementById('member-selector-modal').classList.remove('hidden');
         }
+
         function toggleSelect(name) {
             const idx = tempSelectorList.indexOf(name); const btn = document.getElementById(`sel-btn-${name}`);
             if(idx > -1) { tempSelectorList.splice(idx, 1); btn.className = "py-3.5 px-2 border rounded-xl text-[13px] font-extrabold transition-all bg-white text-slate-600 border-slate-200 shadow-sm hover:bg-slate-50 btn-press"; } 
@@ -916,7 +967,7 @@
             
             initFormState(); 
             renderAll(); 
-            saveDataToStorage(); 
+            saveDataToStorage(); // Firebase 저장 추가
             
             switchTab('history'); 
         }
