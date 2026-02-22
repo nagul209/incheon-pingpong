@@ -764,47 +764,112 @@
         function initFormState() { for(let key in formState) if(key !== 'opAttend') formState[key] = []; updateFormUI(); }
         function updateFormUI() { for(let key in formState) { const el = document.getElementById(`ui-box-${key}`); if(!el) continue; if((formState[key]||[]).length === 0) { let emptyMsg = (key === 'attend' || key === 'opAttend') ? '👇 버튼을 눌러 명단을 선택하세요' : (key === 'lazy' ? '해당자 없음' : '선택'); el.innerHTML = `<span class="name-chip-empty ${key === 'lazy' ? 'text-red-300' : ''}">${emptyMsg}</span>`; } else el.innerHTML = formState[key].map(name => `<span class="name-chip shadow-sm">${escapeHTML(name)}</span>`).join(''); } }
         
-        function downloadExcelTemplate() { try { const ws_data = [['구분', '부서', '등급', '직책', '직급', '이름(*필수)', '부수(*필수,숫자)', '성별', '상태(활동/휴면)', '연락처'],['시', '체육진흥과', '연회원', '총무', '주무관', '홍길동', '5', '남', '활동', '010-0000-0000']]; const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws_data), "회원등록양식"); XLSX.writeFile(wb, "탁구리그_회원일괄등록_양식.xlsx"); } catch(e) { alert("다운로드 실패"); } }
+function downloadExcelTemplate() { 
+            try { 
+                const ws_data = [
+                    ['구분', '부서', '등급', '직책', '직급', '이름(*필수)', '부수(*필수,숫자)', '성별', '상태(활동/휴면)', '연락처'],
+                    ['시', '체육진흥과', '연회원', '총무', '주무관', '홍길동', '5', '남', '활동', '010-0000-0000']
+                ]; 
+                const wb = XLSX.utils.book_new(); 
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws_data), "회원등록양식"); 
+                XLSX.writeFile(wb, "탁구리그_회원일괄등록_양식.xlsx"); 
+            } catch(e) { 
+                console.error("엑셀 양식 다운로드 오류:", e);
+                alert("다운로드 실패: " + e.message); 
+            } 
+        }
         
         function handleExcelUpload(event) { 
             const file = event.target.files[0]; 
             if (!file) return; 
+
             const reader = new FileReader(); 
             reader.onload = function(e) { 
                 try { 
-                    const workbook = XLSX.read(new Uint8Array(e.target.result), {type: 'array'}); 
-                    const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1, defval: ""}); 
-                    if(jsonData.length < 2) throw new Error("데이터가 없습니다.");
-                    const headers = jsonData[0].map(h => String(h).trim());
-                    const idxName = headers.findIndex(h => h.includes('이름')) > -1 ? headers.findIndex(h => h.includes('이름')) : 5;
-                    const idxHandi = headers.findIndex(h => h.includes('부수')) > -1 ? headers.findIndex(h => h.includes('부수')) : 6;
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'}); 
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1, defval: ""}); 
+                    
+                    if(jsonData.length < 2) {
+                        throw new Error("엑셀 파일에 데이터가 없습니다. (헤더 행만 있거나 비어있음)");
+                    }
+
+                    const headers = jsonData[0].map(h => String(h).replace(/\s/g, '').toLowerCase());
+                    
                     const idxAffil = headers.findIndex(h => h.includes('구분')) > -1 ? headers.findIndex(h => h.includes('구분')) : 0;
                     const idxDept = headers.findIndex(h => h.includes('부서')) > -1 ? headers.findIndex(h => h.includes('부서')) : 1;
                     const idxType = headers.findIndex(h => h.includes('등급')) > -1 ? headers.findIndex(h => h.includes('등급')) : 2;
                     const idxDuty = headers.findIndex(h => h.includes('직책')) > -1 ? headers.findIndex(h => h.includes('직책')) : 3;
                     const idxRank = headers.findIndex(h => h.includes('직급')) > -1 ? headers.findIndex(h => h.includes('직급')) : 4;
+                    const idxName = headers.findIndex(h => h.includes('이름')) > -1 ? headers.findIndex(h => h.includes('이름')) : 5;
+                    const idxHandi = headers.findIndex(h => h.includes('부수')) > -1 ? headers.findIndex(h => h.includes('부수')) : 6;
                     const idxGender = headers.findIndex(h => h.includes('성별')) > -1 ? headers.findIndex(h => h.includes('성별')) : 7;
                     const idxStatus = headers.findIndex(h => h.includes('상태')) > -1 ? headers.findIndex(h => h.includes('상태')) : 8;
                     const idxPhone = headers.findIndex(h => h.includes('연락처')) > -1 ? headers.findIndex(h => h.includes('연락처')) : 9;
 
+                    if (idxName === -1) {
+                        throw new Error("'이름' 열을 찾을 수 없습니다. 양식의 1번째 줄을 확인해 주세요.");
+                    }
+
                     let addedCount = 0; 
+                    let skipCount = 0;
+
                     for (let i = 1; i < jsonData.length; i++) { 
                         const row = jsonData[i]; 
-                        if (!row || row.length === 0) continue; 
+                        
+                        if (!row || row.join('').trim() === '') continue; 
+
                         const name = String(row[idxName] || '').trim(); 
-                        const handicapStr = String(row[idxHandi] || '').trim(); 
-                        if (name !== '' && handicapStr !== '') { 
-                            let rawStatus = String(row[idxStatus] || '').trim(); 
-                            let statusVal = (rawStatus === '휴면' || rawStatus === 'inactive') ? 'inactive' : 'active'; 
-                            members.push({ 
-                                id: nextMemberId++, affiliation: String(row[idxAffil] || '시').trim(), dept: String(row[idxDept] || '').trim(), type: String(row[idxType] || '연회원').trim(), duty: String(row[idxDuty] || '').trim(), rank: String(row[idxRank] || '').trim(), name: name, handicap: parseInt(handicapStr) || 5, gender: String(row[idxGender] || '남').trim(), status: statusVal, phone: String(row[idxPhone] || '').trim(), photo: '', score: 0.0, prevRank: members.length + 1 
-                            }); 
-                            addedCount++; 
+                        const handicapStr = String(row[idxHandi] || '').replace(/[^0-9]/g, ''); 
+
+                        if (!name || !handicapStr) { 
+                            console.warn(`[행 ${i+1}] 이름 또는 부수 누락으로 건너뜀:`, row);
+                            skipCount++;
+                            continue; 
                         } 
+
+                        let rawStatus = String(row[idxStatus] || '').trim(); 
+                        let statusVal = (rawStatus.includes('휴면') || rawStatus.toLowerCase() === 'inactive') ? 'inactive' : 'active'; 
+                        
+                        members.push({ 
+                            id: nextMemberId++, 
+                            affiliation: String(row[idxAffil] || '시').trim(), 
+                            dept: String(row[idxDept] || '').trim(), 
+                            type: String(row[idxType] || '연회원').trim(), 
+                            duty: String(row[idxDuty] || '').trim(), 
+                            rank: String(row[idxRank] || '').trim(), 
+                            name: name, 
+                            handicap: parseInt(handicapStr) || 5, 
+                            gender: String(row[idxGender] || '남').trim(), 
+                            status: statusVal, 
+                            phone: String(row[idxPhone] || '').trim(), 
+                            photo: '', 
+                            score: 0.0, 
+                            prevRank: members.length + 1,
+                            stats: { attend: 0, gold: 0, silver: 0, bronze: 0, sincerityScore: 0, attendScore: 0, winScore: 0 }
+                        }); 
+                        addedCount++; 
                     } 
-                    if(addedCount > 0) { alert(`${addedCount}명 업로드 됨`); saveDataToStorage(); renderAll(); } else { alert("유효한 데이터 없음"); } 
-                } catch(err) { alert("오류 발생: 올바른 양식인지 확인해주세요."); } 
-                document.getElementById('excel-upload').value = ""; 
+
+                    if(addedCount > 0) { 
+                        let msg = `✅ ${addedCount}명의 회원이 성공적으로 업로드 되었습니다.`;
+                        if(skipCount > 0) msg += `\n(⚠️ 양식 오류 또는 필수값 누락으로 ${skipCount}명 제외됨)`;
+                        alert(msg); 
+                        
+                        saveDataToStorage(); 
+                        renderAll(); 
+                    } else { 
+                        alert("유효한 데이터가 없습니다. 필수 항목(이름, 부수)이 올바르게 적혀있는지 확인해주세요."); 
+                    } 
+                } catch(err) { 
+                    console.error("엑셀 파일 파싱 에러:", err);
+                    alert("❌ 엑셀 등록 실패:\n" + err.message); 
+                } finally {
+                    document.getElementById('excel-upload').value = ""; 
+                }
             }; 
             reader.readAsArrayBuffer(file); 
         }
@@ -1098,3 +1163,4 @@
     </script>
 </body>
 </html>
+
