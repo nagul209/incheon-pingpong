@@ -729,26 +729,174 @@
         }
 
         function openSinglePickerForTourn(elem) { isSinglePickMode = true; document.getElementById('selector-title').innerText = "본선 진출자 선택"; document.getElementById('selector-count').classList.add('hidden'); document.getElementById('btn-selector-confirm').classList.add('hidden'); document.getElementById('selector-search').value = ""; if(renderSelectorList(true, 'tourn') === false) return; document.getElementById('member-selector-modal').classList.remove('hidden'); window.singlePickCallback = function(memberId) { const m = members.find(x => x.id == memberId); if(m) { elem.value = `${m.name}(${m.handicap})`; syncText(elem); } }; }
-        function renderTournament() {
-            const groups = parseInt(document.getElementById('op-tourn-groups').value); const adv = parseInt(document.getElementById('op-tourn-adv').value); const totalPlayers = groups * adv;
-            let size = 2; while(size < totalPlayers) size *= 2;
-            const infoBox = document.getElementById('op-tourn-info'); infoBox.classList.remove('hidden'); infoBox.innerHTML = `✅ ${groups}조 × ${adv}명 = <b>${totalPlayers}명 진출</b> 👉 <b>${size}강 토너먼트 자동 생성</b> (부전승 ${size - totalPlayers}명)`;
-            let players = []; for (let rank = 1; rank <= adv; rank++) { let grpArr = Array.from({length: groups}, (_, i) => i + 1); if (rank % 2 === 0) { grpArr = grpArr.slice(groups/2).concat(grpArr.slice(0, groups/2)); grpArr.reverse(); } for (let g of grpArr) players.push(`${g}조${rank}위`); }
-            let seeds = [1, 2]; for (let i = 2; i < size; i *= 2) { let temp = []; for (let j = 0; j < seeds.length; j++) { temp.push(seeds[j]); temp.push(2 * i + 1 - seeds[j]); } seeds = temp; }
-            let bracketPlayers = new Array(size).fill(null); for(let i=0; i<size; i++) { let seedVal = seeds[i]; if(seedVal <= totalPlayers) bracketPlayers[i] = players[seedVal - 1]; else bracketPlayers[i] = "부전승(BYE)"; }
-            let rounds = Math.log2(size); let html = `<div class="flex w-max min-w-full font-bold text-sm bg-white p-4 rounded-xl shadow-sm border border-slate-200">`;
-            for(let r=0; r<=rounds; r++) {
-                let numNodes = size / Math.pow(2, r); html += `<div class="flex flex-col justify-around" style="width: ${r===rounds ? '120px' : '150px'};">`;
-                for(let n=0; n<numNodes; n++) {
-                    let isTop = n % 2 === 0; let content = '';
-                    if (r === rounds) { content = `<div class="bg-yellow-100 border-2 border-yellow-400 p-2 rounded-xl text-center shadow-lg z-10 w-28 mx-auto"><div class="text-[10px] text-rose-600 mb-0.5 font-black">👑 최종 우승</div><input class="w-full text-center bg-transparent outline-none font-black text-sm text-yellow-700 cursor-pointer" placeholder="우승자" readonly onclick="openSinglePickerForTourn(this)" oninput="syncText(this)"><span class="capture-text font-black text-sm text-yellow-700">우승자</span></div>`; } 
-                    else if (r === 0) { let name = bracketPlayers[n]; let isBye = name === "부전승(BYE)"; content = `<div class="flex items-center justify-center relative w-full h-12"><div class="border ${isBye ? 'border-dashed border-slate-300 bg-slate-50 text-slate-400' : 'border-slate-300 bg-white shadow-sm'} p-1.5 rounded w-28 z-10 flex flex-col justify-center h-10">${isBye ? `<div class="text-[10px] text-center w-full font-medium">${name}</div>` : `<div class="text-[9px] text-rose-500 font-black mb-0.5">${name}</div><input class="w-full text-center outline-none text-[11px] font-extrabold cursor-pointer bg-transparent text-slate-700" placeholder="터치선택" readonly onclick="openSinglePickerForTourn(this)" oninput="syncText(this)"><span class="capture-text font-extrabold text-[11px] text-slate-700">터치선택</span>`}</div>${r < rounds ? `<div class="absolute w-1/2 h-[2px] bg-slate-400 right-0 top-1/2 -z-0"></div>` : ''}</div>`; } 
-                    else { content = `<div class="flex items-center justify-center relative w-full h-full min-h-[48px]"><div class="border border-indigo-200 bg-indigo-50 p-1.5 rounded w-28 z-10 shadow-sm h-10 flex items-center"><input class="w-full text-center outline-none text-[12px] font-extrabold cursor-pointer bg-transparent text-indigo-700" placeholder="승자 선택" readonly onclick="openSinglePickerForTourn(this)" oninput="syncText(this)"><span class="capture-text font-extrabold text-[12px] text-indigo-700">승자 선택</span></div><div class="absolute w-1/2 h-[2px] bg-slate-400 left-0 top-1/2 -z-0"></div>${r < rounds ? `<div class="absolute w-1/2 h-[2px] bg-slate-400 right-0 top-1/2 -z-0"></div>` : ''}</div>`; }
-                    let borderClass = ""; if(r < rounds && r >= 0) { if(isTop) borderClass = "border-r-line border-b-line rounded-br-lg"; else borderClass = "border-r-line border-t-line rounded-tr-lg"; }
-                    html += `<div class="flex-1 flex flex-col justify-center relative tourn-node">${r < rounds ? `<div class="absolute right-0 w-1/2 ${borderClass}" style="height: 50%; ${isTop ? 'bottom: 0;' : 'top: 0;'}"></div>` : ''}${content}</div>`;
-                } html += `</div>`;
-            } html += `</div>`; document.getElementById('op-tourn-container').innerHTML = html;
+       // ==============================================================================
+// 🏆 [스마트 대진표] 탁구 대회 표준 시딩(Seeding) 및 렌더링 알고리즘
+// ==============================================================================
+function renderTournament() {
+    const groups = parseInt(document.getElementById('op-tourn-groups').value); 
+    const adv = parseInt(document.getElementById('op-tourn-adv').value); 
+    const totalPlayers = groups * adv;
+    
+    // 1. 총 진출자를 수용할 수 있는 가장 가까운 2의 거듭제곱(8, 16, 32, 64, 128) 계산
+    let size = 2; 
+    while(size < totalPlayers) size *= 2;
+    
+    const infoBox = document.getElementById('op-tourn-info'); 
+    infoBox.classList.remove('hidden'); 
+    infoBox.innerHTML = `✅ ${groups}조 × ${adv}명 = <b>${totalPlayers}명 진출</b> 👉 <b>${size}강 토너먼트 자동 생성</b> (부전승 ${size - totalPlayers}명)`;
+    
+    // 🚨 [핵심 알고리즘 1] 시딩(Seeding)용 선수 배열 생성 (스네이크 및 크로스 매칭 적용)
+    let players = []; 
+    for (let rank = 1; rank <= adv; rank++) { 
+        let grpArr = Array.from({length: groups}, (_, i) => i + 1); 
+        
+        if (rank % 2 === 0) { 
+            // 짝수 순위(2위, 4위...)는 순서를 뒤집어(스네이크 방식) 1위와 대칭되게 만듦
+            grpArr.reverse(); 
+            // ⭐️ 같은 조 선수끼리 최대한 늦게(최소 4강 이상) 만나도록 절반을 잘라서 위치를 교차(Shift)시킴
+            let shift = Math.floor(groups / 2); 
+            grpArr = grpArr.slice(shift).concat(grpArr.slice(0, shift)); 
+        } 
+        
+        // 정렬된 조 번호에 순위를 붙여 진출자 명단에 순차적으로 삽입
+        for (let g of grpArr) { 
+            players.push(`${g}조${rank}위`); 
+        } 
+    }
+    
+    // 🚨 [핵심 알고리즘 2] 표준 대회 토너먼트 시드 트리(Standard Bracket Array) 생성
+    // 예: 16강 -> [1, 16, 8, 9, 4, 13, 5, 12, 2, 15, 7, 10, 3, 14, 6, 11]
+    let seeds = [1, 2]; 
+    for (let i = 2; i < size; i *= 2) { 
+        let temp = []; 
+        for (let j = 0; j < seeds.length; j++) { 
+            temp.push(seeds[j]); 
+            temp.push(2 * i + 1 - seeds[j]); 
+        } 
+        seeds = temp; 
+    }
+    
+    // 🚨 [핵심 알고리즘 3] 시드 번호에 따라 선수 및 부전승(BYE) 배치
+    let bracketPlayers = new Array(size).fill(null); 
+    for(let i = 0; i < size; i++) { 
+        let seedVal = seeds[i]; 
+        // 시드값이 총 진출자 수 이내면 해당 순위 선수 배정, 남는 하위 시드는 BYE 처리
+        if(seedVal <= totalPlayers) {
+            bracketPlayers[i] = players[seedVal - 1]; 
+        } else {
+            bracketPlayers[i] = "부전승(BYE)"; 
         }
+    }
+    
+    // 🚨 [핵심 알고리즘 4] 부전승(BYE) 자동 진출 처리 (2D 배열 트리 구축)
+    let rounds = Math.log2(size); 
+    let tree = [];
+    tree[0] = [...bracketPlayers]; // 1라운드(리프 노드) 초기화
+
+    for (let r = 1; r <= rounds; r++) {
+        tree[r] = [];
+        let numNodes = size / Math.pow(2, r);
+        for (let n = 0; n < numNodes; n++) {
+            let p1 = tree[r-1][n * 2];
+            let p2 = tree[r-1][n * 2 + 1];
+            
+            // 이전 라운드의 상대가 BYE라면 자동으로 현재 라운드로 진출시킴
+            if (p1 === "부전승(BYE)" && p2 !== "부전승(BYE)") {
+                tree[r][n] = p2;
+            } else if (p2 === "부전승(BYE)" && p1 !== "부전승(BYE)") {
+                tree[r][n] = p1;
+            } else if (p1 === "부전승(BYE)" && p2 === "부전승(BYE)") {
+                tree[r][n] = "부전승(BYE)";
+            } else {
+                tree[r][n] = null; // 둘 다 실제 선수면 경기해야 하므로 빈칸 대기
+            }
+        }
+    }
+
+    // 🎨 대진표 UI 렌더링 (가로/세로 스크롤 및 선 그리기)
+    // 64강, 128강 생성 시 높이가 찌그러지지 않도록 size 비례 동적 높이 확보
+    let minHeight = Math.max(size * 45, 300);
+    let html = `<div class="flex w-max min-w-full font-bold text-sm bg-white p-6 rounded-xl shadow-sm border border-slate-200" style="min-height: ${minHeight}px;">`;
+    
+    for(let r = 0; r <= rounds; r++) {
+        let numNodes = size / Math.pow(2, r); 
+        let colWidth = r === rounds ? '140px' : '170px';
+        html += `<div class="flex flex-col justify-around relative" style="width: ${colWidth};">`;
+        
+        for(let n = 0; n < numNodes; n++) {
+            let isTop = n % 2 === 0; 
+            let player = tree[r][n];
+            let isBye = player === "부전승(BYE)";
+            let isFinal = (r === rounds);
+            
+            let content = '';
+            
+            if (isFinal) { 
+                content = `
+                <div class="bg-yellow-100 border-2 border-yellow-400 p-2 rounded-xl text-center shadow-lg z-10 w-32 mx-auto relative">
+                    <div class="text-[10px] text-rose-600 mb-0.5 font-black">👑 최종 우승</div>
+                    <input class="w-full text-center bg-transparent outline-none font-black text-sm text-yellow-700 cursor-pointer" placeholder="우승자" value="${player || ''}" readonly onclick="openSinglePickerForTourn(this)" oninput="syncText(this)">
+                    <span class="capture-text font-black text-sm text-yellow-700">${player || '우승자'}</span>
+                </div>`; 
+            } 
+            else if (isBye) { 
+                // 부전승(BYE) 칸 회색 점선 비활성화 처리
+                content = `
+                <div class="flex items-center justify-center relative w-full h-12 my-2">
+                    <div class="border-2 border-dashed border-slate-300 bg-slate-100 text-slate-400 p-1.5 rounded-lg w-32 z-10 flex flex-col justify-center h-10 shadow-inner opacity-70">
+                        <div class="text-[11px] text-center w-full font-extrabold tracking-widest">BYE</div>
+                    </div>
+                    ${r < rounds ? `<div class="absolute w-1/2 h-[2px] bg-slate-200 right-0 top-1/2 -z-0"></div>` : ''}
+                </div>`; 
+            } 
+            else { 
+                let displayVal = player || '';
+                // '1조1위' 등 자동 배정된 텍스트인지 판별 (실제 이름 입력과 구분)
+                let isAutoPlaceholder = displayVal.includes('조') && displayVal.includes('위');
+                
+                let placeholder = r === 0 ? '터치선택' : '승자 선택';
+                let inputValue = isAutoPlaceholder ? '' : displayVal; // 배정 텍스트는 뱃지로 올리고 입력칸은 비움
+                
+                let bgColor = r === 0 ? 'bg-white' : 'bg-indigo-50';
+                let borderColor = r === 0 ? 'border-slate-300' : 'border-indigo-300';
+                let textColor = r === 0 ? 'text-slate-700' : 'text-indigo-800';
+
+                // 자동 배정된 조/순위 정보는 귀여운 상단 뱃지로 띄워줍니다.
+                let badgeHtml = isAutoPlaceholder ? `<div class="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-slate-100 border border-slate-300 text-slate-600 px-2 py-0.5 rounded-full text-[9px] font-black shadow-sm whitespace-nowrap z-20">${displayVal}</div>` : '';
+
+                content = `
+                <div class="flex items-center justify-center relative w-full h-12 my-2">
+                    <div class="border ${borderColor} ${bgColor} rounded-lg w-32 z-10 shadow-sm flex items-center justify-center h-10 hover:ring-2 hover:ring-indigo-400 transition-all relative cursor-pointer">
+                        ${badgeHtml}
+                        <input class="w-full h-full text-center outline-none text-[12px] font-extrabold cursor-pointer bg-transparent ${textColor}" placeholder="${placeholder}" value="${inputValue}" readonly onclick="openSinglePickerForTourn(this)" oninput="syncText(this)">
+                        <span class="capture-text font-extrabold text-[12px] ${textColor}">${inputValue || placeholder}</span>
+                    </div>
+                    ${r > 0 ? `<div class="absolute w-1/2 h-[2px] bg-slate-400 left-0 top-1/2 -z-0"></div>` : ''}
+                    ${r < rounds ? `<div class="absolute w-1/2 h-[2px] bg-slate-400 right-0 top-1/2 -z-0"></div>` : ''}
+                </div>`; 
+            }
+            
+            let borderClass = ""; 
+            if(r < rounds && r >= 0) { 
+                if(isTop) borderClass = "border-r-line border-b-line rounded-br-xl"; 
+                else borderClass = "border-r-line border-t-line rounded-tr-xl"; 
+            }
+            
+            // 토너먼트 연결 선 렌더링
+            html += `<div class="flex-1 flex flex-col justify-center relative tourn-node">${r < rounds ? `<div class="absolute right-0 w-1/2 ${borderClass}" style="height: 50%; ${isTop ? 'bottom: 0;' : 'top: 0;'}"></div>` : ''}${content}</div>`;
+        } 
+        html += `</div>`;
+    } 
+    html += `</div>`; 
+    
+    // 렌더링 컨테이너에 삽입 및 세로/가로 스크롤 허용 속성 추가
+    const container = document.getElementById('op-tourn-container');
+    container.className = "w-full overflow-auto max-h-[70vh] pb-4"; 
+    container.innerHTML = html;
+    
+    // 프린트/캡처 모드 대비 텍스트 동기화
+    container.querySelectorAll('input').forEach(input => syncText(input));
+}
 
         function printTournament() {
             const target = document.getElementById('op-tourn-container'); target.querySelectorAll('input').forEach(input => syncText(input)); target.classList.add('capture-mode'); const printContent = target.innerHTML; target.classList.remove('capture-mode');
@@ -1080,3 +1228,4 @@
     </script>
 </body>
 </html>
+
