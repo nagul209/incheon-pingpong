@@ -51,7 +51,7 @@
         .t-loser { background-color: #f8fafc !important; border: 1px solid #e2e8f0 !important; color: #94a3b8 !important; filter: grayscale(100%); opacity: 0.6; }
 
         /* 📸 카톡 캡처를 위한 특수 클래스 */
-        .capture-mode { border: 2px solid #000 !important; border-radius: 0 !important; overflow: hidden; box-shadow: none !important; background-color: #fff !important; margin: 0 auto !important; width: max-content !important; transform-origin: top center; }
+        .capture-mode { border: 2px solid #000 !important; border-radius: 0 !important; overflow: visible !important; box-shadow: none !important; background-color: #fff !important; margin: 0 auto !important; width: max-content !important; height: max-content !important; transform-origin: top left; }
         .capture-mode table { border-top: 2px solid #000 !important; border-bottom: 2px solid #000 !important; border-collapse: collapse !important; }
         .capture-mode th, .capture-mode td { border: 1px solid #000 !important; padding: 6px !important; color: #000 !important; font-weight: 900 !important; }
         .capture-mode input { display: none !important; }
@@ -142,14 +142,12 @@
                         
                         <div id="dynamic-group-sizes" class="flex flex-wrap gap-1.5 items-center border-l border-slate-300 pl-2"></div>
                         
-                        <div class="ml-auto flex gap-1.5 mt-2 w-full justify-end flex-wrap">
-                            <button onclick="loadTempTable()" class="text-[11px] bg-amber-500 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm btn-press">📂 불러오기</button>
-                            <button onclick="saveTempTable()" class="text-[11px] bg-amber-600 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm btn-press">💾 임시저장</button>
-                            <button onclick="sortGroupPlayers()" class="text-[11px] bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm btn-press">🔀 명단정렬</button>
+                        <div class="ml-auto flex gap-1.5 mt-2 w-full justify-end flex-wrap items-center">
+                            <button onclick="calculateGroupRankings()" class="text-[11px] bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-2.5 py-1.5 rounded-lg font-extrabold shadow-sm btn-press">🧮 자동순위</button>
+                            <button onclick="loadTempTable()" class="text-[11px] bg-amber-500 text-white px-2.5 py-1.5 rounded-lg font-bold shadow-sm btn-press">📂 불러오기</button>
+                            <button onclick="saveTempTable()" class="text-[11px] bg-amber-600 text-white px-2.5 py-1.5 rounded-lg font-bold shadow-sm btn-press">💾 임시저장</button>
+                            <button onclick="sortGroupPlayers()" class="text-[11px] bg-emerald-600 text-white px-2.5 py-1.5 rounded-lg font-bold shadow-sm btn-press">🔀 정렬</button>
                             <button onclick="renderGroupTable()" class="text-[11px] bg-slate-800 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm btn-press">표 생성</button>
-                        </div>
-                        <div class="w-full mt-1">
-                            <button onclick="calculateGroupRankings()" class="w-full text-[12px] bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-2.5 rounded-lg font-extrabold shadow-md btn-press">🧮 1칸 1숫자 입력 방식 '자동 순위' 산출</button>
                         </div>
                     </div>
                 </div>
@@ -162,8 +160,8 @@
             <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6">
                 <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
                     <div>
-                        <h3 class="font-extrabold text-slate-800 text-base">⚔️ 본선 대진표 (양방향)</h3>
-                        <p class="text-[10px] text-slate-400 font-medium mt-0.5">결승 중앙 집중형 & 자동 승패 렌더링</p>
+                        <h3 class="font-extrabold text-slate-800 text-base">⚔️ 본선 대진표</h3>
+                        <p class="text-[10px] text-slate-400 font-medium mt-0.5">최대 128강까지 자동 생성 지원</p>
                     </div>
                     <button onclick="printTournament()" class="text-[11px] bg-rose-600 text-white px-3 py-2 rounded-lg font-bold shadow-md btn-press flex items-center gap-1">🖨️ 대진표 인쇄</button>
                 </div>
@@ -182,7 +180,7 @@
                 </div>
                 
                 <div class="mb-3 flex justify-between items-center gap-2">
-                    <button onclick="loadQualifierResults()" class="flex-1 bg-indigo-50 text-indigo-700 border border-indigo-200 py-2 rounded-xl text-[11px] font-extrabold shadow-sm btn-press">📥 예선 순위 자동 셋업</button>
+                    <button onclick="loadQualifierResults()" class="flex-1 bg-indigo-50 text-indigo-700 border border-indigo-200 py-2 rounded-xl text-[11px] font-extrabold shadow-sm btn-press">📥 예선 결과 불러오기</button>
                     <div id="op-tourn-info" class="flex-[2] text-[10px] font-extrabold text-rose-700 bg-rose-50 p-2 rounded-xl text-center border border-rose-100 hidden"></div>
                 </div>
 
@@ -192,7 +190,7 @@
                     <button onclick="scrollTourn('left')" class="flex-1 py-2 bg-white text-slate-600 text-[11px] font-extrabold rounded-xl shadow-sm border border-slate-200 btn-press">👈 좌측</button>
                     <button onclick="scrollTourn('center')" class="flex-1 py-2 bg-yellow-50 text-yellow-700 text-[11px] font-extrabold rounded-xl shadow-sm border border-yellow-200 btn-press">🏆 중앙</button>
                     <button onclick="scrollTourn('right')" class="flex-1 py-2 bg-white text-slate-600 text-[11px] font-extrabold rounded-xl shadow-sm border border-slate-200 btn-press">우측 👉</button>
-                    <button onclick="copyTournamentImage()" id="btn-capture-tourn" class="flex-1 py-2 bg-emerald-500 text-white text-[11px] font-black rounded-xl shadow-sm border border-emerald-600 btn-press flex items-center justify-center gap-1">📸 캡처</button>
+                    <button onclick="copyTournamentImage()" id="btn-capture-tourn" class="flex-1 py-2 bg-emerald-500 text-white text-[11px] font-black rounded-xl shadow-sm border border-emerald-600 btn-press flex items-center justify-center gap-1">📸 카톡 복사</button>
                 </div>
 
                 <div id="op-tourn-container" class="w-full overflow-x-auto overflow-y-auto max-h-[75vh] pb-4 relative scroll-smooth rounded-xl border border-slate-200 bg-slate-50/50">
@@ -201,7 +199,22 @@
             </div>
         </div>
 
-        <div id="view-history" class="hidden animate-fade-in"><h2 class="font-bold text-lg mb-4 text-gray-800 tracking-tight ml-1">저장된 경기 기록</h2><div class="shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 rounded-2xl bg-white overflow-hidden"><table class="w-full text-sm text-center text-slate-700"><thead class="text-xs text-slate-500 uppercase bg-gray-50 border-b border-gray-200"><tr><th class="px-2 py-3 w-20">날짜/종류</th><th class="px-2 py-3 text-left">참석 및 입상 내역</th><th class="px-2 py-3 admin-only-table-cell w-16">기능</th></tr></thead><tbody id="match-history-list" class="divide-y divide-slate-100"></tbody></table></div></div>
+        <div id="view-history" class="hidden animate-fade-in">
+            <div class="flex justify-between items-center mb-4 pl-1 gap-2">
+                <h2 class="font-bold text-lg text-gray-800 tracking-tight">저장된 경기 기록</h2>
+                <select id="history-season-selector" class="flex-1 max-w-[180px] text-[12px] font-extrabold text-indigo-800 bg-white border-2 border-indigo-100 rounded-xl px-2.5 py-1.5 shadow-sm focus:ring-2 focus:ring-indigo-400 outline-none truncate" onchange="renderHistory()">
+                    <option value="current">📍 현재 진행중인 시즌</option>
+                </select>
+            </div>
+            <div class="shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 rounded-2xl bg-white overflow-hidden">
+                <table class="w-full text-sm text-center text-slate-700">
+                    <thead class="text-xs text-slate-500 uppercase bg-gray-50 border-b border-gray-200">
+                        <tr><th class="px-2 py-3 w-20">날짜/종류</th><th class="px-2 py-3 text-left">참석 및 입상 내역</th><th class="px-2 py-3 admin-only-table-cell w-16" id="history-admin-th">기능</th></tr>
+                    </thead>
+                    <tbody id="match-history-list" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+        </div>
         
         <div id="view-input" class="hidden admin-only-block animate-fade-in"><div id="input-step-1" class="bg-white p-6 rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-4"><h2 id="input-form-title" class="font-extrabold text-xl mb-5 text-slate-800 tracking-tight">1. 모임 기본 정보 입력</h2><div class="mb-5"><label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">날짜 선택</label><input type="date" id="match-date" class="block w-full border-0 bg-slate-100 p-3.5 rounded-xl font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all"></div><div class="mb-8"><label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">모임 종류</label><select id="match-type" class="block w-full border-0 bg-slate-100 p-3.5 rounded-xl font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all"><option>정기모임</option><option>월례대회</option><option>교류전</option></select></div><button onclick="openInputStep2()" class="w-full bg-gradient-to-r from-indigo-500 to-violet-500 text-white py-4 rounded-xl font-bold shadow-lg shadow-indigo-200 hover:shadow-xl transition-all btn-press text-lg">다음 단계로 이동 👉</button></div><div id="input-step-2" class="hidden mt-2 bg-gray-50 p-4 rounded-xl border border-indigo-200 shadow-inner mb-6"><div class="flex justify-between items-center mb-4 pl-1"><h2 class="font-extrabold text-lg text-indigo-800">2. 상세 결과 선택</h2><span id="display-match-info" class="text-xs text-indigo-700 font-bold bg-indigo-100/50 px-3 py-1.5 rounded-full"></span></div><div class="mb-5 bg-white p-4 border rounded-xl border-gray-200 shadow-sm relative"><div class="flex justify-between items-center mb-2 border-b pb-2"><label class="block text-sm font-extrabold text-gray-800">✅ 오늘 참석자</label><div class="flex gap-1"><button onclick="generateTeams()" class="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-1 rounded border border-indigo-200 font-bold hover:bg-indigo-100 btn-press">🤖 조편성</button><button onclick="openSelector('attend', '오늘 참석자 선택', false)" class="text-[10px] bg-blue-600 text-white px-2 py-1 rounded shadow-sm font-bold btn-press">명단 선택</button></div></div><div id="ui-box-attend" class="min-h-[40px] bg-gray-50 rounded-lg p-2 border border-gray-200 cursor-pointer" onclick="openSelector('attend', '오늘 참석자 선택', false)"><span class="name-chip-empty">버튼을 눌러 참석자를 선택하세요.</span></div><div class="flex justify-between items-center mt-4 mb-2 border-b pb-2"><label class="block text-sm font-extrabold text-red-600">🚨 불성실자 (성실점수 제외)</label><button onclick="openSelector('lazy', '불성실자 선택', true)" class="text-[10px] bg-red-50 text-red-600 border border-red-200 px-2 py-1 rounded font-bold btn-press">선택</button></div><div id="ui-box-lazy" class="min-h-[30px] bg-red-50/50 rounded-lg p-2 border border-red-100 cursor-pointer" onclick="openSelector('lazy', '불성실자 선택', true)"><span class="name-chip-empty text-red-300">해당자 없음</span></div></div><div class="space-y-4"><div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)]"><h3 class="font-extrabold text-sm text-indigo-700 mb-3 flex items-center gap-2"><span class="text-lg">🏅</span> 개인 리그전</h3><div class="space-y-2.5"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-yellow-100 flex justify-center items-center font-black text-yellow-600 border border-yellow-200">1</div><div id="ui-box-lg1" onclick="openSelector('lg1', '리그전 1등 선택', true)" class="flex-1 min-h-[44px] border border-slate-200 rounded-xl bg-slate-50 p-2 cursor-pointer flex items-center flex-wrap gap-1 hover:bg-slate-100"></div></div><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-slate-100 flex justify-center items-center font-black text-slate-500 border border-slate-200">2</div><div id="ui-box-lg2" onclick="openSelector('lg2', '리그전 2등 선택', true)" class="flex-1 min-h-[44px] border border-slate-200 rounded-xl bg-slate-50 p-2 cursor-pointer flex items-center flex-wrap gap-1 hover:bg-slate-100"></div></div><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-orange-100 flex justify-center items-center font-black text-orange-600 border border-orange-200">3</div><div id="ui-box-lg3" onclick="openSelector('lg3', '리그전 3등 선택', true)" class="flex-1 min-h-[44px] border border-slate-200 rounded-xl bg-slate-50 p-2 cursor-pointer flex items-center flex-wrap gap-1 hover:bg-slate-100"></div></div></div></div><div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)]"><h3 class="font-extrabold text-sm text-indigo-700 mb-3 flex items-center gap-2"><span class="text-lg">🤝</span> 단체전</h3><div class="space-y-2.5"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-yellow-100 flex justify-center items-center font-black text-yellow-600 border border-yellow-200">1</div><div id="ui-box-tm1" onclick="openSelector('tm1', '단체전 1등 선택', true)" class="flex-1 min-h-[44px] border border-slate-200 rounded-xl bg-slate-50 p-2 cursor-pointer flex items-center flex-wrap gap-1 hover:bg-slate-100"></div></div><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-slate-100 flex justify-center items-center font-black text-slate-500 border border-slate-200">2</div><div id="ui-box-tm2" onclick="openSelector('tm2', '단체전 2등 선택', true)" class="flex-1 min-h-[44px] border border-slate-200 rounded-xl bg-slate-50 p-2 cursor-pointer flex items-center flex-wrap gap-1 hover:bg-slate-100"></div></div><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-orange-100 flex justify-center items-center font-black text-orange-600 border border-orange-200">3</div><div id="ui-box-tm3" onclick="openSelector('tm3', '단체전 3등 선택', true)" class="flex-1 min-h-[44px] border border-slate-200 rounded-xl bg-slate-50 p-2 cursor-pointer flex items-center flex-wrap gap-1 hover:bg-slate-100"></div></div></div></div><div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)]"><h3 class="font-extrabold text-sm text-indigo-700 mb-3 flex items-center gap-2"><span class="text-lg">⚔️</span> 토너먼트</h3><div class="space-y-2.5"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-yellow-100 flex justify-center items-center font-black text-yellow-600 border border-yellow-200">1</div><div id="ui-box-tn1" onclick="openSelector('tn1', '토너먼트 1등 선택', true)" class="flex-1 min-h-[44px] border border-slate-200 rounded-xl bg-slate-50 p-2 cursor-pointer flex items-center flex-wrap gap-1 hover:bg-slate-100"></div></div><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-slate-100 flex justify-center items-center font-black text-slate-500 border border-slate-200">2</div><div id="ui-box-tn2" onclick="openSelector('tn2', '토너먼트 2등 선택', true)" class="flex-1 min-h-[44px] border border-slate-200 rounded-xl bg-slate-50 p-2 cursor-pointer flex items-center flex-wrap gap-1 hover:bg-slate-100"></div></div><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-orange-100 flex justify-center items-center font-black text-orange-600 border border-orange-200">3</div><div id="ui-box-tn3" onclick="openSelector('tn3', '토너먼트 3등 선택', true)" class="flex-1 min-h-[44px] border border-slate-200 rounded-xl bg-slate-50 p-2 cursor-pointer flex items-center flex-wrap gap-1 hover:bg-slate-100"></div></div></div></div><div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)]"><h3 class="font-extrabold text-sm text-indigo-700 mb-3 flex items-center gap-2"><span class="text-lg">👥</span> 복식전</h3><div class="space-y-2.5"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-yellow-100 flex justify-center items-center font-black text-yellow-600 border border-yellow-200">1</div><div id="ui-box-db1" onclick="openSelector('db1', '복식 1등 선택', true)" class="flex-1 min-h-[44px] border border-slate-200 rounded-xl bg-slate-50 p-2 cursor-pointer flex items-center flex-wrap gap-1 hover:bg-slate-100"></div></div><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-slate-100 flex justify-center items-center font-black text-slate-500 border border-slate-200">2</div><div id="ui-box-db2" onclick="openSelector('db2', '복식 2등 선택', true)" class="flex-1 min-h-[44px] border border-slate-200 rounded-xl bg-slate-50 p-2 cursor-pointer flex items-center flex-wrap gap-1 hover:bg-slate-100"></div></div></div></div><div class="bg-gradient-to-br from-yellow-50 to-orange-50 p-4 border rounded-2xl border-yellow-200/60 shadow-[0_4px_20px_rgba(250,204,21,0.15)]"><h3 class="font-extrabold text-sm text-yellow-800 mb-3 flex items-center gap-2"><span class="text-lg">🎉</span> 이벤트전</h3><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-white flex justify-center items-center font-black text-yellow-600 shadow-sm">👑</div><div id="ui-box-ev1" onclick="openSelector('ev1', '이벤트 우승자 선택', true)" class="flex-1 min-h-[44px] border border-white rounded-xl bg-white/60 backdrop-blur-sm p-2 cursor-pointer flex items-center flex-wrap gap-1 shadow-sm hover:bg-white transition"></div></div></div></div><div class="flex gap-3 mt-8 sticky bottom-16 z-20 pb-2"><button onclick="cancelInputStep2()" class="flex-1 bg-white text-slate-700 py-4 rounded-2xl font-extrabold shadow-sm border border-slate-200 hover:bg-slate-50 btn-press">작성 취소</button><button onclick="saveMatch()" class="flex-[2] bg-gradient-to-r from-indigo-500 to-violet-500 text-white py-4 rounded-2xl font-extrabold shadow-lg shadow-indigo-200 btn-press text-lg border border-indigo-700">최종 점수 저장</button></div></div></div>
         
@@ -327,7 +340,7 @@
             members = parsed.members || []; 
             matchHistory = (parsed.matchHistory || []).map(m => ({...m, attend: m.attend||[], lazy: m.lazy||[], lg1: m.lg1||[], lg2: m.lg2||[], lg3: m.lg3||[], tm1: m.tm1||[], tm2: m.tm2||[], tm3: m.tm3||[], tn1: m.tn1||[], tn2: m.tn2||[], tn3: m.tn3||[], db1: m.db1||[], db2: m.db2||[], ev1: m.ev1||[] }));
             appConfig = parsed.appConfig || {...defaultAppConfig}; 
-            if (!appConfig.pastSeasons) appConfig.pastSeasons = []; // 이전 버전 호환성 보장
+            if (!appConfig.pastSeasons) appConfig.pastSeasons = []; 
             scoreRules = parsed.scoreRules || {...defaultScoreRules}; nextMemberId = parsed.nextMemberId || 1; nextMatchId = parsed.nextMatchId || 1;
             renderAll(); switchTab(appConfig.defaultTab); if (isAdmin) loadSettingsUI();
         }
@@ -368,12 +381,19 @@
         // 🎮 경기 운영 - 리그전표 생성 및 계산 
         // ==============================================================================
         function generateGroupSizeInputs() {
-            const count = parseInt(document.getElementById('op-group-count').value);
+            const count = parseInt(document.getElementById('op-group-count').value) || 2;
             const container = document.getElementById('dynamic-group-sizes');
             let html = '';
+            
+            // 참석 인원을 기준으로 기본 인원 자동 배분
+            let attendeesCount = (formState.opAttend && formState.opAttend.length) ? formState.opAttend.length : 0;
+            let baseSize = attendeesCount > 0 ? Math.floor(attendeesCount / count) : 4; 
+            let remainder = attendeesCount > 0 ? attendeesCount % count : 0;
+
             for(let i=1; i<=count; i++) {
-                let existingInput = document.getElementById(`op-group-size-${i}`);
-                let val = existingInput ? existingInput.value : 4; 
+                let calculatedSize = baseSize + (i <= remainder ? 1 : 0);
+                let val = attendeesCount > 0 ? calculatedSize : 4;
+
                 html += `<div class="flex items-center gap-1 bg-white border border-slate-200 rounded px-1.5 py-1">
                     <span class="text-[10px] font-bold text-slate-500">${i}조</span>
                     <input type="number" id="op-group-size-${i}" value="${val}" min="2" max="12" class="w-10 text-[11px] font-bold text-indigo-700 text-center outline-none bg-transparent">
@@ -570,7 +590,7 @@
                 }
                 players.forEach(p => { let rankInput = document.getElementById(`rank-g${g}-p${p.id}`); if(rankInput) { rankInput.value = p.finalRank; syncText(rankInput); } });
             }
-            alert("🧮 자동 계산이 완료되었습니다.");
+            alert("🧮 1칸 1숫자 방식이 반영된 탁구 공식 룰 자동 계산이 완료되었습니다.");
         }
 
         function sortGroupPlayers() {
@@ -637,7 +657,7 @@
         }
 
         // ==============================================================================
-        // 🏆 [스마트 대진표] 상태 관리 및 렌더링 로직 (전면 개편)
+        // 🏆 [스마트 대진표] 상태 관리 및 렌더링 로직
         // ==============================================================================
         let tournamentState = {
             size: 0,
@@ -766,8 +786,10 @@
             let filterHtml = `<button onclick="setTournamentFilter(0)" class="px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-colors shadow-sm ${vRound === 0 ? 'bg-slate-800 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'} btn-press">전체보기</button>`;
             for(let r = 0; r < rounds - 1; r++) {
                 let roundSize = size / Math.pow(2, r);
+                // 4강까지 버튼 명시적 추가
                 if(roundSize <= 64 && roundSize >= 4) {
-                    filterHtml += `<button onclick="setTournamentFilter(${r})" class="px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-colors shadow-sm ${vRound === r ? 'bg-slate-800 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'} btn-press">${roundSize}강</button>`;
+                    let btnText = roundSize === 4 ? "준결승(4강)" : roundSize + "강";
+                    filterHtml += `<button onclick="setTournamentFilter(${r})" class="px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-colors shadow-sm ${vRound === r ? 'bg-slate-800 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'} btn-press">${btnText}</button>`;
                 }
             }
             filterContainer.innerHTML = filterHtml;
@@ -986,52 +1008,72 @@
             const btn = document.getElementById('btn-capture-tourn');
             btn.innerHTML = "⏳ 캡처중...";
             
-            wrapper.querySelectorAll('input').forEach(input => syncText(input));
-            wrapper.classList.add('capture-mode');
+            // 임시로 전체 뷰로 확장
+            const prevRound = tournamentState.visibleRound;
+            tournamentState.visibleRound = 0;
+            renderTournamentUI();
             
-            const originalMinWidth = wrapper.style.minWidth;
-            wrapper.style.minWidth = wrapper.scrollWidth + 'px';
+            // 렌더링 대기
+            await new Promise(r => setTimeout(r, 100));
+
+            const newWrapper = document.getElementById('op-tourn-scroll-area');
+            newWrapper.querySelectorAll('input').forEach(input => syncText(input));
+            newWrapper.classList.add('capture-mode');
+            
+            const oldWidth = newWrapper.style.width;
+            const oldMinWidth = newWrapper.style.minWidth;
+            const oldOverflow = newWrapper.style.overflow;
+            newWrapper.style.width = newWrapper.scrollWidth + 'px';
+            newWrapper.style.minWidth = newWrapper.scrollWidth + 'px';
+            newWrapper.style.overflow = 'visible';
             
             try {
-                const canvas = await html2canvas(wrapper, { 
+                const canvas = await html2canvas(newWrapper, { 
                     scale: 2, 
                     backgroundColor: '#ffffff', 
                     logging: false, 
                     useCORS: true,
-                    width: wrapper.scrollWidth,
-                    height: wrapper.scrollHeight
+                    width: newWrapper.scrollWidth,
+                    height: newWrapper.scrollHeight
                 });
                 canvas.toBlob(async (blob) => { 
                     try { 
                         const item = new ClipboardItem({ 'image/png': blob }); 
                         await navigator.clipboard.write([item]); 
-                        alert(`✅ 양방향 대진표 전체가 잘림 없이 고화질로 복사되었습니다!\n카톡에 붙여넣기 하세요.`); 
+                        alert(`✅ 대진표 전체가 잘림 없이 고화질로 복사되었습니다!\n카톡에 붙여넣기 하세요.`); 
                     } catch(err) { 
                         alert("❌ 클립보드 권한이 없거나 지원하지 않는 기기입니다."); 
                     } 
-                    btn.innerHTML = "📸 캡처"; 
-                    wrapper.classList.remove('capture-mode');
-                    wrapper.style.minWidth = originalMinWidth;
+                    cleanupCapture();
                 }, 'image/png');
             } catch(e) {
                 alert("캡처 중 오류가 발생했습니다.");
-                btn.innerHTML = "📸 캡처"; 
-                wrapper.classList.remove('capture-mode');
-                wrapper.style.minWidth = originalMinWidth;
+                cleanupCapture();
+            }
+
+            function cleanupCapture() {
+                tournamentState.visibleRound = prevRound;
+                renderTournamentUI();
+                const restoredBtn = document.getElementById('btn-capture-tourn');
+                if(restoredBtn) restoredBtn.innerHTML = "📸 카톡 복사"; 
             }
         }
 
         function printTournament() {
             const target = document.getElementById('op-tourn-scroll-area'); 
             target.querySelectorAll('input').forEach(input => syncText(input)); 
-            target.classList.add('capture-mode'); 
             
             const originalMinWidth = target.style.minWidth;
+            const originalOverflow = target.style.overflow;
             target.style.minWidth = 'max-content';
+            target.style.overflow = 'visible';
+            target.classList.add('capture-mode'); 
+            
             const printContent = target.outerHTML; 
             
             target.classList.remove('capture-mode');
             target.style.minWidth = originalMinWidth;
+            target.style.overflow = originalOverflow;
             
             const printWindow = window.open('', '', 'width=1100,height=800');
             printWindow.document.write(`
@@ -1053,10 +1095,9 @@
                         .t-winner { background-color: #eff6ff !important; border: 2px solid #3b82f6 !important; color: #1d4ed8 !important; }
                         .t-loser { background-color: #f8fafc !important; border: 1px solid #e2e8f0 !important; color: #94a3b8 !important; filter: grayscale(100%); opacity: 0.6; }
                         
-                        .capture-mode { margin: 0 auto !important; width: max-content !important; transform-origin: top center; }
+                        .capture-mode { margin: 0 auto !important; width: max-content !important; transform-origin: top center; overflow: visible !important; }
                         .capture-mode input { display: none !important; } 
                         .capture-mode .capture-text { display: block !important; width: 100%; text-align: center; font-weight: 900 !important; }
-                        .capture-mode .bg-yellow-100 { background-color: #fef9c3 !important; border: 3px solid #eab308 !important; }
                         
                         @media print { 
                             @page { size: A4 landscape; margin: 10mm; } 
@@ -1065,7 +1106,7 @@
                     </style>
                 </head>
                 <body>
-                    <h1>🏓 본선 토너먼트 양방향 대진표</h1>
+                    <h1>🏓 본선 토너먼트 대진표</h1>
                     ${printContent}
                     <script>
                         setTimeout(() => { window.print(); window.close(); }, 800);
@@ -1117,7 +1158,17 @@
         function toggleSelect(name) { const idx = tempSelectorList.indexOf(name); const btn = document.getElementById(`sel-btn-${name}`); if(idx > -1) { tempSelectorList.splice(idx, 1); btn.className = "py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all bg-white text-slate-600 border-slate-200 shadow-sm hover:bg-slate-50 btn-press"; btn.querySelector('span').className = "text-[9px] text-slate-400 block mt-0.5 font-medium"; } else { tempSelectorList.push(name); btn.className = "py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all bg-indigo-600 text-white border-indigo-700 shadow-inner btn-press"; btn.querySelector('span').className = "text-[9px] text-indigo-200 block mt-0.5 font-medium"; } updateSelectorCount(); }
         function updateSelectorCount() { document.getElementById('selector-count').innerText = `${tempSelectorList.length}명 선택됨`; }
         function closeSelector() { document.getElementById('member-selector-modal').classList.add('hidden'); }
-        function confirmSelector() { formState[currentSelectorTarget] = [...tempSelectorList]; if(currentSelectorTarget === 'attend' || currentSelectorTarget === 'opAttend') { for(let key in formState) { if(key !== 'attend' && key !== 'opAttend') formState[key] = (formState[key]||[]).filter(name => formState[currentSelectorTarget].includes(name)); } } updateFormUI(); closeSelector(); }
+        function confirmSelector() { 
+            formState[currentSelectorTarget] = [...tempSelectorList]; 
+            if(currentSelectorTarget === 'attend' || currentSelectorTarget === 'opAttend') { 
+                for(let key in formState) { 
+                    if(key !== 'attend' && key !== 'opAttend') formState[key] = (formState[key]||[]).filter(name => formState[currentSelectorTarget].includes(name)); 
+                } 
+            } 
+            updateFormUI(); 
+            if(currentSelectorTarget === 'opAttend') generateGroupSizeInputs(); // 조 크기 자동 세팅 연동
+            closeSelector(); 
+        }
         function initFormState() { for(let key in formState) if(key !== 'opAttend') formState[key] = []; updateFormUI(); }
         function updateFormUI() { for(let key in formState) { const el = document.getElementById(`ui-box-${key}`); if(!el) continue; if((formState[key]||[]).length === 0) { let emptyMsg = (key === 'attend' || key === 'opAttend') ? '👇 버튼을 눌러 명단을 선택하세요' : (key === 'lazy' ? '해당자 없음' : '선택'); el.innerHTML = `<span class="name-chip-empty ${key === 'lazy' ? 'text-red-300' : ''}">${emptyMsg}</span>`; } else el.innerHTML = formState[key].map(name => `<span class="name-chip shadow-sm">${escapeHTML(name)}</span>`).join(''); } }
         
@@ -1182,10 +1233,8 @@
         }
 
         function toggleMemberInfo(id) { 
-            // 과거 시즌 조회 모드일 경우 클릭 방지
             const selector = document.getElementById('season-selector');
             if (selector && selector.value !== "current") return;
-
             const infoRow = document.getElementById(`member-info-${id}`); 
             document.querySelectorAll('[id^="member-info-"]').forEach(row => { if (row.id !== `member-info-${id}`) row.classList.add('hidden'); }); 
             if (infoRow.classList.contains('hidden')) { infoRow.classList.remove('hidden'); } else { infoRow.classList.add('hidden'); } 
@@ -1224,6 +1273,7 @@
         }
 
         function deleteMember(id) { const mem = members.find(m=>m.id===id); if(confirm(`⚠️ [${mem.name}] 회원을 완전히 삭제하시겠습니까?`)) { members = members.filter(m => m.id !== id); renderAll(); saveDataToStorage(); } }
+        
         function saveMatch() { if(!formState.attend || formState.attend.length === 0) { alert("최소 1명 이상의 참석자가 선택되어야 합니다."); return; } let clonedState = {}; for(let k in formState) { clonedState[k] = [...(formState[k] || [])]; } const matchData = { id: editingMatchId ? editingMatchId : nextMatchId++, date: document.getElementById('match-date').value || new Date().toISOString().substring(0, 10), type: document.getElementById('match-type').value || '정기모임', ...clonedState }; if(editingMatchId) { const index = matchHistory.findIndex(m => m.id === editingMatchId); if(index !== -1) matchHistory[index] = matchData; alert('기록이 수정되었습니다!'); } else { matchHistory.push(matchData); alert('결과가 저장되었습니다!'); } editingMatchId = null; document.getElementById('input-form-title').innerText = "1. 모임 기본 정보 입력"; document.getElementById('input-step-1').classList.remove('hidden'); document.getElementById('input-step-2').classList.add('hidden'); initFormState(); renderAll(); saveDataToStorage(); switchTab('history'); }
         function openInputStep2() { const dateStr = document.getElementById('match-date').value; const typeStr = document.getElementById('match-type').value; document.getElementById('display-match-info').innerText = `${dateStr} | ${typeStr}`; document.getElementById('input-step-1').classList.add('hidden'); document.getElementById('input-step-2').classList.remove('hidden'); if(!editingMatchId) initFormState(); }
         function cancelInputStep2() { document.getElementById('input-step-1').classList.remove('hidden'); document.getElementById('input-step-2').classList.add('hidden'); if(editingMatchId) { editingMatchId = null; document.getElementById('input-form-title').innerText = "1. 모임 기본 정보 입력"; initFormState(); switchTab('history'); } }
@@ -1241,23 +1291,22 @@
         function changePassword() { const newPw = document.getElementById('cfg-password').value; if(newPw.trim() === '') { alert("비밀번호를 입력하세요."); return; } appConfig.password = newPw; document.getElementById('cfg-password').value = ''; saveDataToStorage(); alert("관리자 비밀번호가 성공적으로 변경되었습니다."); }
         
         // ==============================================================================
-        // 🗄️ [시즌 아카이브] 새 시즌 시작 및 과거 데이터 열람
+        // 🗄️ [시즌 아카이브] 새 시즌 시작 및 과거 데이터 열람 로직
         // ==============================================================================
         function startNewSeason() { 
             const seasonName = document.getElementById('cfg-season-name').value.trim();
             if (!seasonName) { alert("보관할 시즌 이름을 입력해주세요."); return; }
             
             if(confirm(`현재 진행 중인 데이터를 '${seasonName}'(으)로 보관하고\n모든 점수와 기록을 0점으로 초기화하여 새 시즌을 시작하시겠습니까?`)) { 
-                // 1. 현재 연회원 데이터를 깊은 복사하여 아카이브
                 let finalMembers = JSON.parse(JSON.stringify(members.filter(m => m.status !== 'inactive' && m.type === '연회원' && m.score > 0)));
                 
                 appConfig.pastSeasons.push({
                     seasonName: seasonName,
                     date: new Date().toISOString().substring(0, 10),
-                    members: finalMembers
+                    members: finalMembers,
+                    matchHistory: JSON.parse(JSON.stringify(matchHistory)) // 경기 기록 100% 딥카피 백업
                 });
 
-                // 2. 현재 진행 중인 데이터 완벽 초기화
                 matchHistory = []; 
                 members.forEach(m => { 
                     m.score = 0; m.prevRank = 1; m.currentRank = 1; 
@@ -1269,14 +1318,14 @@
                 
                 saveDataToStorage(); 
                 renderAll(); 
-                alert(`새 시즌이 시작되었습니다!\n과거 기록은 [순위] 탭에서 '${seasonName}'(으)로 열람할 수 있습니다.`); 
+                alert(`새 시즌이 시작되었습니다!\n과거 기록은 [순위] 및 [기록] 탭에서 '${seasonName}'(으)로 열람할 수 있습니다.`); 
                 switchTab('ranking'); 
             } 
         }
 
         function renderSeasonDropdown() {
-            const selector = document.getElementById('season-selector');
-            if (!selector) return;
+            const rSelector = document.getElementById('season-selector');
+            const hSelector = document.getElementById('history-season-selector');
             
             let html = `<option value="current">📍 현재 진행중인 시즌</option>`;
             if (appConfig.pastSeasons && appConfig.pastSeasons.length > 0) {
@@ -1285,10 +1334,57 @@
                     html += `<option value="${originalIndex}">🗄️ ${escapeHTML(season.seasonName)}</option>`;
                 });
             }
-            // 기존 선택값을 유지하기 위한 트릭
-            let currentVal = selector.value;
-            selector.innerHTML = html;
-            selector.value = currentVal || "current";
+            if (rSelector) {
+                let currentVal = rSelector.value;
+                rSelector.innerHTML = html;
+                rSelector.value = currentVal || "current";
+            }
+            if (hSelector) {
+                let currentVal = hSelector.value;
+                hSelector.innerHTML = html;
+                hSelector.value = currentVal || "current";
+            }
+        }
+
+        function renderHistory() { 
+            const selector = document.getElementById('history-season-selector');
+            const mode = selector ? selector.value : "current";
+            const list = document.getElementById('match-history-list'); 
+            const adminTh = document.getElementById('history-admin-th');
+            list.innerHTML = ''; 
+
+            let displayHistory = [];
+            let isPastSeason = mode !== "current";
+
+            if (isPastSeason) {
+                const seasonIndex = parseInt(mode);
+                displayHistory = appConfig.pastSeasons[seasonIndex].matchHistory || [];
+                if(adminTh) adminTh.classList.add('hidden');
+            } else {
+                displayHistory = matchHistory;
+                if(adminTh) adminTh.classList.remove('hidden');
+            }
+
+            if(displayHistory.length === 0) { 
+                list.innerHTML = `<tr><td colspan="3" class="text-center py-16"><div class="text-5xl mb-4 drop-shadow-sm opacity-80">🏓</div><p class="font-extrabold text-slate-700 text-base">경기 기록이 없습니다</p></td></tr>`; 
+                return; 
+            } 
+            
+            [...displayHistory].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)).forEach(match => { 
+                let winHtml = ''; 
+                const addBadge = (arr, label, bgClass) => { 
+                    if(arr && arr.length > 0) { winHtml += `<div class="flex items-start gap-1.5 mb-1.5"><span class="shrink-0 text-[10px] font-extrabold text-white ${bgClass} px-1.5 py-0.5 rounded shadow-sm text-center">${label}</span> <span class="text-slate-700 font-bold text-[12px] break-keep leading-tight pt-0.5">${arr.map(escapeHTML).join(', ')}</span></div>`; } 
+                }; 
+                addBadge(match.lg1, '리그1위', 'bg-indigo-600'); addBadge(match.lg2, '리그2위', 'bg-indigo-500'); addBadge(match.lg3, '리그3위', 'bg-indigo-400'); addBadge(match.tm1, '단체1위', 'bg-teal-600'); addBadge(match.tm2, '단체2위', 'bg-teal-500'); addBadge(match.tm3, '단체3위', 'bg-teal-400'); addBadge(match.tn1, '토너1위', 'bg-violet-600'); addBadge(match.tn2, '토너2위', 'bg-violet-500'); addBadge(match.tn3, '토너3위', 'bg-violet-400'); addBadge(match.db1, '복식1위', 'bg-pink-600'); addBadge(match.db2, '복식2위', 'bg-pink-500'); addBadge(match.ev1, '이벤트', 'bg-amber-500'); 
+                if(!winHtml) winHtml = '<div class="text-[11px] text-slate-400 font-medium py-1">입상 기록 없음</div>'; 
+                let lazyHtml = ''; 
+                if(match.lazy && match.lazy.length > 0) { lazyHtml = `<div class="mt-2 pt-2 border-t border-slate-200/60 flex items-start gap-1"><span class="shrink-0 text-[10px] font-extrabold text-red-500 mr-0.5 mt-0.5">🚨 불성실</span><span class="text-[11px] text-slate-600 font-bold leading-tight pt-0.5">${match.lazy.map(escapeHTML).join(', ')}</span></div>`; } 
+                
+                const adminButtons = isPastSeason ? '' : `<td class="px-2 py-4 admin-only-table-cell align-middle w-14"><div class="flex flex-col gap-1.5 items-center"><button onclick="openAnnouncement(${match.id})" class="w-full px-2 py-1.5 bg-indigo-50 text-indigo-700 text-[10px] rounded-lg border border-indigo-100 hover:bg-indigo-100 font-extrabold shadow-sm btn-press">공지</button><button onclick="editMatch(${match.id})" class="w-full px-2 py-1.5 bg-white text-slate-600 text-[10px] rounded-lg border border-slate-200 hover:bg-slate-50 font-extrabold shadow-sm btn-press">수정</button><button onclick="deleteMatch(${match.id})" class="w-full px-2 py-1.5 bg-red-50 text-red-600 text-[10px] rounded-lg border border-red-100 hover:bg-red-100 font-extrabold shadow-sm btn-press">삭제</button></div></td>`; 
+                let displayDate = match.date ? escapeHTML(match.date.substring(5)) : '미정'; 
+                
+                list.innerHTML += `<tr class="bg-white hover:bg-slate-50 border-b border-slate-100 transition-colors"><td class="px-2 py-4 text-center align-top whitespace-nowrap pt-5"><div class="font-extrabold text-slate-800 text-[13px]">${displayDate}</div><div class="text-[10px] mt-1.5"><span class="bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200 font-bold">${escapeHTML(match.type) || ''}</span></div></td><td class="px-2 py-4 text-left align-top"><div class="bg-slate-50 p-3 rounded-xl border border-slate-100 mb-2 shadow-inner"><div class="flex justify-between items-center mb-1.5"><span class="text-[10px] font-black text-slate-500">✅ 참석자 명단</span><span class="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-bold">${(match.attend || []).length}명</span></div><div class="text-[11px] text-slate-700 font-medium leading-relaxed break-keep">${(match.attend || []).map(escapeHTML).join(', ')}</div>${lazyHtml}</div><div class="bg-indigo-50/40 p-3 rounded-xl border border-indigo-50"><div class="text-[10px] font-black text-indigo-800 mb-2.5">🏆 입상 내역</div><div class="flex flex-col">${winHtml}</div></div></td>${adminButtons}</tr>`; 
+            }); 
         }
 
         function downloadRankingExcel() { 
@@ -1411,7 +1507,6 @@
                 return; 
             } 
 
-            // 전시용 정렬 (과거 시즌도 점수순 출력 보장)
             displayMembers.sort((a, b) => b.score - a.score);
             
             displayMembers.forEach((m, index) => { 
@@ -1444,8 +1539,6 @@
                 }
             }); 
         }
-
-        function renderHistory() { const list = document.getElementById('match-history-list'); list.innerHTML = ''; if(matchHistory.length === 0) { list.innerHTML = `<tr><td colspan="3" class="text-center py-16"><div class="text-5xl mb-4 drop-shadow-sm opacity-80">🏓</div><p class="font-extrabold text-slate-700 text-base">아직 진행된 경기가 없습니다</p><p class="text-xs mt-2 text-slate-400">입력 탭에서 첫 경기를 기록해 보세요!</p></td></tr>`; return; } [...matchHistory].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)).forEach(match => { let winHtml = ''; const addBadge = (arr, label, bgClass) => { if(arr && arr.length > 0) { winHtml += `<div class="flex items-start gap-1.5 mb-1.5"><span class="shrink-0 text-[10px] font-extrabold text-white ${bgClass} px-1.5 py-0.5 rounded shadow-sm text-center">${label}</span> <span class="text-slate-700 font-bold text-[12px] break-keep leading-tight pt-0.5">${arr.map(escapeHTML).join(', ')}</span></div>`; } }; addBadge(match.lg1, '리그1위', 'bg-indigo-600'); addBadge(match.lg2, '리그2위', 'bg-indigo-500'); addBadge(match.lg3, '리그3위', 'bg-indigo-400'); addBadge(match.tm1, '단체1위', 'bg-teal-600'); addBadge(match.tm2, '단체2위', 'bg-teal-500'); addBadge(match.tm3, '단체3위', 'bg-teal-400'); addBadge(match.tn1, '토너1위', 'bg-violet-600'); addBadge(match.tn2, '토너2위', 'bg-violet-500'); addBadge(match.tn3, '토너3위', 'bg-violet-400'); addBadge(match.db1, '복식1위', 'bg-pink-600'); addBadge(match.db2, '복식2위', 'bg-pink-500'); addBadge(match.ev1, '이벤트', 'bg-amber-500'); if(!winHtml) winHtml = '<div class="text-[11px] text-slate-400 font-medium py-1">입상 기록 없음</div>'; let lazyHtml = ''; if(match.lazy && match.lazy.length > 0) { lazyHtml = `<div class="mt-2 pt-2 border-t border-slate-200/60 flex items-start gap-1"><span class="shrink-0 text-[10px] font-extrabold text-red-500 mr-0.5 mt-0.5">🚨 불성실</span><span class="text-[11px] text-slate-600 font-bold leading-tight pt-0.5">${match.lazy.map(escapeHTML).join(', ')}</span></div>`; } const adminButtons = `<div class="flex flex-col gap-1.5 items-center"><button onclick="openAnnouncement(${match.id})" class="w-full px-2 py-1.5 bg-indigo-50 text-indigo-700 text-[10px] rounded-lg border border-indigo-100 hover:bg-indigo-100 font-extrabold shadow-sm btn-press">공지</button><button onclick="editMatch(${match.id})" class="w-full px-2 py-1.5 bg-white text-slate-600 text-[10px] rounded-lg border border-slate-200 hover:bg-slate-50 font-extrabold shadow-sm btn-press">수정</button><button onclick="deleteMatch(${match.id})" class="w-full px-2 py-1.5 bg-red-50 text-red-600 text-[10px] rounded-lg border border-red-100 hover:bg-red-100 font-extrabold shadow-sm btn-press">삭제</button></div>`; let displayDate = match.date ? escapeHTML(match.date.substring(5)) : '미정'; list.innerHTML += `<tr class="bg-white hover:bg-slate-50 border-b border-slate-100 transition-colors"><td class="px-2 py-4 text-center align-top whitespace-nowrap pt-5"><div class="font-extrabold text-slate-800 text-[13px]">${displayDate}</div><div class="text-[10px] mt-1.5"><span class="bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200 font-bold">${escapeHTML(match.type) || ''}</span></div></td><td class="px-2 py-4 text-left align-top"><div class="bg-slate-50 p-3 rounded-xl border border-slate-100 mb-2 shadow-inner"><div class="flex justify-between items-center mb-1.5"><span class="text-[10px] font-black text-slate-500">✅ 참석자 명단</span><span class="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-bold">${(match.attend || []).length}명</span></div><div class="text-[11px] text-slate-700 font-medium leading-relaxed break-keep">${(match.attend || []).map(escapeHTML).join(', ')}</div>${lazyHtml}</div><div class="bg-indigo-50/40 p-3 rounded-xl border border-indigo-50"><div class="text-[10px] font-black text-indigo-800 mb-2.5">🏆 입상 내역</div><div class="flex flex-col">${winHtml}</div></div></td><td class="px-2 py-4 admin-only-table-cell align-middle w-14">${adminButtons}</td></tr>`; }); }
 
         function renderAll() { 
             renderSeasonDropdown(); 
