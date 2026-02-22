@@ -132,7 +132,7 @@
                             <button onclick="renderGroupTable()" class="text-[11px] bg-slate-800 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm btn-press">표 생성</button>
                         </div>
                         <div class="w-full mt-1">
-                            <button onclick="calculateGroupRankings()" class="w-full text-[12px] bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-2.5 rounded-lg font-extrabold shadow-md btn-press">🧮 입력된 점수로 '승패/득실/순위' 자동 계산하기</button>
+                            <button onclick="calculateGroupRankings()" class="w-full text-[12px] bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-2.5 rounded-lg font-extrabold shadow-md btn-press">🧮 1칸 1숫자 입력 방식 '자동 순위' 산출</button>
                         </div>
                     </div>
                 </div>
@@ -215,7 +215,7 @@
 
     <script>
         // -------------------------------------------------------------
-        // 🔴 Firebase 연결 설정 (기존과 동일)
+        // 🔴 Firebase 연결 설정
         // -------------------------------------------------------------
         const firebaseConfig = {
             apiKey: "AIzaSyC1t-mJJXV6GBZ7-kWcvpRd35vpPZU0wmA",
@@ -378,7 +378,8 @@
                     
                     for(let j=1; j<=currentSize; j++) { 
                         if(i === j) html += `<td class="border-r border-slate-200 diagonal-strike"></td>`; 
-                        else html += `<td class="border-r border-slate-200 p-0"><input type="text" id="score-g${g}-r${i}-c${j}" class="w-full h-full p-2 text-center bg-transparent outline-none font-medium text-slate-600 focus:bg-yellow-50" placeholder="" onchange="autoMirrorScore(${g}, ${i}, ${j}, this.value)" oninput="syncText(this)"><span class="capture-text font-medium text-slate-600 p-2 bg-white"></span></td>`; 
+                        // 🌟 자동 복사 로직(onchange) 제거. 단순히 입력 값만 보관.
+                        else html += `<td class="border-r border-slate-200 p-0"><input type="text" id="score-g${g}-r${i}-c${j}" class="w-full h-full p-2 text-center bg-transparent outline-none font-medium text-slate-600 focus:bg-yellow-50" placeholder="" oninput="syncText(this)"><span class="capture-text font-medium text-slate-600 p-2 bg-white"></span></td>`; 
                     }
                     html += `<td class="border-r border-slate-200 p-0"><input type="text" id="wl-g${g}-p${i}" class="w-full h-full p-2 text-center outline-none font-bold text-slate-700 bg-transparent" placeholder="/" oninput="syncText(this)"><span class="capture-text font-bold text-slate-700 p-2 bg-white">/</span></td>
                     <td class="border-r border-slate-200 p-0"><input type="text" id="diff-g${g}-p${i}" class="w-full h-full p-2 text-center outline-none font-bold text-slate-700 bg-transparent" placeholder="/" oninput="syncText(this)"><span class="capture-text font-bold text-slate-700 p-2 bg-white">/</span></td>
@@ -467,25 +468,8 @@
             alert('📂 임시저장된 대진표 데이터를 성공적으로 불러왔습니다.');
         }
 
-        // 🌟 거울 점수 자동 입력
-        function autoMirrorScore(g, r, c, val) {
-            let mirrorInput = document.getElementById(`score-g${g}-r${c}-c${r}`);
-            if(!mirrorInput) return;
-            let match = val.match(/^(\d+)(?:[^\d]+(\d+))?/);
-            if(match) {
-                let s1 = match[1];
-                let s2 = match[2] || "0";
-                let mirrorVal = `${s2}/${s1}`;
-                mirrorInput.value = mirrorVal;
-                syncText(mirrorInput);
-            } else if (!val) {
-                mirrorInput.value = "";
-                syncText(mirrorInput);
-            }
-        }
-
         // ==============================================================================
-        // 🚀 [핵심 수정 로직] 탁구 공식 룰을 반영한 대진표 완전 자동 산출 알고리즘
+        // 🚀 [핵심 수정 로직] 1칸 1숫자 방식에 맞춘 탁구 공식 룰 대진표 자동 산출 알고리즘
         // ==============================================================================
         function calculateGroupRankings() {
             const count = parseInt(document.getElementById('op-group-count').value) || 2;
@@ -503,48 +487,34 @@
                 // 대각선 위쪽(Upper Triangle, i < j)만 순회하여 중복 합산을 완벽히 차단합니다.
                 for(let i = 1; i <= size; i++) {
                     for(let j = i + 1; j <= size; j++) {
-                        let inputIJ = document.getElementById(`score-g${g}-r${i}-c${j}`);
-                        let inputJI = document.getElementById(`score-g${g}-r${j}-c${i}`);
+                        let inputIJ = document.getElementById(`score-g${g}-r${i}-c${j}`); // i가 j 상대로 딴 득점(세트)
+                        let inputJI = document.getElementById(`score-g${g}-r${j}-c${i}`); // j가 i 상대로 딴 득점(세트)
                         
-                        let val = "";
-                        let isReversed = false;
-                        
-                        // (i, j) 셀 우선 확인, 비어있다면 거울 셀 (j, i) 확인
-                        if(inputIJ && inputIJ.value.trim()) {
-                            val = inputIJ.value.trim();
-                        } else if(inputJI && inputJI.value.trim()) {
-                            val = inputJI.value.trim();
-                            isReversed = true;
-                        }
+                        let valIJ = inputIJ ? inputIJ.value.trim() : "";
+                        let valJI = inputJI ? inputJI.value.trim() : "";
 
-                        if(val) {
-                            // 숫자 하나만 입력되어도 "3승 0패"로 간주하는 정규식
-                            let match = val.match(/^(\d+)(?:[^\d]+(\d+))?/);
-                            if(match) {
-                                let s1 = parseInt(match[1]);
-                                let s2 = parseInt(match[2] || 0); // 두 번째 숫자가 없으면 0으로 처리
-                                
-                                let w = isReversed ? s2 : s1; // i번 선수의 획득 세트
-                                let l = isReversed ? s1 : s2; // i번 선수의 실점 세트
-                                
-                                // i번 선수 스탯
-                                players[i-1].setsWon += w;
-                                players[i-1].setsLost += l;
-                                players[i-1].matches[j] = { w: w, l: l };
-                                
-                                // j번 선수 스탯 (거울 반전)
-                                players[j-1].setsWon += l;
-                                players[j-1].setsLost += w;
-                                players[j-1].matches[i] = { w: l, l: w };
-                                
-                                // 승패 마킹
-                                if(w > l) {
-                                    players[i-1].matchWins++;
-                                    players[j-1].matchLosses++;
-                                } else if(l > w) {
-                                    players[j-1].matchWins++;
-                                    players[i-1].matchLosses++;
-                                }
+                        // 두 칸 중 하나라도 값이 입력된 경우 경기가 진행된 것으로 간주합니다.
+                        if(valIJ !== "" || valJI !== "") {
+                            let w = parseInt(valIJ) || 0; // i번 선수의 득점
+                            let l = parseInt(valJI) || 0; // j번 선수의 득점 (i번 선수의 실점)
+                            
+                            // i번 선수 스탯 반영
+                            players[i-1].setsWon += w;
+                            players[i-1].setsLost += l;
+                            players[i-1].matches[j] = { w: w, l: l };
+                            
+                            // j번 선수 스탯 반영 (교차 반영)
+                            players[j-1].setsWon += l;
+                            players[j-1].setsLost += w;
+                            players[j-1].matches[i] = { w: l, l: w };
+                            
+                            // 승패 마킹 (탁구는 무승부가 없으므로 반드시 어느 한쪽이 승리)
+                            if(w > l) {
+                                players[i-1].matchWins++;
+                                players[j-1].matchLosses++;
+                            } else if(l > w) {
+                                players[j-1].matchWins++;
+                                players[i-1].matchLosses++;
                             }
                         }
                     }
@@ -651,7 +621,7 @@
                     if(rankInput) { rankInput.value = p.finalRank; syncText(rankInput); }
                 });
             }
-            alert("🧮 파싱 및 동률 타이-브레이커(승자승/내부득실)가 포함된 탁구 공식 룰 자동 계산이 완료되었습니다.\n(F12를 눌러 상세 계산 과정을 확인하실 수 있습니다.)");
+            alert("🧮 1칸 1숫자 입력 방식이 반영된 탁구 공식 룰 자동 계산이 완료되었습니다.\n(F12를 눌러 상세 계산 과정을 확인하실 수 있습니다.)");
         }
         // ==============================================================================
 
