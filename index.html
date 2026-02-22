@@ -43,13 +43,14 @@
         .border-t-line { border-top: 2px solid #94a3b8; }
         .border-b-line { border-bottom: 2px solid #94a3b8; }
 
-        /* 📸 카톡 캡처를 위한 특수 클래스 (테두리 강화) */
-        .capture-mode { border: 2px solid #1e293b !important; border-radius: 0.5rem; overflow: hidden; box-shadow: none !important; }
-        .capture-mode table { border-top: 2px solid #1e293b !important; border-collapse: collapse; }
-        .capture-mode th, .capture-mode td { border: 1px solid #94a3b8 !important; padding: 6px !important;}
+        /* 📸 카톡 캡처를 위한 특수 클래스 (테두리 및 텍스트 강화) */
+        .capture-mode { border: 2px solid #000 !important; border-radius: 0 !important; overflow: hidden; box-shadow: none !important; background-color: #fff !important; }
+        .capture-mode table { border-top: 2px solid #000 !important; border-bottom: 2px solid #000 !important; border-collapse: collapse !important; }
+        .capture-mode th, .capture-mode td { border: 1px solid #000 !important; padding: 6px !important; color: #000 !important; font-weight: 900 !important; }
         .capture-mode input { display: none !important; }
-        .capture-mode .capture-text { display: block !important; width: 100%; height: 100%; text-align: center; color: #1e293b; font-weight: 800; }
+        .capture-mode .capture-text { display: block !important; width: 100%; height: 100%; text-align: center; color: #000 !important; font-weight: 900 !important; }
         .capture-text { display: none; }
+        .capture-mode .diagonal-strike { background: linear-gradient(to top right, transparent calc(50% - 1.5px), #000, transparent calc(50% + 1.5px)) !important; background-color: #f1f5f9 !important; }
     </style>
 </head>
 <body class="mx-auto bg-slate-50 min-h-screen shadow-2xl relative pb-28 overflow-x-hidden transition-all duration-300 max-w-md" id="app-body">
@@ -112,24 +113,27 @@
                     </div>
                 </div>
                 
-                <div class="flex flex-wrap items-center gap-2 mb-4 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                    <div class="flex items-center gap-1.5">
-                        <span class="text-xs font-bold text-slate-600">조 개수</span>
-                        <select id="op-group-count" class="text-xs border border-slate-200 rounded p-1.5 font-bold text-indigo-700 bg-white"><option value="1">1조</option><option value="2" selected>2조</option><option value="3">3조</option><option value="4">4조</option><option value="5">5조</option><option value="6">6조</option><option value="7">7조</option><option value="8">8조</option></select>
-                    </div>
-                    <div class="w-px h-4 bg-slate-300"></div>
-                    <div class="flex items-center gap-1.5">
-                        <span class="text-xs font-bold text-slate-600">최대 인원</span>
-                        <select id="op-group-size" class="text-xs border border-slate-200 rounded p-1.5 font-bold text-indigo-700 bg-white"><option value="3">3명</option><option value="4" selected>4명</option><option value="5">5명</option><option value="6">6명</option><option value="7">7명</option><option value="8">8명</option><option value="9">9명</option><option value="10">10명</option><option value="11">11명</option><option value="12">12명</option></select>
-                    </div>
-                    <div class="ml-auto flex gap-1.5">
-                        <button onclick="sortGroupPlayers()" class="text-[11px] bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm btn-press">🔀 자동 정렬</button>
-                        <button onclick="renderGroupTable()" class="text-[11px] bg-slate-800 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm btn-press">표 생성</button>
+                <div class="flex flex-col gap-2 mb-4 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-xs font-bold text-slate-600">조 개수</span>
+                            <select id="op-group-count" class="text-xs border border-slate-200 rounded p-1.5 font-bold text-indigo-700 bg-white" onchange="generateGroupSizeInputs()">
+                                <option value="1">1조</option><option value="2" selected>2조</option><option value="3">3조</option><option value="4">4조</option>
+                                <option value="5">5조</option><option value="6">6조</option><option value="7">7조</option><option value="8">8조</option>
+                            </select>
+                        </div>
+                        
+                        <div id="dynamic-group-sizes" class="flex flex-wrap gap-1.5 items-center border-l border-slate-300 pl-2"></div>
+                        
+                        <div class="ml-auto flex gap-1.5 mt-2 sm:mt-0 w-full justify-end sm:w-auto">
+                            <button onclick="sortGroupPlayers()" class="text-[11px] bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm btn-press">🔀 정렬</button>
+                            <button onclick="renderGroupTable()" class="text-[11px] bg-slate-800 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm btn-press">표 생성</button>
+                        </div>
                     </div>
                 </div>
 
                 <div id="op-group-container" class="w-full overflow-x-auto pb-4">
-                    <div class="text-center text-slate-400 text-xs py-8 bg-slate-50 rounded-xl border border-dashed border-slate-200">조건을 선택하고 표 생성을 눌러주세요.</div>
+                    <div class="text-center text-slate-400 text-xs py-8 bg-slate-50 rounded-xl border border-dashed border-slate-200">조건을 설정하고 표 생성을 눌러주세요.</div>
                 </div>
             </div>
 
@@ -175,7 +179,7 @@
             <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6"><h2 class="font-extrabold text-lg text-slate-800 mb-4 flex items-center gap-2"><span>💬</span> 카톡 공지 템플릿</h2><div class="mb-4"><label class="block text-xs font-bold text-slate-500 mb-1.5">머릿말 (시작 문구)</label><textarea id="cfg-announce-prefix" rows="2" class="w-full border-0 bg-slate-100 p-3 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 transition"></textarea></div><div class="mb-5"><label class="block text-xs font-bold text-slate-500 mb-1.5">꼬릿말 (안내/계좌 문구)</label><textarea id="cfg-announce-suffix" rows="3" class="w-full border-0 bg-slate-100 p-3 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 transition"></textarea></div><div class="mb-5"><label class="block text-xs font-bold text-slate-500 mb-1.5">앱 접속 시 기본 화면</label><select id="cfg-default-tab" class="w-full border-0 bg-slate-100 p-3 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 transition"><option value="ranking">🏆 전체 순위 화면</option><option value="history">📅 경기 기록 화면</option></select></div><button onclick="saveUIConfig()" class="w-full bg-slate-200 text-slate-700 py-3 rounded-xl font-bold btn-press">환경 설정 저장</button></div>
             <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6"><h2 class="font-extrabold text-lg text-slate-800 mb-4 flex items-center gap-2"><span>💾</span> 데이터 백업 및 복원</h2><p class="text-xs text-slate-500 mb-4 leading-relaxed">인터넷 불안정으로 저장이 안 될 때를 대비해 데이터를 기기에 파일로 저장하고 언제든 복원할 수 있습니다.</p><div class="flex gap-3"><button onclick="exportData()" class="flex-1 bg-indigo-50 text-indigo-700 py-3 rounded-xl font-bold border border-indigo-200 hover:bg-indigo-100 btn-press">📥 백업 저장</button><div class="flex-1 relative"><input type="file" accept=".json" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="importData(event)"><div class="bg-emerald-50 text-emerald-700 py-3 rounded-xl font-bold border border-emerald-200 hover:bg-emerald-100 btn-press text-center flex items-center justify-center h-full">📤 백업 불러오기</div></div></div></div>
             <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-4"><h2 class="font-extrabold text-lg text-slate-800 mb-4 flex items-center gap-2"><span>🔑</span> 보안 설정</h2><label class="block text-xs font-bold text-slate-500 mb-1.5">새로운 관리자 비밀번호 입력</label><div class="flex gap-2 mb-3"><input type="password" id="cfg-password" class="flex-1 border-0 bg-slate-100 p-3 rounded-xl text-sm focus:ring-2 focus:ring-red-500 transition" placeholder="비밀번호 입력"><button onclick="changePassword()" class="bg-red-500 text-white px-5 rounded-xl font-bold shadow-md btn-press">변경</button></div></div>
-            <div class="bg-rose-50 p-5 rounded-2xl border border-rose-200 shadow-sm mt-8"><h2 class="font-extrabold text-lg text-rose-800 mb-2 flex items-center gap-2"><span>⚠️</span> 회원 명단 전체 초기화</h2><p class="text-xs text-rose-600 mb-4 leading-relaxed font-medium">등록된 모든 회원 명단을 완전히 삭제합니다. 이 작업은 되돌릴 수 추 없습니다.</p><button onclick="resetAllMembers()" class="w-full bg-rose-600 text-white py-3.5 rounded-xl font-bold shadow-md btn-press">회원 전체 삭제하기</button></div>
+            <div class="bg-rose-50 p-5 rounded-2xl border border-rose-200 shadow-sm mt-8"><h2 class="font-extrabold text-lg text-rose-800 mb-2 flex items-center gap-2"><span>⚠️</span> 회원 명단 전체 초기화</h2><p class="text-xs text-rose-600 mb-4 leading-relaxed font-medium">등록된 모든 회원 명단을 완전히 삭제합니다. 이 작업은 되돌릴 수 없습니다.</p><button onclick="resetAllMembers()" class="w-full bg-rose-600 text-white py-3.5 rounded-xl font-bold shadow-md btn-press">회원 전체 삭제하기</button></div>
         </div>
     </div>
 
@@ -208,7 +212,7 @@
         // -------------------------------------------------------------
         // 🔴 [필수 설정] 여기에 Firebase API 키를 넣으세요! 🔴
         // -------------------------------------------------------------
-    const firebaseConfig = {
+  const firebaseConfig = {
   apiKey: "AIzaSyC1t-mJJXV6GBZ7-kWcvpRd35vpPZU0wmA",
   authDomain: "table-tennis-6334b.firebaseapp.com",
   projectId: "table-tennis-6334b",
@@ -301,40 +305,40 @@
         }
 
         // --- 🎮 경기 운영 (리그전표 및 대진표) ---
+        function generateGroupSizeInputs() {
+            const count = parseInt(document.getElementById('op-group-count').value);
+            const container = document.getElementById('dynamic-group-sizes');
+            let html = '';
+            for(let i=1; i<=count; i++) {
+                let existingInput = document.getElementById(`op-group-size-${i}`);
+                let val = existingInput ? existingInput.value : 4; 
+                html += `<div class="flex items-center gap-1 bg-white border border-slate-200 rounded px-1.5 py-1">
+                    <span class="text-[10px] font-bold text-slate-500">${i}조</span>
+                    <input type="number" id="op-group-size-${i}" value="${val}" min="2" max="12" class="w-10 text-[11px] font-bold text-indigo-700 text-center outline-none bg-transparent">
+                    <span class="text-[10px] text-slate-400">명</span>
+                </div>`;
+            }
+            container.innerHTML = html;
+        }
+
         function renderGroupTable(preserveData = false) {
             const count = parseInt(document.getElementById('op-group-count').value); 
-            const maxSize = parseInt(document.getElementById('op-group-size').value); 
-            const totalAttendees = (formState.opAttend || []).length;
             
-            // 정렬 등에서 데이터를 보존해야 할 경우 초기화 방지
             if (!preserveData) {
                 window.leaguePlayers = {}; 
             }
             
             let html = `<div class="flex flex-wrap gap-6 justify-center w-full">`; 
-            let remaining = totalAttendees;
 
             for(let g=1; g<=count; g++) {
-                let currentSize = maxSize;
-                if (!preserveData && totalAttendees > 0) {
-                    currentSize = Math.min(maxSize, remaining);
-                    remaining -= currentSize;
-                }
-                
-                // preserveData 상태일때는 테이블에 그려진 인원수를 유지
-                if (preserveData) {
-                    let pCount = 0;
-                    while(window.leaguePlayers[`g${g}_p${pCount+1}`] !== undefined) pCount++;
-                    currentSize = pCount > 0 ? pCount : maxSize;
-                }
-
-                if (!preserveData && totalAttendees > 0 && currentSize === 0) break;
-                if (currentSize < 2) currentSize = 2; 
+                let sizeInput = document.getElementById(`op-group-size-${g}`);
+                let currentSize = sizeInput ? parseInt(sizeInput.value) : 4;
+                if(isNaN(currentSize) || currentSize < 2) currentSize = 2;
 
                 html += `<div class="border-2 border-slate-800/80 rounded-xl overflow-hidden bg-white flex-1 min-w-[320px] max-w-full shadow-sm">
                     <div class="bg-slate-100 p-2 flex justify-end items-center gap-1.5 border-b border-slate-200">
                         <span class="text-xs font-bold text-slate-500 mr-auto ml-1">${g}조 관리</span>
-                        <button onclick="copyGroupTableImage(${g})" id="btn-copy-g${g}" class="text-[10px] bg-emerald-500 hover:bg-emerald-400 text-white px-2 py-1 rounded font-bold transition-colors btn-press no-print shadow-sm flex items-center">📸 카톡 복 복사</button>
+                        <button onclick="copyGroupTableImage(${g})" id="btn-copy-g${g}" class="text-[10px] bg-emerald-500 hover:bg-emerald-400 text-white px-2 py-1 rounded font-bold transition-colors btn-press no-print shadow-sm flex items-center">📸 카톡 복사</button>
                         <button onclick="openPrintModal(${g})" class="text-[10px] bg-indigo-500 hover:bg-indigo-400 text-white px-2 py-1 rounded font-bold transition-colors btn-press no-print shadow-sm">🖨️ 조별 인쇄</button>
                     </div>
                     <div id="table-container-g${g}" class="bg-white relative">
@@ -382,14 +386,14 @@
             for(let g=1; g<=count; g++) { const tableEl = document.getElementById(`table-g${g}`); if(tableEl) { updateMatchOrderDisplay(g, tableEl.querySelectorAll('tbody tr').length); } }
         }
 
-        // 🌟 완벽한 상태 보존 자동 정렬 (버그 수정됨)
+        // 🌟 수동 인원에 맞춘 정렬 기능 보완
         function sortGroupPlayers() {
             const count = parseInt(document.getElementById('op-group-count').value); 
             for(let g=1; g<=count; g++) {
-                const tableEl = document.getElementById(`table-g${g}`);
-                if(!tableEl) continue;
+                let sizeInput = document.getElementById(`op-group-size-${g}`);
+                let currentSize = sizeInput ? parseInt(sizeInput.value) : 4;
+                if(isNaN(currentSize) || currentSize < 2) currentSize = 2;
                 
-                let currentSize = tableEl.querySelectorAll('tbody tr').length;
                 let groupPlayers = [];
                 
                 // 해당 조에 입력된 선수 수집
@@ -398,13 +402,13 @@
                     if (player) groupPlayers.push(player);
                 }
                 
-                // 정렬 (부수 오름차순 -> 이름 오름차순)
+                // 정렬 (1순위: 부수 오름차순, 2순위: 이름 가나다순)
                 groupPlayers.sort((a, b) => {
                     if (a.handicap !== b.handicap) return a.handicap - b.handicap;
                     return a.name.localeCompare(b.name);
                 });
                 
-                // State 업데이트 (window.leaguePlayers)
+                // State 업데이트
                 for(let p=1; p<=currentSize; p++) {
                     if (groupPlayers[p-1]) {
                         window.leaguePlayers[`g${g}_p${p}`] = groupPlayers[p-1];
@@ -413,7 +417,7 @@
                     }
                 }
             }
-            // 업데이트된 상태(State)를 바탕으로 표를 전체 재렌더링
+            // 업데이트된 상태를 바탕으로 표 재렌더링
             renderGroupTable(true);
         }
 
@@ -525,12 +529,21 @@
         
         function renderSelectorList(onlyAttendees, target, extraExcludedNames = []) {
             let candidates = []; 
-            if (target === 'opAttend') { candidates = members.filter(m => m.status === 'active'); } 
-            else if(onlyAttendees) { 
+            if (target === 'opAttend') { 
+                candidates = members.filter(m => m.status === 'active'); 
+            } else if (target === 'league') {
+                if (!formState.opAttend || formState.opAttend.length === 0) {
+                    alert('먼저 [오늘 경기 참석자 명단]을 선택해 주세요.');
+                    return false;
+                }
+                candidates = members.filter(m => formState.opAttend.includes(m.name));
+            } else if(onlyAttendees) { 
                 if(formState.opAttend && formState.opAttend.length > 0) candidates = members.filter(m => formState.opAttend.includes(m.name)); 
                 else if(formState.attend && formState.attend.length > 0) candidates = members.filter(m => formState.attend.includes(m.name)); 
                 else { alert('먼저 [운영] 또는 [입력] 탭에서 오늘 참석자를 선택해 주세요.'); return false; } 
-            } else candidates = members.filter(m => m.status === 'active');
+            } else {
+                candidates = members.filter(m => m.status === 'active');
+            }
 
             let excludedNames = []; const prefix = target.substring(0, 2);
             if (['lg', 'tm', 'tn'].includes(prefix)) { ['1', '2', '3'].forEach(num => { if (prefix + num !== target && formState[prefix + num]) excludedNames.push(...formState[prefix + num]); }); } else if (prefix === 'db') { ['1', '2'].forEach(num => { if (prefix + num !== target && formState[prefix + num]) excludedNames.push(...formState[prefix + num]); }); }
@@ -832,6 +845,9 @@
         function renderHistory() { const list = document.getElementById('match-history-list'); list.innerHTML = ''; if(matchHistory.length === 0) { list.innerHTML = `<tr><td colspan="3" class="text-center py-16"><div class="text-5xl mb-4 drop-shadow-sm opacity-80">🏓</div><p class="font-extrabold text-slate-700 text-base">아직 진행된 경기가 없습니다</p><p class="text-xs mt-2 text-slate-400">입력 탭에서 첫 경기를 기록해 보세요!</p></td></tr>`; return; } [...matchHistory].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)).forEach(match => { let winHtml = ''; const addBadge = (arr, label, bgClass) => { if(arr && arr.length > 0) { winHtml += `<div class="flex items-start gap-1.5 mb-1.5"><span class="shrink-0 text-[10px] font-extrabold text-white ${bgClass} px-1.5 py-0.5 rounded shadow-sm text-center">${label}</span> <span class="text-slate-700 font-bold text-[12px] break-keep leading-tight pt-0.5">${arr.map(escapeHTML).join(', ')}</span></div>`; } }; addBadge(match.lg1, '리그1위', 'bg-indigo-600'); addBadge(match.lg2, '리그2위', 'bg-indigo-500'); addBadge(match.lg3, '리그3위', 'bg-indigo-400'); addBadge(match.tm1, '단체1위', 'bg-teal-600'); addBadge(match.tm2, '단체2위', 'bg-teal-500'); addBadge(match.tm3, '단체3위', 'bg-teal-400'); addBadge(match.tn1, '토너1위', 'bg-violet-600'); addBadge(match.tn2, '토너2위', 'bg-violet-500'); addBadge(match.tn3, '토너3위', 'bg-violet-400'); addBadge(match.db1, '복식1위', 'bg-pink-600'); addBadge(match.db2, '복식2위', 'bg-pink-500'); addBadge(match.ev1, '이벤트', 'bg-amber-500'); if(!winHtml) winHtml = '<div class="text-[11px] text-slate-400 font-medium py-1">입상 기록 없음</div>'; let lazyHtml = ''; if(match.lazy && match.lazy.length > 0) { lazyHtml = `<div class="mt-2 pt-2 border-t border-slate-200/60 flex items-start gap-1"><span class="shrink-0 text-[10px] font-extrabold text-red-500 mr-0.5 mt-0.5">🚨 불성실</span><span class="text-[11px] text-slate-600 font-bold leading-tight pt-0.5">${match.lazy.map(escapeHTML).join(', ')}</span></div>`; } const adminButtons = `<div class="flex flex-col gap-1.5 items-center"><button onclick="openAnnouncement(${match.id})" class="w-full px-2 py-1.5 bg-indigo-50 text-indigo-700 text-[10px] rounded-lg border border-indigo-100 hover:bg-indigo-100 font-extrabold shadow-sm btn-press">공지</button><button onclick="editMatch(${match.id})" class="w-full px-2 py-1.5 bg-white text-slate-600 text-[10px] rounded-lg border border-slate-200 hover:bg-slate-50 font-extrabold shadow-sm btn-press">수정</button><button onclick="deleteMatch(${match.id})" class="w-full px-2 py-1.5 bg-red-50 text-red-600 text-[10px] rounded-lg border border-red-100 hover:bg-red-100 font-extrabold shadow-sm btn-press">삭제</button></div>`; let displayDate = match.date ? escapeHTML(match.date.substring(5)) : '미정'; list.innerHTML += `<tr class="bg-white hover:bg-slate-50 border-b border-slate-100 transition-colors"><td class="px-2 py-4 text-center align-top whitespace-nowrap pt-5"><div class="font-extrabold text-slate-800 text-[13px]">${displayDate}</div><div class="text-[10px] mt-1.5"><span class="bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200 font-bold">${escapeHTML(match.type) || ''}</span></div></td><td class="px-2 py-4 text-left align-top"><div class="bg-slate-50 p-3 rounded-xl border border-slate-100 mb-2 shadow-inner"><div class="flex justify-between items-center mb-1.5"><span class="text-[10px] font-black text-slate-500">✅ 참석자 명단</span><span class="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-bold">${(match.attend || []).length}명</span></div><div class="text-[11px] text-slate-700 font-medium leading-relaxed break-keep">${(match.attend || []).map(escapeHTML).join(', ')}</div>${lazyHtml}</div><div class="bg-indigo-50/40 p-3 rounded-xl border border-indigo-50"><div class="text-[10px] font-black text-indigo-800 mb-2.5">🏆 입상 내역</div><div class="flex flex-col">${winHtml}</div></div></td><td class="px-2 py-4 admin-only-table-cell align-middle w-14">${adminButtons}</td></tr>`; }); }
 
         function renderAll() { recalculateAllScores(); renderRanking(); renderHistory(); renderMembersList(); }
+        
+        // 초기화 코드 추가
+        generateGroupSizeInputs(); // 조 크기 입력기 렌더링
         loadDataFromStorage();
     </script>
 </body>
