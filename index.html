@@ -728,7 +728,7 @@
             const printWindow = window.open('', '', 'width=900,height=700'); printWindow.document.write(`<html><head><title>${g}조 인쇄</title><style>body { font-family: 'Malgun Gothic', sans-serif; padding: 20px; color: #333; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;} h1 { text-align: center; font-size: 26px; margin-bottom: 20px; color: #1e293b;} table { width: 100%; border-collapse: collapse; margin-bottom: 5px; font-size: 14px; text-align: center; } th, td { border: 1px solid #94a3b8; padding: 12px; } th { background-color: #f1f5f9; font-weight: bold; } .capture-mode input { display: none !important; } .capture-text { display: block !important; width: 100%; text-align: center; font-size: 14px; font-weight: bold; color: black;} .diagonal-strike { background: linear-gradient(to top right, transparent calc(50% - 1px), #cbd5e1, transparent calc(50% + 1px)); background-color: #e2e8f0 !important; } @media print { @page { size: landscape; margin: 10mm; } }</style></head><body><h1>🏓 ${g}조 예선 리그</h1>${printHtml}</body></html>`); printWindow.document.close(); printWindow.focus(); setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
         }
 
-        function openSinglePickerForTourn(elem) { isSinglePickMode = true; document.getElementById('selector-title').innerText = "본선 진출자 선택"; document.getElementById('selector-count').classList.add('hidden'); document.getElementById('btn-selector-confirm').classList.add('hidden'); document.getElementById('selector-search').value = ""; if(renderSelectorList(true, 'tourn') === false) return; document.getElementById('member-selector-modal').classList.remove('hidden'); window.singlePickCallback = function(memberId) { const m = members.find(x => x.id == memberId); if(m) { elem.value = `${m.name}(${m.handicap})`; syncText(elem); } }; }
+
        // ==============================================================================
 // 🏆 [스마트 대진표] 탁구 대회 표준 시딩(Seeding) 및 렌더링 알고리즘
 // ==============================================================================
@@ -1057,5 +1057,6 @@ function openSinglePickerForTourn
     </script>
 </body>
 </html>
+
 
 
