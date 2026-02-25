@@ -1692,68 +1692,104 @@ function renderPastSeasonList() {
             if (sortedMatches.length === 1) { members.forEach(m => m.prevRank = m.currentRank); } 
         }
         
-       function renderRanking() { 
-            const selector = document.getElementById('season-selector');
-            const mode = selector ? selector.value : "current";
-            const tbody = document.getElementById('ranking-table-body'); 
-            const instruction = document.getElementById('ranking-instruction');
-            
-            tbody.innerHTML = ''; 
-            
-            let displayMembers = [];
-            let isPastSeason = mode !== "current";
+     function renderRanking() { 
+    const selector = document.getElementById('season-selector');
+    const mode = selector ? selector.value : "current";
+    const tbody = document.getElementById('ranking-table-body'); 
+    const instruction = document.getElementById('ranking-instruction');
+    
+    tbody.innerHTML = ''; 
+    
+    let displayMembers = [];
+    let displayHistory = []; // 기준일 추출을 위한 경기 기록 배열
+    let isPastSeason = mode !== "current";
 
-            if (isPastSeason) {
-                const seasonIndex = parseInt(mode);
-                if (appConfig.pastSeasons && appConfig.pastSeasons[seasonIndex]) {
-                    displayMembers = appConfig.pastSeasons[seasonIndex].members;
-                }
-                instruction.innerText = "🔒 과거 시즌 (조회 전용)";
-                instruction.className = "text-[11px] text-slate-500 font-bold bg-slate-100 backdrop-blur-sm px-2.5 py-1.5 rounded-lg border border-slate-200 shadow-sm";
-            } else {
-                displayMembers = members.filter(m => m.status !== 'inactive' && m.type === '연회원' && m.score > 0);
-                instruction.innerText = "👆 이름을 터치하면 상세기록";
-                instruction.className = "text-[11px] text-indigo-600 font-bold bg-white/80 backdrop-blur-sm px-2.5 py-1.5 rounded-lg border border-indigo-100 shadow-sm transition-all";
-            }
-
-            if(displayMembers.length === 0) { 
-                tbody.innerHTML = `<tr><td colspan="8" class="py-16 text-center"><div class="text-5xl mb-4 drop-shadow-sm">📭</div><p class="font-extrabold text-slate-700 text-base">점수가 등록된 회원이 없습니다</p><p class="text-xs mt-2 text-slate-400">경기를 진행하면 순위가 나타납니다.</p></td></tr>`; 
-                return; 
-            } 
-
-            displayMembers.sort((a, b) => b.score - a.score);
-            
-            displayMembers.forEach((m, index) => { 
-                let rankDisplay = m.currentRank; 
-                if (m.currentRank === 1) rankDisplay = `<div class="w-7 h-7 mx-auto bg-gradient-to-br from-yellow-300 to-yellow-500 text-white rounded-full flex items-center justify-center font-extrabold shadow-[0_2px_10px_rgba(234,179,8,0.4)]">1</div>`; 
-                else if (m.currentRank === 2) rankDisplay = `<div class="w-6 h-6 mx-auto bg-gradient-to-br from-slate-300 to-slate-400 text-white rounded-full flex items-center justify-center font-bold shadow-[0_2px_10px_rgba(148,163,184,0.4)]">2</div>`; 
-                else if (m.currentRank === 3) rankDisplay = `<div class="w-6 h-6 mx-auto bg-gradient-to-br from-orange-400 to-orange-600 text-white rounded-full flex items-center justify-center font-bold shadow-[0_2px_10px_rgba(234,88,12,0.4)]">3</div>`; 
-                else if(index > 0 && displayMembers[index-1].currentRank === m.currentRank) rankDisplay = `<span class="text-slate-300 font-medium">-</span>`; 
-                else rankDisplay = `<span class="text-slate-500 font-extrabold">${m.currentRank}</span>`; 
-                
-                let rankDiff = (m.prevRank === '-' || m.currentRank === '-') ? 0 : m.prevRank - m.currentRank; 
-                let rankIcon = rankDiff > 0 ? `<span class="text-red-500">▲ ${rankDiff}</span>` : rankDiff < 0 ? `<span class="text-blue-500">▼ ${Math.abs(rankDiff)}</span>` : `<span class="text-slate-300">-</span>`; 
-                
-                let clickEvent = isPastSeason ? "" : `onclick="toggleMemberDetail(${m.id})"`;
-                let hoverClass = isPastSeason ? "" : "hover:bg-indigo-50/50 cursor-pointer";
-
-                tbody.innerHTML += `<tr class="bg-white ${hoverClass} transition-colors border-b border-slate-50" ${clickEvent}>
-                    <td class="px-0.5 py-3 text-center align-middle">${rankDisplay}</td>
-                    <td class="px-1 py-3 text-slate-800 font-extrabold text-[12px] whitespace-nowrap">${escapeHTML(m.name)}<span class="text-[9px] text-slate-400 font-medium ml-0.5 bg-slate-50 px-1 rounded">${m.handicap}부</span></td>
-                    <td class="px-1 py-3 text-center text-[11px] font-bold text-slate-600">${m.attendCount || 0}</td>
-                    <td class="px-1 py-3 text-center text-[11px] font-bold text-yellow-600">${m.win1Count || 0}</td>
-                    <td class="px-1 py-3 text-center text-[11px] font-bold text-slate-400">${m.win2Count || 0}</td>
-                    <td class="px-1 py-3 text-center text-[11px] font-bold text-orange-500">${m.win3Count || 0}</td>
-                    <td class="px-1 py-3 text-right font-black text-indigo-600 text-[13px] tracking-tight">${(m.score||0).toFixed(1)}</td>
-                    <td class="px-1 py-3 text-center text-[10px] font-extrabold">${rankIcon}</td>
-                </tr>`;
-
-                if (!isPastSeason) {
-                    tbody.innerHTML += `<tr id="detail-row-${m.id}" class="hidden detail-row"><td colspan="8" class="p-0 border-0" id="detail-content-${m.id}"></td></tr>`; 
-                }
-            }); 
+    // 1. 상태 및 타겟 데이터 결정
+    if (isPastSeason) {
+        const seasonIndex = parseInt(mode);
+        if (appConfig.pastSeasons && appConfig.pastSeasons[seasonIndex]) {
+            displayMembers = appConfig.pastSeasons[seasonIndex].members;
+            displayHistory = appConfig.pastSeasons[seasonIndex].matchHistory || []; 
         }
+        instruction.innerText = "🔒 과거 시즌 (조회 전용)";
+        instruction.className = "text-[11px] text-slate-500 font-bold bg-slate-100 backdrop-blur-sm px-2.5 py-1.5 rounded-lg border border-slate-200 shadow-sm";
+    } else {
+        displayMembers = members.filter(m => m.status !== 'inactive' && m.type === '연회원' && m.score > 0);
+        displayHistory = matchHistory; 
+        instruction.innerText = "👆 이름을 터치하면 상세기록";
+        instruction.className = "text-[11px] text-indigo-600 font-bold bg-white/80 backdrop-blur-sm px-2.5 py-1.5 rounded-lg border border-indigo-100 shadow-sm transition-all";
+    }
 
+    // --- 2. 기준일 추출 및 UI 동적 주입 로직 시작 ---
+    let referenceDateText = "기록 없음";
+    if (displayHistory && displayHistory.length > 0) {
+        // matchHistory 배열에서 date 값만 뽑아내어 내림차순(최신순)으로 정렬 후 가장 첫 번째 값(가장 최근 날짜) 획득
+        let latestDate = displayHistory.map(m => m.date).filter(Boolean).sort().reverse()[0];
+        if (latestDate) {
+            let parts = latestDate.split('-');
+            if (parts.length === 3) {
+                // '0' 제거 포맷팅: 2026-01-17 -> 2026.1.17.
+                referenceDateText = `${parts[0]}.${parseInt(parts[1], 10)}.${parseInt(parts[2], 10)}.`;
+            } else {
+                referenceDateText = latestDate;
+            }
+        }
+    }
+    
+    // 순위표 위 instruction 영역의 DOM 구조를 플렉스(Flex)로 바꾸고 기준일을 왼쪽에 삽입
+    let refDateEl = document.getElementById('ranking-reference-date');
+    if (!refDateEl) {
+        const instructionContainer = instruction.parentElement; // div.mb-2.px-1.text-right
+        instructionContainer.classList.remove('text-right');
+        instructionContainer.classList.add('flex', 'justify-between', 'items-center');
+        
+        refDateEl = document.createElement('span');
+        refDateEl.id = 'ranking-reference-date';
+        // Tailwind CSS 적용
+        refDateEl.className = 'text-[10px] text-slate-500 font-bold tracking-tight bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100 shadow-sm';
+        instructionContainer.insertBefore(refDateEl, instructionContainer.firstChild);
+    }
+    refDateEl.innerText = `기준일(${referenceDateText})`;
+    // --- 기준일 로직 끝 ---
+
+    // 3. 순위 테이블 렌더링
+    if(displayMembers.length === 0) { 
+        tbody.innerHTML = `<tr><td colspan="8" class="py-16 text-center"><div class="text-5xl mb-4 drop-shadow-sm">📭</div><p class="font-extrabold text-slate-700 text-base">점수가 등록된 회원이 없습니다</p><p class="text-xs mt-2 text-slate-400">경기를 진행하면 순위가 나타납니다.</p></td></tr>`; 
+        return; 
+    } 
+
+    displayMembers.sort((a, b) => b.score - a.score);
+    
+    displayMembers.forEach((m, index) => { 
+        let rankDisplay = m.currentRank; 
+        if (m.currentRank === 1) rankDisplay = `<div class="w-7 h-7 mx-auto bg-gradient-to-br from-yellow-300 to-yellow-500 text-white rounded-full flex items-center justify-center font-extrabold shadow-[0_2px_10px_rgba(234,179,8,0.4)]">1</div>`; 
+        else if (m.currentRank === 2) rankDisplay = `<div class="w-6 h-6 mx-auto bg-gradient-to-br from-slate-300 to-slate-400 text-white rounded-full flex items-center justify-center font-bold shadow-[0_2px_10px_rgba(148,163,184,0.4)]">2</div>`; 
+        else if (m.currentRank === 3) rankDisplay = `<div class="w-6 h-6 mx-auto bg-gradient-to-br from-orange-400 to-orange-600 text-white rounded-full flex items-center justify-center font-bold shadow-[0_2px_10px_rgba(234,88,12,0.4)]">3</div>`; 
+        else if(index > 0 && displayMembers[index-1].currentRank === m.currentRank) rankDisplay = `<span class="text-slate-300 font-medium">-</span>`; 
+        else rankDisplay = `<span class="text-slate-500 font-extrabold">${m.currentRank}</span>`; 
+        
+        let rankDiff = (m.prevRank === '-' || m.currentRank === '-') ? 0 : m.prevRank - m.currentRank; 
+        let rankIcon = rankDiff > 0 ? `<span class="text-red-500">▲ ${rankDiff}</span>` : rankDiff < 0 ? `<span class="text-blue-500">▼ ${Math.abs(rankDiff)}</span>` : `<span class="text-slate-300">-</span>`; 
+        
+        let clickEvent = isPastSeason ? "" : `onclick="toggleMemberDetail(${m.id})"`;
+        let hoverClass = isPastSeason ? "" : "hover:bg-indigo-50/50 cursor-pointer";
+
+        tbody.innerHTML += `<tr class="bg-white ${hoverClass} transition-colors border-b border-slate-50" ${clickEvent}>
+            <td class="px-0.5 py-3 text-center align-middle">${rankDisplay}</td>
+            <td class="px-1 py-3 text-slate-800 font-extrabold text-[12px] whitespace-nowrap">${escapeHTML(m.name)}<span class="text-[9px] text-slate-400 font-medium ml-0.5 bg-slate-50 px-1 rounded">${m.handicap}부</span></td>
+            <td class="px-1 py-3 text-center text-[11px] font-bold text-slate-600">${m.attendCount || 0}</td>
+            <td class="px-1 py-3 text-center text-[11px] font-bold text-yellow-600">${m.win1Count || 0}</td>
+            <td class="px-1 py-3 text-center text-[11px] font-bold text-slate-400">${m.win2Count || 0}</td>
+            <td class="px-1 py-3 text-center text-[11px] font-bold text-orange-500">${m.win3Count || 0}</td>
+            <td class="px-1 py-3 text-right font-black text-indigo-600 text-[13px] tracking-tight">${(m.score||0).toFixed(1)}</td>
+            <td class="px-1 py-3 text-center text-[10px] font-extrabold">${rankIcon}</td>
+        </tr>`;
+
+        if (!isPastSeason) {
+            tbody.innerHTML += `<tr id="detail-row-${m.id}" class="hidden detail-row"><td colspan="8" class="p-0 border-0" id="detail-content-${m.id}"></td></tr>`; 
+        }
+    }); 
+}
         function renderAll() { 
             renderSeasonDropdown(); 
             recalculateAllScores(); 
@@ -1769,5 +1805,6 @@ function renderPastSeasonList() {
     </script>
 </body>
 </html>
+
 
 
