@@ -220,7 +220,19 @@
             <div id="input-step-1" class="bg-white p-6 rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-4">
                 <h2 id="input-form-title" class="font-extrabold text-xl mb-5 text-slate-800 tracking-tight">1. 모임 기본 정보 입력</h2>
                 <div class="mb-5"><label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">날짜 선택</label><input type="date" id="match-date" class="block w-full border-0 bg-slate-100 p-3.5 rounded-xl font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all"></div>
-                <div class="mb-8"><label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">모임 종류</label><select id="match-type" class="block w-full border-0 bg-slate-100 p-3.5 rounded-xl font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all"><option>정기모임</option><option>월례대회</option><option>교류전</option></select></div>
+                <div class="mb-8"><label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">모임 종류</label>
+                   <div class="mb-8">
+    <label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">모임 종류</label>
+    <select id="match-type" class="block w-full border-0 bg-slate-100 p-3.5 rounded-xl font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all">
+        <option>정기모임</option>
+        <option>월례대회</option>
+        <option>교류전</option>
+        <option>결산대회</option>
+        <option>송년대회</option>
+        <option>신년대회</option>
+        <option>훈련</option>
+    </select>
+</div>
                 <button onclick="openInputStep2()" class="w-full bg-gradient-to-r from-indigo-500 to-violet-500 text-white py-4 rounded-xl font-bold shadow-lg shadow-indigo-200 hover:shadow-xl transition-all btn-press text-lg">다음 단계로 이동 👉</button>
             </div>
             
@@ -1864,6 +1876,7 @@ function renderPastSeasonList() {
     </script>
 </body>
 </html>
+
 
 
 
