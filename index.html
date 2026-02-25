@@ -1692,7 +1692,7 @@ function renderPastSeasonList() {
             if (sortedMatches.length === 1) { members.forEach(m => m.prevRank = m.currentRank); } 
         }
         
-        function renderRanking() { 
+       function renderRanking() { 
             const selector = document.getElementById('season-selector');
             const mode = selector ? selector.value : "current";
             const tbody = document.getElementById('ranking-table-body'); 
@@ -1769,4 +1769,5 @@ function renderPastSeasonList() {
     </script>
 </body>
 </html>
+
 
