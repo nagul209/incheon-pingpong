@@ -266,7 +266,11 @@
                 </div>
                 <button onclick="startNewSeason()" class="w-full bg-white text-emerald-700 py-3.5 rounded-xl font-extrabold shadow-md btn-press relative z-10">보관하고 새 시즌 시작하기</button>
             </div>
-            
+            <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6">
+    <h2 class="font-extrabold text-lg text-slate-800 mb-4 flex items-center gap-2"><span>🗄️</span> 보관된 과거 시즌 관리</h2>
+    <div id="past-season-list" class="space-y-2">
+        </div>
+</div>
             <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6">
                 <h2 class="font-extrabold text-lg text-slate-800 mb-5 flex items-center gap-2"><span>🔢</span> 획득 점수 룰 설정</h2>
                 <div class="space-y-5 text-sm">
@@ -1481,7 +1485,64 @@
                 hSelector.value = currentVal || "current";
             }
         }
+function renderPastSeasonList() {
+            const listContainer = document.getElementById('past-season-list');
+            if (!listContainer) return;
+            
+            // 보관된 시즌이 없을 경우 빈 상태 표시
+            if (!appConfig.pastSeasons || appConfig.pastSeasons.length === 0) {
+                listContainer.innerHTML = '<div class="text-sm text-slate-400 font-medium text-center py-5 bg-slate-50 rounded-xl border border-dashed border-slate-200">보관된 과거 시즌이 없습니다.</div>';
+                return;
+            }
 
+            let html = '';
+            // 최근 보관된 시즌이 위로 오도록 역순으로 렌더링하되, 데이터 삭제를 위해 원본 배열의 index를 유지합니다.
+            appConfig.pastSeasons.map((season, index) => ({ season, index })).reverse().forEach(item => {
+                html += `
+                <div class="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-200 transition-colors hover:bg-slate-100">
+                    <span class="font-extrabold text-slate-700 text-sm">
+                        ${escapeHTML(item.season.seasonName)} 
+                        <span class="text-[11px] text-slate-400 font-normal ml-1 bg-white px-1.5 py-0.5 rounded shadow-sm border border-slate-100">${item.season.date}</span>
+                    </span>
+                    <button onclick="deletePastSeason(${item.index})" class="text-[11px] bg-white text-red-500 border border-red-200 hover:bg-red-50 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press shadow-sm flex items-center gap-1">
+                        ❌ 삭제
+                    </button>
+                </div>
+                `;
+            });
+            listContainer.innerHTML = html;
+        }
+
+        // 과거 시즌 삭제 로직 (경고창, 데이터 삭제, 즉시 동기화 및 예외 처리 포함)
+        function deletePastSeason(index) {
+            if (confirm("정말 이 시즌 기록을 영구적으로 삭제하시겠습니까? 이 작업은 복구할 수 없습니다.")) {
+                // 1. 데이터 삭제 및 저장 (Firebase 및 로컬 스토리지 동기화)
+                appConfig.pastSeasons.splice(index, 1);
+                saveDataToStorage();
+                
+                // 2. UI 즉시 동기화
+                renderPastSeasonList(); // [설정] 탭의 시즌 관리 리스트 새로고침
+                renderSeasonDropdown(); // [순위], [기록] 탭의 시즌 선택 드롭다운 새로고침
+                
+                // 3. 예외 처리 방어 로직
+                // 배열 인덱스가 밀리기 때문에, 만약 사용자가 [순위]나 [기록] 탭에서 과거 시즌을 조회 중이었다면 에러를 방지하기 위해 강제로 '현재 진행중인 시즌'으로 복귀시킵니다.
+                const rankingSelector = document.getElementById('season-selector');
+                const historySelector = document.getElementById('history-season-selector');
+                
+                if (rankingSelector && rankingSelector.value !== "current") {
+                    rankingSelector.value = "current";
+                }
+                if (historySelector && historySelector.value !== "current") {
+                    historySelector.value = "current";
+                }
+                
+                // 4. 강제 복귀된 상태에 맞춰 화면 재출력
+                renderRanking();
+                renderHistory();
+                
+                alert("선택한 과거 시즌이 성공적으로 삭제되었습니다.");
+            }
+        }
         // 수정됨: 기록 탭 뱃지에 복식 3위 적용
         function renderHistory() { 
             const selector = document.getElementById('history-season-selector');
@@ -1699,6 +1760,7 @@
             renderRanking(); 
             renderHistory(); 
             renderMembersList(); 
+            renderPastSeasonList(); // 👈 이 줄을 추가합니다.
         }
         
         // 초기화
@@ -1707,3 +1769,4 @@
     </script>
 </body>
 </html>
+
