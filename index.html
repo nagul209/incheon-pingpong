@@ -1,4 +1,348 @@
-// -------------------------------------------------------------
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>인천광역시 탁구동호회 토요리그</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;700;800;900&display=swap');
+        body { font-family: 'Pretendard', -apple-system, sans-serif; background-color: #f1f5f9; letter-spacing: -0.02em; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        
+        body:not(.admin-mode-active) .admin-only { display: none !important; }
+        body:not(.admin-mode-active) .admin-only-table-cell { display: none !important; }
+        .member-inactive { opacity: 0.5; filter: grayscale(100%); }
+
+        .tab-item { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .tab-active { color: #4f46e5 !important; font-weight: 800; transform: translateY(-4px); }
+        .tab-active::after { content: ''; position: absolute; bottom: -4px; width: 4px; height: 4px; background-color: #4f46e5; border-radius: 50%; }
+        
+        .btn-press { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+        .btn-press:active { transform: scale(0.96); box-shadow: none !important; }
+        
+        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+
+        .name-chip { display: inline-flex; align-items: center; background-color: #e0e7ff; color: #4338ca; font-size: 0.75rem; font-weight: bold; padding: 0.25rem 0.6rem; border-radius: 9999px; margin: 0.15rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .name-chip-empty { color: #9ca3af; font-size: 0.75rem; font-weight: 500; padding: 0.25rem; }
+        
+        /* 대진표용 스타일 */
+        .diagonal-strike { background: linear-gradient(to top right, transparent calc(50% - 1px), #cbd5e1, transparent calc(50% + 1px)); background-color: #e2e8f0; }
+        
+        /* 토너먼트 트리 CSS (양방향 대칭 및 승패 컬러링) */
+        .tourn-node { position: relative; }
+        .border-r-line { border-right: 2px solid #94a3b8; }
+        .border-l-line { border-left: 2px solid #94a3b8; }
+        .border-t-line { border-top: 2px solid #94a3b8; }
+        .border-b-line { border-bottom: 2px solid #94a3b8; }
+        .rounded-bl-xl { border-bottom-left-radius: 0.75rem; }
+        .rounded-tl-xl { border-top-left-radius: 0.75rem; }
+        .rounded-br-xl { border-bottom-right-radius: 0.75rem; }
+        .rounded-tr-xl { border-top-right-radius: 0.75rem; }
+        
+        .t-winner { background-color: #eff6ff !important; border: 2px solid #3b82f6 !important; color: #1d4ed8 !important; }
+        .t-loser { background-color: #f8fafc !important; border: 1px solid #e2e8f0 !important; color: #94a3b8 !important; filter: grayscale(100%); opacity: 0.6; }
+
+        /* 📸 카톡 캡처를 위한 특수 클래스 */
+        .capture-mode { border: 2px solid #000 !important; border-radius: 0 !important; overflow: visible !important; box-shadow: none !important; background-color: #fff !important; margin: 0 auto !important; width: max-content !important; height: max-content !important; transform-origin: top left; }
+        .capture-mode table { border-top: 2px solid #000 !important; border-bottom: 2px solid #000 !important; border-collapse: collapse !important; }
+        .capture-mode th, .capture-mode td { border: 1px solid #000 !important; padding: 6px !important; color: #000 !important; font-weight: 900 !important; }
+        .capture-mode input { display: none !important; }
+        .capture-mode .capture-text { display: block !important; width: 100%; height: 100%; text-align: center; color: #000 !important; font-weight: 900 !important; }
+        .capture-text { display: none; }
+        .capture-mode .diagonal-strike { background: linear-gradient(to top right, transparent calc(50% - 1.5px), #000, transparent calc(50% + 1.5px)) !important; background-color: #f1f5f9 !important; }
+        
+        /* 스크롤바 커스텀 */
+        #op-tourn-container::-webkit-scrollbar { height: 8px; }
+        #op-tourn-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body class="mx-auto bg-slate-50 min-h-screen shadow-2xl relative pb-28 overflow-x-hidden transition-all duration-300 max-w-md" id="app-body">
+
+    <header class="bg-gradient-to-r from-blue-700 to-indigo-600 p-4 text-white flex justify-between items-center relative z-20 shadow-md rounded-b-[2.5rem]">
+        <div>
+            <h1 class="text-xl font-extrabold tracking-tight">🏓 인천광역시 탁구동호회</h1>
+            <p class="text-[11px] opacity-80 font-medium mt-0.5">토요리그 통합 관리 시스템</p>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="toggleViewMode()" id="btn-view-toggle" class="bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm px-3 py-1.5 rounded-xl transition text-[11px] font-extrabold shadow-inner border border-white/20 btn-press">
+                💻 PC화면
+            </button>
+            <button onclick="toggleAdmin()" id="btn-admin-lock" class="bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm p-2 rounded-full transition w-9 h-9 flex items-center justify-center shadow-inner border border-white/20 btn-press">
+                🔒
+            </button>
+        </div>
+    </header>
+
+    <div class="relative z-30 mt-4 px-4">
+        
+        <div id="view-ranking" class="animate-fade-in">
+            <div class="flex justify-between items-center mb-3 px-1 gap-2">
+                <select id="season-selector" class="flex-1 text-[12px] font-extrabold text-indigo-800 bg-white border-2 border-indigo-100 rounded-xl px-2.5 py-1.5 shadow-sm focus:ring-2 focus:ring-indigo-400 outline-none truncate" onchange="renderRanking()">
+                    <option value="current">📍 현재 진행중인 시즌</option>
+                </select>
+                <button onclick="downloadRankingExcel()" class="text-[11px] bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-xl border border-emerald-200 hover:bg-emerald-100 font-extrabold btn-press shadow-sm flex items-center gap-1 shrink-0">
+                    📊 엑셀 저장
+                </button>
+            </div>
+            <div class="mb-2 px-1 text-right">
+                <span id="ranking-instruction" class="text-[11px] text-indigo-600 font-bold bg-white/80 backdrop-blur-sm px-2.5 py-1.5 rounded-lg border border-indigo-100 shadow-sm transition-all">👆 이름을 터치하면 상세기록</span>
+            </div>
+            
+            <div class="shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 rounded-2xl bg-white overflow-hidden mb-2">
+                <table class="w-full text-sm text-left text-slate-700">
+                    <thead class="text-[10px] text-slate-400 uppercase bg-slate-50/80 border-b border-slate-100 font-bold tracking-wider">
+                        <tr><th class="px-1 py-3 text-center w-8">순위</th><th class="px-1 py-3 text-left w-14">선수명</th><th class="px-1 py-3 text-center w-8">출석</th><th class="px-1 py-3 text-center w-6">🥇</th><th class="px-1 py-3 text-center w-6">🥈</th><th class="px-1 py-3 text-center w-6">🥉</th><th class="px-1 py-3 text-right w-10">총점</th><th class="px-1 py-3 text-center w-10">변동</th></tr>
+                    </thead>
+                    <tbody id="ranking-table-body" class="divide-y divide-gray-100"></tbody>
+                </table>
+            </div>
+            <p class="text-[10px] text-slate-400 text-right px-2 mb-6">※ 순위는 <b>연회원</b> 등급만 산정됩니다. 0점 회원은 숨겨집니다.</p>
+        </div>
+
+        <div id="view-operation" class="hidden animate-fade-in pb-10">
+            <div class="bg-white p-4 rounded-2xl border border-indigo-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6 relative overflow-hidden">
+                <div class="absolute -right-4 -top-4 text-6xl opacity-5">👥</div>
+                <div class="flex justify-between items-center mb-3 border-b border-indigo-50 pb-2 relative z-10">
+                    <div>
+                        <h3 class="font-extrabold text-indigo-800 text-base">✅ 오늘 경기 참석자 명단</h3>
+                        <p class="text-[10px] text-slate-500 font-medium mt-0.5">여기서 명단을 선택하면, 조편성 시 이 명단만 뜹니다.</p>
+                    </div>
+                    <button onclick="openSelector('opAttend', '오늘 경기 참석자 선택', false)" class="text-[11px] bg-indigo-600 text-white px-3 py-2 rounded-lg font-bold shadow-md btn-press">명단 선택</button>
+                </div>
+                <div id="ui-box-opAttend" class="min-h-[44px] bg-slate-50 rounded-xl p-2.5 border border-slate-200 cursor-pointer relative z-10" onclick="openSelector('opAttend', '오늘 경기 참석자 선택', false)">
+                    <span class="name-chip-empty text-slate-400">👆 버튼을 눌러 오늘 경기 참석자를 먼저 선택하세요.</span>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6">
+                <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
+                    <div>
+                        <h3 class="font-extrabold text-slate-800 text-base">📝 예선 조별 리그전표</h3>
+                        <p class="text-[10px] text-slate-400 font-medium mt-0.5">선수 칸을 터치하여 명단을 배치하세요.</p>
+                    </div>
+                </div>
+                
+                <div class="flex flex-col gap-2 mb-4 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-xs font-bold text-slate-600">조 개수</span>
+                            <select id="op-group-count" class="text-xs border border-slate-200 rounded p-1.5 font-bold text-indigo-700 bg-white" onchange="generateGroupSizeInputs()">
+                                <option value="1">1조</option><option value="2" selected>2조</option><option value="3">3조</option><option value="4">4조</option>
+                                <option value="5">5조</option><option value="6">6조</option><option value="7">7조</option><option value="8">8조</option>
+                            </select>
+                        </div>
+                        
+                        <div id="dynamic-group-sizes" class="flex flex-wrap gap-1.5 items-center border-l border-slate-300 pl-2"></div>
+                        
+                        <div class="ml-auto flex gap-1.5 mt-2 w-full justify-end flex-wrap items-center">
+                            <button onclick="calculateGroupRankings()" class="text-[11px] bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-2.5 py-1.5 rounded-lg font-extrabold shadow-sm btn-press">🧮 자동순위</button>
+                            <button onclick="loadTempTable()" class="text-[11px] bg-amber-500 text-white px-2.5 py-1.5 rounded-lg font-bold shadow-sm btn-press">📂 불러오기</button>
+                            <button onclick="saveTempTable()" class="text-[11px] bg-amber-600 text-white px-2.5 py-1.5 rounded-lg font-bold shadow-sm btn-press">💾 임시저장</button>
+                            <button onclick="sortGroupPlayers()" class="text-[11px] bg-emerald-600 text-white px-2.5 py-1.5 rounded-lg font-bold shadow-sm btn-press">🔀 정렬</button>
+                            <button onclick="renderGroupTable()" class="text-[11px] bg-slate-800 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm btn-press">표 생성</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="op-group-container" class="w-full overflow-x-auto pb-4">
+                    <div class="text-center text-slate-400 text-xs py-8 bg-slate-50 rounded-xl border border-dashed border-slate-200">조건을 설정하고 표 생성을 눌러주세요.</div>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6">
+                <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
+                    <div>
+                        <h3 class="font-extrabold text-slate-800 text-base">⚔️ 본선 대진표</h3>
+                        <p class="text-[10px] text-slate-400 font-medium mt-0.5">최대 128강까지 자동 생성 지원</p>
+                    </div>
+                    <button onclick="printTournament()" class="text-[11px] bg-rose-600 text-white px-3 py-2 rounded-lg font-bold shadow-md btn-press flex items-center gap-1">🖨️ 대진표 인쇄</button>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 mb-4 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-xs font-bold text-slate-600">예선 조</span>
+                        <select id="op-tourn-groups" class="text-xs border border-slate-200 rounded p-1 font-bold text-rose-600 bg-white"><option value="1">1조</option><option value="2">2조</option><option value="3">3조</option><option value="4" selected>4조</option><option value="5">5조</option><option value="6">6조</option><option value="7">7조</option><option value="8">8조</option></select>
+                    </div>
+                    <div class="w-px h-4 bg-slate-300"></div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-xs font-bold text-slate-600">진출자(조당)</span>
+                        <select id="op-tourn-adv" class="text-xs border border-slate-200 rounded p-1 font-bold text-rose-600 bg-white"><option value="1">1명</option><option value="2" selected>2명</option><option value="3">3명</option><option value="4">4명</option><option value="5">5명</option><option value="6">6명</option><option value="7">7명</option><option value="8">8명</option><option value="9">9명</option><option value="10">10명</option><option value="11">11명</option><option value="12">12명</option></select>
+                    </div>
+                    <button onclick="initTournamentState()" class="ml-auto text-[11px] bg-slate-800 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm btn-press">대진표 생성</button>
+                </div>
+                
+                <div class="mb-3 flex justify-between items-center gap-2">
+                    <button onclick="loadQualifierResults()" class="flex-1 bg-indigo-50 text-indigo-700 border border-indigo-200 py-2 rounded-xl text-[11px] font-extrabold shadow-sm btn-press">📥 예선 결과 불러오기</button>
+                    <div id="op-tourn-info" class="flex-[2] text-[10px] font-extrabold text-rose-700 bg-rose-50 p-2 rounded-xl text-center border border-rose-100 hidden"></div>
+                </div>
+
+                <div id="tourn-filter-container" class="flex flex-wrap gap-1.5 mb-3 hidden"></div>
+
+                <div id="tourn-quick-nav" class="flex justify-between items-center gap-1.5 mb-2 sticky left-0 right-0 z-20 px-1 no-print hidden">
+                    <button onclick="scrollTourn('left')" class="flex-1 py-2 bg-white text-slate-600 text-[11px] font-extrabold rounded-xl shadow-sm border border-slate-200 btn-press">👈 좌측</button>
+                    <button onclick="scrollTourn('center')" class="flex-1 py-2 bg-yellow-50 text-yellow-700 text-[11px] font-extrabold rounded-xl shadow-sm border border-yellow-200 btn-press">🏆 중앙</button>
+                    <button onclick="scrollTourn('right')" class="flex-1 py-2 bg-white text-slate-600 text-[11px] font-extrabold rounded-xl shadow-sm border border-slate-200 btn-press">우측 👉</button>
+                    <button onclick="copyTournamentImage()" id="btn-capture-tourn" class="flex-1 py-2 bg-emerald-500 text-white text-[11px] font-black rounded-xl shadow-sm border border-emerald-600 btn-press flex items-center justify-center gap-1">📸 카톡 복사</button>
+                </div>
+
+                <div id="op-tourn-container" class="w-full overflow-x-auto overflow-y-auto max-h-[75vh] pb-4 relative scroll-smooth rounded-xl border border-slate-200 bg-slate-50/50">
+                    <div class="text-center text-slate-400 text-xs py-8">조건을 선택하고 대진표 생성을 눌러주세요.</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-history" class="hidden animate-fade-in">
+            <div class="flex justify-between items-center mb-4 pl-1 gap-2">
+                <h2 class="font-bold text-lg text-gray-800 tracking-tight">저장된 경기 기록</h2>
+                <select id="history-season-selector" class="flex-1 max-w-[180px] text-[12px] font-extrabold text-indigo-800 bg-white border-2 border-indigo-100 rounded-xl px-2.5 py-1.5 shadow-sm focus:ring-2 focus:ring-indigo-400 outline-none truncate" onchange="renderHistory()">
+                    <option value="current">📍 현재 진행중인 시즌</option>
+                </select>
+            </div>
+            <div class="shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 rounded-2xl bg-white overflow-hidden">
+                <table class="w-full text-sm text-center text-slate-700">
+                    <thead class="text-xs text-slate-500 uppercase bg-gray-50 border-b border-gray-200">
+                        <tr><th class="px-2 py-3 w-20">날짜/종류</th><th class="px-2 py-3 text-left">참석 및 입상 내역</th><th class="px-2 py-3 admin-only-table-cell w-16" id="history-admin-th">기능</th></tr>
+                    </thead>
+                    <tbody id="match-history-list" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div id="view-input" class="hidden admin-only-block animate-fade-in">
+            <div id="input-step-1" class="bg-white p-6 rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-4">
+                <h2 id="input-form-title" class="font-extrabold text-xl mb-5 text-slate-800 tracking-tight">1. 모임 기본 정보 입력</h2>
+                <div class="mb-5"><label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">날짜 선택</label><input type="date" id="match-date" class="block w-full border-0 bg-slate-100 p-3.5 rounded-xl font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all"></div>
+                <div class="mb-8"><label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">모임 종류</label><select id="match-type" class="block w-full border-0 bg-slate-100 p-3.5 rounded-xl font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all"><option>정기모임</option><option>월례대회</option><option>교류전</option></select></div>
+                <button onclick="openInputStep2()" class="w-full bg-gradient-to-r from-indigo-500 to-violet-500 text-white py-4 rounded-xl font-bold shadow-lg shadow-indigo-200 hover:shadow-xl transition-all btn-press text-lg">다음 단계로 이동 👉</button>
+            </div>
+            
+            <div id="input-step-2" class="hidden mt-2 bg-gray-50 p-4 rounded-xl border border-indigo-200 shadow-inner mb-6">
+                <div class="flex justify-between items-center mb-4 pl-1"><h2 class="font-extrabold text-lg text-indigo-800">2. 상세 결과 선택</h2><span id="display-match-info" class="text-xs text-indigo-700 font-bold bg-indigo-100/50 px-3 py-1.5 rounded-full"></span></div>
+                <div class="mb-5 bg-white p-4 border rounded-xl border-gray-200 shadow-sm relative">
+                    <div class="flex justify-between items-center mb-2 border-b pb-2"><label class="block text-sm font-extrabold text-gray-800">✅ 오늘 참석자</label><div class="flex gap-1"><button onclick="generateTeams()" class="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-1 rounded border border-indigo-200 font-bold hover:bg-indigo-100 btn-press">🤖 조편성</button><button onclick="openSelector('attend', '오늘 참석자 선택', false)" class="text-[10px] bg-blue-600 text-white px-2 py-1 rounded shadow-sm font-bold btn-press">명단 선택</button></div></div>
+                    <div id="ui-box-attend" class="min-h-[40px] bg-gray-50 rounded-lg p-2 border border-gray-200 cursor-pointer" onclick="openSelector('attend', '오늘 참석자 선택', false)"><span class="name-chip-empty">버튼을 눌러 참석자를 선택하세요.</span></div>
+                    <div class="flex justify-between items-center mt-4 mb-2 border-b pb-2"><label class="block text-sm font-extrabold text-red-600">🚨 불성실자 (성실점수 제외)</label><button onclick="openSelector('lazy', '불성실자 선택', true)" class="text-[10px] bg-red-50 text-red-600 border border-red-200 px-2 py-1 rounded font-bold btn-press">선택</button></div>
+                    <div id="ui-box-lazy" class="min-h-[30px] bg-red-50/50 rounded-lg p-2 border border-red-100 cursor-pointer" onclick="openSelector('lazy', '불성실자 선택', true)"><span class="name-chip-empty text-red-300">해당자 없음</span></div>
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)]"><h3 class="font-extrabold text-sm text-indigo-700 mb-3 flex items-center gap-2"><span class="text-lg">🏅</span> 개인 리그전</h3><div class="space-y-2.5"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-yellow-100 flex justify-center items-center font-black text-yellow-600 border border-yellow-200">1</div><div id="ui-box-lg1" onclick="openSelector('lg1', '리그전 1등 선택', true)" class="flex-1 min-h-[44px] border border-slate-200 rounded-xl bg-slate-50 p-2 cursor-pointer flex items-center flex-wrap gap-1 hover:bg-slate-100"></div></div><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-slate-100 flex justify-center items-center font-black text-slate-500 border border-slate-200">2</div><div id="ui-box-lg2" onclick="openSelector('lg2', '리그전 2등 선택', true)" class="flex-1 min-h-[44px] border border-slate-200 rounded-xl bg-slate-50 p-2 cursor-pointer flex items-center flex-wrap gap-1 hover:bg-slate-100"></div></div><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-orange-100 flex justify-center items-center font-black text-orange-600 border border-orange-200">3</div><div id="ui-box-lg3" onclick="openSelector('lg3', '리그전 3등 선택', true)" class="flex-1 min-h-[44px] border border-slate-200 rounded-xl bg-slate-50 p-2 cursor-pointer flex items-center flex-wrap gap-1 hover:bg-slate-100"></div></div></div></div>
+                    <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)]"><h3 class="font-extrabold text-sm text-indigo-700 mb-3 flex items-center gap-2"><span class="text-lg">🤝</span> 단체전</h3><div class="space-y-2.5"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-yellow-100 flex justify-center items-center font-black text-yellow-600 border border-yellow-200">1</div><div id="ui-box-tm1" onclick="openSelector('tm1', '단체전 1등 선택', true)" class="flex-1 min-h-[44px] border border-slate-200 rounded-xl bg-slate-50 p-2 cursor-pointer flex items-center flex-wrap gap-1 hover:bg-slate-100"></div></div><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-slate-100 flex justify-center items-center font-black text-slate-500 border border-slate-200">2</div><div id="ui-box-tm2" onclick="openSelector('tm2', '단체전 2등 선택', true)" class="flex-1 min-h-[44px] border border-slate-200 rounded-xl bg-slate-50 p-2 cursor-pointer flex items-center flex-wrap gap-1 hover:bg-slate-100"></div></div><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-orange-100 flex justify-center items-center font-black text-orange-600 border border-orange-200">3</div><div id="ui-box-tm3" onclick="openSelector('tm3', '단체전 3등 선택', true)" class="flex-1 min-h-[44px] border border-slate-200 rounded-xl bg-slate-50 p-2 cursor-pointer flex items-center flex-wrap gap-1 hover:bg-slate-100"></div></div></div></div>
+                    <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)]"><h3 class="font-extrabold text-sm text-indigo-700 mb-3 flex items-center gap-2"><span class="text-lg">⚔️</span> 토너먼트</h3><div class="space-y-2.5"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-yellow-100 flex justify-center items-center font-black text-yellow-600 border border-yellow-200">1</div><div id="ui-box-tn1" onclick="openSelector('tn1', '토너먼트 1등 선택', true)" class="flex-1 min-h-[44px] border border-slate-200 rounded-xl bg-slate-50 p-2 cursor-pointer flex items-center flex-wrap gap-1 hover:bg-slate-100"></div></div><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-slate-100 flex justify-center items-center font-black text-slate-500 border border-slate-200">2</div><div id="ui-box-tn2" onclick="openSelector('tn2', '토너먼트 2등 선택', true)" class="flex-1 min-h-[44px] border border-slate-200 rounded-xl bg-slate-50 p-2 cursor-pointer flex items-center flex-wrap gap-1 hover:bg-slate-100"></div></div><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-orange-100 flex justify-center items-center font-black text-orange-600 border border-orange-200">3</div><div id="ui-box-tn3" onclick="openSelector('tn3', '토너먼트 3등 선택', true)" class="flex-1 min-h-[44px] border border-slate-200 rounded-xl bg-slate-50 p-2 cursor-pointer flex items-center flex-wrap gap-1 hover:bg-slate-100"></div></div></div></div>
+                    
+                    <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
+                        <h3 class="font-extrabold text-sm text-indigo-700 mb-3 flex items-center gap-2"><span class="text-lg">👥</span> 복식전</h3>
+                        <div class="space-y-2.5">
+                            <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-yellow-100 flex justify-center items-center font-black text-yellow-600 border border-yellow-200">1</div><div id="ui-box-db1" onclick="openSelector('db1', '복식 1등 선택', true)" class="flex-1 min-h-[44px] border border-slate-200 rounded-xl bg-slate-50 p-2 cursor-pointer flex items-center flex-wrap gap-1 hover:bg-slate-100"></div></div>
+                            <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-slate-100 flex justify-center items-center font-black text-slate-500 border border-slate-200">2</div><div id="ui-box-db2" onclick="openSelector('db2', '복식 2등 선택', true)" class="flex-1 min-h-[44px] border border-slate-200 rounded-xl bg-slate-50 p-2 cursor-pointer flex items-center flex-wrap gap-1 hover:bg-slate-100"></div></div>
+                            <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-orange-100 flex justify-center items-center font-black text-orange-600 border border-orange-200">3</div><div id="ui-box-db3" onclick="openSelector('db3', '복식 3등 선택', true)" class="flex-1 min-h-[44px] border border-slate-200 rounded-xl bg-slate-50 p-2 cursor-pointer flex items-center flex-wrap gap-1 hover:bg-slate-100"></div></div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gradient-to-br from-yellow-50 to-orange-50 p-4 border rounded-2xl border-yellow-200/60 shadow-[0_4px_20px_rgba(250,204,21,0.15)]"><h3 class="font-extrabold text-sm text-yellow-800 mb-3 flex items-center gap-2"><span class="text-lg">🎉</span> 이벤트전</h3><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-white flex justify-center items-center font-black text-yellow-600 shadow-sm">👑</div><div id="ui-box-ev1" onclick="openSelector('ev1', '이벤트 우승자 선택', true)" class="flex-1 min-h-[44px] border border-white rounded-xl bg-white/60 backdrop-blur-sm p-2 cursor-pointer flex items-center flex-wrap gap-1 shadow-sm hover:bg-white transition"></div></div></div>
+                </div>
+                <div class="flex gap-3 mt-8 sticky bottom-16 z-20 pb-2"><button onclick="cancelInputStep2()" class="flex-1 bg-white text-slate-700 py-4 rounded-2xl font-extrabold shadow-sm border border-slate-200 hover:bg-slate-50 btn-press">작성 취소</button><button onclick="saveMatch()" class="flex-[2] bg-gradient-to-r from-indigo-500 to-violet-500 text-white py-4 rounded-2xl font-extrabold shadow-lg shadow-indigo-200 btn-press text-lg border border-indigo-700">최종 점수 저장</button></div>
+            </div>
+        </div>
+        
+        <div id="view-member" class="hidden p-4 admin-only-block animate-fade-in"><div class="bg-white border border-indigo-100 p-5 rounded-2xl mb-6 shadow-sm"><h3 class="font-extrabold text-indigo-800 mb-3 text-sm flex items-center gap-1.5"><span class="text-lg">📊</span> 엑셀로 일괄 등록</h3><input type="file" id="excel-upload" accept=".xlsx, .xls" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition cursor-pointer mb-3" onchange="handleExcelUpload(event)"><button onclick="downloadExcelTemplate()" class="w-full bg-white border border-indigo-200 text-indigo-600 py-2.5 rounded-xl text-xs font-bold btn-press shadow-sm">등록용 엑셀 양식 다운로드</button></div><div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6" id="member-form-container"><h2 id="form-title" class="font-extrabold text-xl mb-5 text-slate-800">새 회원 개별 등록</h2><div class="mb-5 flex items-center gap-5 bg-slate-50 p-4 rounded-xl border border-slate-100"><div class="w-20 h-20 rounded-full overflow-hidden border-4 border-white shadow-md flex-shrink-0 bg-slate-200 relative"><img id="photo-preview" src="" class="w-full h-full object-cover hidden"><div id="photo-placeholder" class="w-full h-full flex flex-col items-center justify-center text-slate-400 text-xs font-bold"><span>📷</span><span>사진</span></div></div><div class="flex-1"><input type="file" id="mem-photo" accept="image/*" class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition cursor-pointer" onchange="handlePhotoUpload(event)"></div></div><div class="grid grid-cols-2 gap-4 mb-6 text-sm"><div><label class="block font-bold text-slate-600 mb-1.5 text-xs">구분</label><select id="mem-affiliation" class="w-full border-0 bg-slate-100 p-3 rounded-xl focus:ring-2 focus:ring-indigo-500 transition"><option value="시">시</option><option value="구">구</option><option value="레전드">레전드</option></select></div><div><label class="block font-bold text-slate-600 mb-1.5 text-xs">부서</label><input type="text" id="mem-dept" class="w-full border-0 bg-slate-100 p-3 rounded-xl focus:ring-2 focus:ring-indigo-500 transition" placeholder="예: 체육진흥과"></div><div><label class="block font-bold text-slate-600 mb-1.5 text-xs">등급</label><select id="mem-type" class="w-full border-0 bg-slate-100 p-3 rounded-xl focus:ring-2 focus:ring-indigo-500 transition"><option value="연회원" selected>연회원</option><option value="준회원">준회원</option><option value="비회원">비회원</option></select></div><div><label class="block font-bold text-slate-600 mb-1.5 text-xs">직책</label><input type="text" id="mem-duty" class="w-full border-0 bg-slate-100 p-3 rounded-xl focus:ring-2 focus:ring-indigo-500 transition" placeholder="예: 총무"></div><div><label class="block font-bold text-slate-600 mb-1.5 text-xs">직급</label><input type="text" id="mem-rank" class="w-full border-0 bg-slate-100 p-3 rounded-xl focus:ring-2 focus:ring-indigo-500 transition" placeholder="예: 주무관"></div><div><label class="block font-bold text-indigo-600 mb-1.5 text-xs">* 이름 (필수)</label><input type="text" id="mem-name" class="w-full border border-indigo-200 bg-indigo-50/50 p-3 rounded-xl focus:ring-2 focus:ring-indigo-500 transition font-bold" placeholder="홍길동"></div><div><label class="block font-bold text-slate-600 mb-1.5 text-xs">* 부수 (필수)</label><select id="mem-handicap" class="w-full border-0 bg-slate-100 p-3 rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold text-indigo-700"><option value="1">1부</option><option value="2">2부</option><option value="3">3부</option><option value="4">4부</option><option value="5" selected>5부</option><option value="6">6부</option><option value="7">7부</option><option value="8">8부</option><option value="9">9부</option><option value="10">10부</option></select></div><div><label class="block font-bold text-slate-600 mb-1.5 text-xs">성별</label><select id="mem-gender" class="w-full border-0 bg-slate-100 p-3 rounded-xl focus:ring-2 focus:ring-indigo-500 transition"><option value="남">남</option><option value="여">여</option></select></div><div class="col-span-2"><label class="block font-bold text-slate-600 mb-1.5 text-xs">상태</label><select id="mem-status" class="w-full border-0 bg-slate-100 p-3 rounded-xl focus:ring-2 focus:ring-indigo-500 transition font-bold"><option value="active" selected>🟢 정상 활동</option><option value="inactive">🔴 휴면 (순위/명단에서 숨김)</option></select></div><div class="col-span-2"><label class="block font-bold text-slate-800 mb-1"><span class="bg-yellow-100 px-1.5 rounded">📞 연락처</span></label><input type="tel" id="mem-phone" class="w-full border-0 bg-slate-100 p-3 rounded-xl focus:ring-2 focus:ring-indigo-500 transition" placeholder="010-0000-0000"></div></div><div class="flex gap-3"><button onclick="saveMember()" id="btn-save-member" class="flex-1 bg-slate-800 text-white py-4 rounded-xl font-extrabold shadow-md btn-press">회원 저장하기</button><button onclick="cancelEdit()" id="btn-cancel-edit" class="hidden flex-1 bg-slate-200 text-slate-700 py-4 rounded-xl font-extrabold btn-press">취소</button></div></div><div class="flex justify-between items-end mb-3 px-1"><h3 class="font-extrabold text-lg text-slate-800">전체 회원 목록</h3><span class="text-xs text-indigo-600 font-bold bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-100" id="total-members-count">총 0명</span></div><ul id="member-list-display" class="text-sm divide-y divide-slate-100 bg-white border border-slate-100 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6 overflow-hidden"></ul></div>
+        
+        <div id="view-setting" class="hidden p-4 pb-20 admin-only-block animate-fade-in">
+            <div class="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 rounded-2xl shadow-lg mb-6 text-white relative overflow-hidden">
+                <div class="absolute -right-4 -top-4 text-8xl opacity-10">🌱</div>
+                <h2 class="font-extrabold text-xl mb-2 relative z-10">새로운 시즌 시작</h2>
+                <p class="text-[11px] text-emerald-50 mb-4 leading-relaxed relative z-10 font-medium">현재 진행 중인 데이터를 아래 이름으로 <b>보관소에 저장</b>하고, 점수를 0점으로 리셋하여 새 기수를 시작합니다.</p>
+                <div class="mb-4 relative z-10">
+                    <label class="block text-[11px] font-extrabold text-emerald-100 mb-1.5">🗄️ 보관할 시즌 이름 (예: 25년 상반기 리그)</label>
+                    <input type="text" id="cfg-season-name" class="w-full border border-emerald-400 bg-white/20 text-white placeholder-emerald-100/60 p-3 rounded-xl text-sm focus:ring-2 focus:ring-white transition font-bold outline-none" placeholder="시즌명을 입력하세요">
+                </div>
+                <button onclick="startNewSeason()" class="w-full bg-white text-emerald-700 py-3.5 rounded-xl font-extrabold shadow-md btn-press relative z-10">보관하고 새 시즌 시작하기</button>
+            </div>
+            
+            <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6">
+                <h2 class="font-extrabold text-lg text-slate-800 mb-5 flex items-center gap-2"><span>🔢</span> 획득 점수 룰 설정</h2>
+                <div class="space-y-5 text-sm">
+                    <div class="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl"><div><label class="block font-bold text-slate-500 mb-1.5 text-xs text-center">기본 참석</label><input type="number" id="cfg-score-attend" step="0.5" class="w-full border-0 p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-500 text-center font-extrabold text-slate-700 shadow-sm"></div><div><label class="block font-bold text-slate-500 mb-1.5 text-xs text-center">성실 점수</label><input type="number" id="cfg-score-sincerity" step="0.5" class="w-full border-0 p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-500 text-center font-extrabold text-slate-700 shadow-sm"></div></div>
+                    <div><div class="font-extrabold text-slate-700 mb-2.5 text-xs border-b pb-1">🏅 개인 리그전 입상</div><div class="grid grid-cols-3 gap-3"><div><input type="number" id="cfg-score-lg1" step="0.5" class="w-full border border-slate-200 p-2 rounded-lg text-center font-bold text-indigo-600 bg-slate-50"><div class="text-[10px] text-center mt-1 text-slate-400 font-bold">1등</div></div><div><input type="number" id="cfg-score-lg2" step="0.5" class="w-full border border-slate-200 p-2 rounded-lg text-center font-bold text-indigo-600 bg-slate-50"><div class="text-[10px] text-center mt-1 text-slate-400 font-bold">2등</div></div><div><input type="number" id="cfg-score-lg3" step="0.5" class="w-full border border-slate-200 p-2 rounded-lg text-center font-bold text-indigo-600 bg-slate-50"><div class="text-[10px] text-center mt-1 text-slate-400 font-bold">3등</div></div></div></div>
+                    <div><div class="font-extrabold text-slate-700 mb-2.5 text-xs border-b pb-1">🤝 단체전 입상</div><div class="grid grid-cols-3 gap-3"><div><input type="number" id="cfg-score-tm1" step="0.5" class="w-full border border-slate-200 p-2 rounded-lg text-center font-bold text-indigo-600 bg-slate-50"></div><div><input type="number" id="cfg-score-tm2" step="0.5" class="w-full border border-slate-200 p-2 rounded-lg text-center font-bold text-indigo-600 bg-slate-50"></div><div><input type="number" id="cfg-score-tm3" step="0.5" class="w-full border border-slate-200 p-2 rounded-lg text-center font-bold text-indigo-600 bg-slate-50"></div></div></div>
+                    <div><div class="font-extrabold text-slate-700 mb-2.5 text-xs border-b pb-1">⚔️ 토너먼트 입상</div><div class="grid grid-cols-3 gap-3"><div><input type="number" id="cfg-score-tn1" step="0.5" class="w-full border border-slate-200 p-2 rounded-lg text-center font-bold text-indigo-600 bg-slate-50"></div><div><input type="number" id="cfg-score-tn2" step="0.5" class="w-full border border-slate-200 p-2 rounded-lg text-center font-bold text-indigo-600 bg-slate-50"></div><div><input type="number" id="cfg-score-tn3" step="0.5" class="w-full border border-slate-200 p-2 rounded-lg text-center font-bold text-indigo-600 bg-slate-50"></div></div></div>
+                    
+                    <div>
+                        <div class="font-extrabold text-slate-700 mb-2.5 text-xs border-b pb-1">👥 복식전 입상</div>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div><input type="number" id="cfg-score-db1" step="0.5" class="w-full border border-slate-200 p-2 rounded-lg text-center font-bold text-indigo-600 bg-slate-50"><div class="text-[10px] text-center mt-1 text-slate-400 font-bold">1등</div></div>
+                            <div><input type="number" id="cfg-score-db2" step="0.5" class="w-full border border-slate-200 p-2 rounded-lg text-center font-bold text-indigo-600 bg-slate-50"><div class="text-[10px] text-center mt-1 text-slate-400 font-bold">2등</div></div>
+                            <div><input type="number" id="cfg-score-db3" step="0.5" class="w-full border border-slate-200 p-2 rounded-lg text-center font-bold text-indigo-600 bg-slate-50"><div class="text-[10px] text-center mt-1 text-slate-400 font-bold">3등</div></div>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="font-extrabold text-yellow-600 mb-2 text-xs border-b border-yellow-200 pb-1">🎉 이벤트 우승</div>
+                        <input type="number" id="cfg-score-ev1" step="0.5" class="w-full border border-yellow-200 p-2 rounded-lg text-center font-bold text-yellow-600 bg-yellow-50">
+                    </div>
+                    
+                    <button onclick="saveScoreRules()" class="w-full bg-slate-800 text-white py-3.5 rounded-xl font-bold shadow-md mt-4 btn-press">룰 저장 및 즉시 재계산</button>
+                </div>
+            </div>
+            
+            <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6"><h2 class="font-extrabold text-lg text-slate-800 mb-4 flex items-center gap-2"><span>💬</span> 카톡 공지 템플릿</h2><div class="mb-4"><label class="block text-xs font-bold text-slate-500 mb-1.5">머릿말 (시작 문구)</label><textarea id="cfg-announce-prefix" rows="2" class="w-full border-0 bg-slate-100 p-3 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 transition"></textarea></div><div class="mb-5"><label class="block text-xs font-bold text-slate-500 mb-1.5">꼬릿말 (안내/계좌 문구)</label><textarea id="cfg-announce-suffix" rows="3" class="w-full border-0 bg-slate-100 p-3 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 transition"></textarea></div><div class="mb-5"><label class="block text-xs font-bold text-slate-500 mb-1.5">앱 접속 시 기본 화면</label><select id="cfg-default-tab" class="w-full border-0 bg-slate-100 p-3 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 transition"><option value="ranking">🏆 전체 순위 화면</option><option value="history">📅 경기 기록 화면</option></select></div><button onclick="saveUIConfig()" class="w-full bg-slate-200 text-slate-700 py-3 rounded-xl font-bold btn-press">환경 설정 저장</button></div>
+            <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6"><h2 class="font-extrabold text-lg text-slate-800 mb-4 flex items-center gap-2"><span>💾</span> 데이터 백업 및 복원</h2><p class="text-xs text-slate-500 mb-4 leading-relaxed">인터넷 불안정으로 저장이 안 될 때를 대비해 데이터를 기기에 파일로 저장하고 언제든 복원할 수 있습니다.</p><div class="flex gap-3"><button onclick="exportData()" class="flex-1 bg-indigo-50 text-indigo-700 py-3 rounded-xl font-bold border border-indigo-200 hover:bg-indigo-100 btn-press">📥 백업 저장</button><div class="flex-1 relative"><input type="file" accept=".json" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="importData(event)"><div class="bg-emerald-50 text-emerald-700 py-3 rounded-xl font-bold border border-emerald-200 hover:bg-emerald-100 btn-press text-center flex items-center justify-center h-full">📤 백업 불러오기</div></div></div></div>
+            <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-4"><h2 class="font-extrabold text-lg text-slate-800 mb-4 flex items-center gap-2"><span>🔑</span> 보안 설정</h2><label class="block text-xs font-bold text-slate-500 mb-1.5">새로운 관리자 비밀번호 입력</label><div class="flex gap-2 mb-3"><input type="password" id="cfg-password" class="flex-1 border-0 bg-slate-100 p-3 rounded-xl text-sm focus:ring-2 focus:ring-red-500 transition" placeholder="비밀번호 입력"><button onclick="changePassword()" class="bg-red-500 text-white px-5 rounded-xl font-bold shadow-md btn-press">변경</button></div></div>
+            <div class="bg-rose-50 p-5 rounded-2xl border border-rose-200 shadow-sm mt-8"><h2 class="font-extrabold text-lg text-rose-800 mb-2 flex items-center gap-2"><span>⚠️</span> 회원 명단 전체 초기화</h2><p class="text-xs text-rose-600 mb-4 leading-relaxed font-medium">등록된 모든 회원 명단을 완전히 삭제합니다. 이 작업은 되돌릴 수 없습니다.</p><button onclick="resetAllMembers()" class="w-full bg-rose-600 text-white py-3.5 rounded-xl font-bold shadow-md btn-press">회원 전체 삭제하기</button></div>
+        </div>
+    </div>
+
+    <div id="print-option-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex justify-center items-center p-4 animate-fade-in" onclick="if(event.target === this) closePrintModal()">
+        <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl flex flex-col overflow-hidden"><div class="px-5 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center"><h3 class="font-extrabold text-lg text-slate-800" id="print-modal-title">🖨️ 인쇄 옵션</h3><button onclick="closePrintModal()" class="text-slate-400 hover:text-slate-600 text-2xl font-bold btn-press">&times;</button></div><div class="p-5 flex flex-col gap-3"><button onclick="executePrint('table')" class="w-full bg-indigo-50 text-indigo-700 py-3.5 rounded-xl font-extrabold border border-indigo-200 hover:bg-indigo-100 transition btn-press">📊 대진표만 인쇄</button><button onclick="executePrint('order')" class="w-full bg-emerald-50 text-emerald-700 py-3.5 rounded-xl font-extrabold border border-emerald-200 hover:bg-emerald-100 transition btn-press">🔄 게임순서만 인쇄</button><button onclick="executePrint('both')" class="w-full bg-slate-800 text-white py-3.5 rounded-xl font-extrabold shadow-md hover:bg-slate-700 transition btn-press">전체(대진표+게임순서) 함께 인쇄</button></div></div>
+    </div>
+
+    <div id="announcement-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex justify-center items-center p-4 animate-fade-in" onclick="if(event.target === this) closeAnnouncement()">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl flex flex-col overflow-hidden"><div class="px-5 py-4 flex justify-between items-center border-b border-slate-100 bg-indigo-50"><h3 class="font-extrabold text-lg text-indigo-800">💬 카카오톡 공지 복사</h3><button onclick="closeAnnouncement()" class="text-slate-400 hover:text-slate-600 text-2xl font-bold btn-press">&times;</button></div><div class="p-4 bg-slate-50 flex-1"><textarea id="announcement-text" class="w-full h-[40vh] p-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 resize-none bg-white font-medium" readonly></textarea><p class="text-[11px] text-slate-500 mt-2 text-center">머릿말/꼬릿말은 [설정] 탭에서 수정할 수 있습니다.</p></div><div class="p-4 border-t border-slate-100 bg-white"><button onclick="copyAnnouncement()" class="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-extrabold shadow-lg shadow-indigo-200 hover:bg-indigo-700 btn-press text-lg">카톡에 맞게 복사하기</button></div></div>
+    </div>
+    
+    <div id="team-maker-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex justify-center items-end sm:items-center p-0 sm:p-4 animate-fade-in" onclick="if(event.target === this) closeTeamMaker()">
+        <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[85vh]"><div class="sheet-handle sm:hidden"></div><div class="px-5 py-3 flex justify-between items-center shrink-0 border-b border-slate-100"><h3 class="font-extrabold text-lg text-slate-800">🤖 밸런스 조 편성 결과</h3><button onclick="closeTeamMaker()" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button></div><div class="p-5 flex-1 overflow-y-auto bg-slate-50/50"><div id="team-result-box" class="space-y-2 text-sm min-h-[150px]"></div></div><div class="p-4 shrink-0 border-t border-slate-100 bg-white flex gap-3 pb-8 sm:pb-4"><button onclick="generateTeams()" class="flex-1 bg-slate-100 text-slate-700 py-3.5 rounded-xl font-bold hover:bg-slate-200 btn-press">다시 섞기</button><button onclick="copyTeams()" class="flex-[2] bg-indigo-600 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 btn-press text-lg">결과 복사하기</button></div></div>
+    </div>
+    
+    <div id="member-selector-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex justify-end flex-col animate-fade-in" onclick="if(event.target === this) closeSelector()">
+        <div class="bg-white w-full max-w-md mx-auto rounded-t-3xl shadow-2xl flex flex-col max-h-[85vh]"><div class="sheet-handle"></div><div class="px-5 pb-3 pt-1 border-b border-slate-100 flex justify-between items-center"><h3 class="font-extrabold text-xl text-slate-800" id="selector-title">명단 선택</h3><span id="selector-count" class="text-xs font-extrabold bg-indigo-100 text-indigo-600 px-3 py-1.5 rounded-full shadow-inner">0명 선택됨</span></div><div class="px-4 py-2 bg-slate-50 border-b border-slate-200"><input type="text" id="selector-search" placeholder="🔍 이름 검색 (터치하여 입력)" class="w-full bg-white border border-slate-200 p-2.5 rounded-xl text-sm outline-none font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 shadow-sm" oninput="filterSelector(this.value)"></div><div class="p-4 flex-1 overflow-y-auto bg-slate-50/50"><p id="selector-empty-msg" class="hidden text-sm text-slate-400 text-center py-10 font-medium">선택 가능한 회원이 없습니다.</p><div id="selector-list" class="grid grid-cols-3 gap-2.5"></div></div><div class="p-4 border-t border-slate-100 bg-white flex gap-3 pb-6"><button onclick="closeSelector()" class="flex-1 bg-slate-100 text-slate-600 py-4 rounded-xl font-bold btn-press">취소</button><button onclick="confirmSelector()" id="btn-selector-confirm" class="flex-[2] bg-indigo-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-indigo-200 btn-press text-lg">선택 완료</button></div></div>
+    </div>
+
+    <div id="winner-selector-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex justify-center items-center p-4 animate-fade-in" onclick="if(event.target === this) closeWinnerSelector()">
+        <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-100 bg-indigo-50 flex justify-between items-center">
+                <h3 class="font-extrabold text-lg text-indigo-800">⚔️ 승자 선택</h3>
+                <button onclick="closeWinnerSelector()" class="text-slate-400 hover:text-slate-600 text-2xl font-bold btn-press">&times;</button>
+            </div>
+            <div class="p-6 bg-slate-50">
+                <p class="text-center text-xs text-slate-500 mb-4 font-medium">다음 라운드로 진출할 승자를 터치하세요.</p>
+                <div class="flex flex-col gap-3">
+                    <button id="btn-winner-p1" class="w-full bg-white text-indigo-700 py-4 rounded-xl font-black text-lg border-2 border-indigo-200 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-colors shadow-sm btn-press"></button>
+                    <div class="text-center text-slate-300 font-extrabold italic">VS</div>
+                    <button id="btn-winner-p2" class="w-full bg-white text-rose-700 py-4 rounded-xl font-black text-lg border-2 border-rose-200 hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-colors shadow-sm btn-press"></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="fixed bottom-0 w-full border-t border-slate-200/50 rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.08)] glass-panel z-50 px-3 py-2 pb-5 flex justify-between items-center text-[10px] text-slate-400 font-medium no-print transition-all duration-300 max-w-md mx-auto left-0 right-0" id="bottom-tab-bar">
+        <button onclick="switchTab('ranking')" id="btn-ranking" class="tab-item flex-1 flex flex-col items-center justify-center py-2 relative tab-active btn-press"><span class="tab-icon">🏆</span><span class="mt-1">순위</span></button>
+        <button onclick="switchTab('history')" id="btn-history" class="tab-item flex-1 flex flex-col items-center justify-center py-2 relative btn-press"><span class="tab-icon">📅</span><span class="mt-1">기록</span></button>
+        <button onclick="switchTab('operation')" id="btn-operation" class="tab-item flex-1 flex flex-col items-center justify-center py-2 relative admin-only btn-press"><span class="tab-icon">🎮</span><span class="mt-1">운영</span></button>
+        <button onclick="switchTab('input')" id="btn-input" class="tab-item flex-1 flex-col items-center justify-center py-2 relative admin-only btn-press"><span class="tab-icon">📝</span><span class="mt-1">입력</span></button>
+        <button onclick="switchTab('member')" id="btn-member" class="tab-item flex-1 flex-col items-center justify-center py-2 relative admin-only btn-press"><span class="tab-icon">👥</span><span class="mt-1">회원</span></button>
+        <button onclick="switchTab('setting')" id="btn-setting" class="tab-item flex-1 flex-col items-center justify-center py-2 relative admin-only btn-press"><span class="tab-icon">⚙️</span><span class="mt-1">설정</span></button>
+    </div>
+
+    <script>
+        // -------------------------------------------------------------
         // 🔴 Firebase 연결 설정
         // -------------------------------------------------------------
         const firebaseConfig = {
@@ -34,9 +378,11 @@
 
         let isAdmin = false; let editingMatchId = null; let editingMemberId = null; let currentPhotoBase64 = "";
         let defaultAppConfig = { password: "1156", defaultTab: "ranking", announcePrefix: "🏓 [ {date} {type} 결과 ]\n\n", announceSuffix: "\n모두 수고하셨습니다! 다음 모임에서 뵙겠습니다. 👏", pastSeasons: [] };
+        // 수정됨: db3 변수 추가
         let defaultScoreRules = { attend: 3.0, sincerity: 0.5, lg1: 2.5, lg2: 2.0, lg3: 1.5, tm1: 2.5, tm2: 2.0, tm3: 1.5, tn1: 2.5, tn2: 2.0, tn3: 1.5, db1: 2.0, db2: 1.5, db3: 1.0, ev1: 2.0 };
         let appConfig = {...defaultAppConfig}; let scoreRules = {...defaultScoreRules}; let members = []; let matchHistory = []; let nextMemberId = 1; let nextMatchId = 1; 
         
+        // 수정됨: db3 변수 추가
         let formState = { attend: [], lazy: [], lg1: [], lg2: [], lg3: [], tm1: [], tm2: [], tm3: [], tn1: [], tn2: [], tn3: [], db1: [], db2: [], db3: [], ev1: [], opAttend: [] };
         let currentSelectorTarget = ''; let tempSelectorList = []; let isSinglePickMode = false;
         window.leaguePlayers = {}; 
@@ -51,23 +397,15 @@
         function restoreAdminState() { if (sessionStorage.getItem('isAdminLoggedIn') === 'true') { isAdmin = true; document.getElementById('app-body').classList.add('admin-mode-active'); document.getElementById('btn-admin-lock').innerText = "🔓"; } applyViewMode(); }
         restoreAdminState();
 
-        // 🔄 [수정됨]: 데이터 마이그레이션 (scoreRules.db3 누락 시 강제 1.0 주입)
+        // 수정됨: applyParsedData에 db3 추가
         function applyParsedData(parsed) {
             members = parsed.members || []; 
             matchHistory = (parsed.matchHistory || []).map(m => ({...m, attend: m.attend||[], lazy: m.lazy||[], lg1: m.lg1||[], lg2: m.lg2||[], lg3: m.lg3||[], tm1: m.tm1||[], tm2: m.tm2||[], tm3: m.tm3||[], tn1: m.tn1||[], tn2: m.tn2||[], tn3: m.tn3||[], db1: m.db1||[], db2: m.db2||[], db3: m.db3||[], ev1: m.ev1||[] }));
             appConfig = parsed.appConfig || {...defaultAppConfig}; 
             if (!appConfig.pastSeasons) appConfig.pastSeasons = []; 
-            scoreRules = parsed.scoreRules || {...defaultScoreRules}; 
-            
-            // 🚨 핵심 수정: 과거 데이터에 db3가 없을 경우 강제 주입하여 NaN 원천 차단
-            if (typeof scoreRules.db3 === 'undefined') {
-                scoreRules.db3 = 1.0;
-            }
-
-            nextMemberId = parsed.nextMemberId || 1; nextMatchId = parsed.nextMatchId || 1;
+            scoreRules = parsed.scoreRules || {...defaultScoreRules}; nextMemberId = parsed.nextMemberId || 1; nextMatchId = parsed.nextMatchId || 1;
             renderAll(); switchTab(appConfig.defaultTab); if (isAdmin) loadSettingsUI();
         }
-
         function loadLocalFallback() { try { const localData = localStorage.getItem('pingpongLocalData'); if(localData) { applyParsedData(JSON.parse(localData)); } else { injectSampleData(); } } catch(e) { injectSampleData(); } }
         function loadDataFromStorage() { if(isFirebaseActive && db) { db.collection("tableTennis").doc("leagueData").get().then((doc) => { if (doc.exists) applyParsedData(doc.data()); else loadLocalFallback(); }).catch((error) => { loadLocalFallback(); }); } else { loadLocalFallback(); } }
         function saveDataToStorage() { 
@@ -862,7 +1200,8 @@
             }
 
             let excludedNames = []; const prefix = target.substring(0, 2);
-            if (['lg', 'tm', 'tn', 'db'].includes(prefix)) { ['1', '2', '3'].forEach(num => { if (prefix + num !== target && formState[prefix + num]) excludedNames.push(...formState[prefix + num]); }); }
+            // 수정됨: db도 1, 2, 3까지 검사하도록 반영
+            if (['lg', 'tm', 'tn'].includes(prefix)) { ['1', '2', '3'].forEach(num => { if (prefix + num !== target && formState[prefix + num]) excludedNames.push(...formState[prefix + num]); }); } else if (prefix === 'db') { ['1', '2', '3'].forEach(num => { if (prefix + num !== target && formState[prefix + num]) excludedNames.push(...formState[prefix + num]); }); }
             candidates = candidates.filter(m => !excludedNames.includes(m.name) && !extraExcludedNames.includes(m.name));
             
             const listEl = document.getElementById('selector-list'); const emptyMsg = document.getElementById('selector-empty-msg'); listEl.innerHTML = '';
@@ -886,7 +1225,7 @@
                 } 
             } 
             updateFormUI(); 
-            if(currentSelectorTarget === 'opAttend') generateGroupSizeInputs(); 
+            if(currentSelectorTarget === 'opAttend') generateGroupSizeInputs(); // 조 크기 자동 세팅 연동
             closeSelector(); 
         }
         function initFormState() { for(let key in formState) if(key !== 'opAttend') formState[key] = []; updateFormUI(); }
@@ -960,6 +1299,7 @@
             if (infoRow.classList.contains('hidden')) { infoRow.classList.remove('hidden'); } else { infoRow.classList.add('hidden'); } 
         }
 
+        // 추가됨: 누락되어 있던 개인 기록 열람 로직(순위 탭에서 터치 시)
         function toggleMemberDetail(id) {
             const detailRow = document.getElementById(`detail-row-${id}`);
             const contentTd = document.getElementById(`detail-content-${id}`);
@@ -995,7 +1335,7 @@
                 checkWin(match.tn3, '토너 3등', scoreRules.tn3);
                 checkWin(match.db1, '복식 1등', scoreRules.db1);
                 checkWin(match.db2, '복식 2등', scoreRules.db2);
-                checkWin(match.db3, '복식 3등', scoreRules.db3);
+                checkWin(match.db3, '복식 3등', scoreRules.db3); // 복식 3위 로직
                 checkWin(match.ev1, '이벤트 우승', scoreRules.ev1);
                 
                 let attendStr = isLazy ? `기본참석(+${scoreRules.attend})` : `기본+성실(+${scoreRules.attend + scoreRules.sincerity})`;
@@ -1049,6 +1389,7 @@
         function editMatch(id) { const match = matchHistory.find(m => m.id === id); if(!match) return; editingMatchId = id; switchTab('input'); document.getElementById('input-form-title').innerText = "✏️ 모임 정보 수정"; document.getElementById('match-date').value = match.date; document.getElementById('match-type').value = match.type; for(let key in formState) { formState[key] = match[key] ? [...match[key]] : []; } updateFormUI(); openInputStep2(); }
         function deleteMatch(id) { if(confirm("이 경기 기록을 삭제하시겠습니까?\n이 경기로 얻은 점수들이 회원들의 총점에서 모두 차감됩니다.")) { matchHistory = matchHistory.filter(m => m.id !== id); renderAll(); saveDataToStorage(); alert('기록이 삭제되었습니다.'); } }
         
+        // 수정됨: 카톡 공지 내용에 복식 3위 추가
         function openAnnouncement(id) { 
             const match = matchHistory.find(m => m.id === id); 
             if(!match) return; 
@@ -1062,7 +1403,7 @@
             addResult("개인전 1위", match.lg1); addResult("개인전 2위", match.lg2); addResult("개인전 3위", match.lg3); 
             addResult("단체전 1위", match.tm1); addResult("단체전 2위", match.tm2); addResult("단체전 3위", match.tm3); 
             addResult("토너먼트 1위", match.tn1); addResult("토너먼트 2위", match.tn2); addResult("토너먼트 3위", match.tn3); 
-            addResult("복식 1위", match.db1); addResult("복식 2위", match.db2); addResult("복식 3위", match.db3); 
+            addResult("복식 1위", match.db1); addResult("복식 2위", match.db2); addResult("복식 3위", match.db3); // 추가됨
             addResult("이벤트 우승", match.ev1); 
             if(hasResults) { text += resultText; } 
             text += '\n' + appConfig.announceSuffix; 
@@ -1093,7 +1434,7 @@
                     seasonName: seasonName,
                     date: new Date().toISOString().substring(0, 10),
                     members: finalMembers,
-                    matchHistory: JSON.parse(JSON.stringify(matchHistory)) 
+                    matchHistory: JSON.parse(JSON.stringify(matchHistory)) // 경기 기록 100% 딥카피 백업
                 });
 
                 matchHistory = []; 
@@ -1135,6 +1476,7 @@
             }
         }
 
+        // 수정됨: 기록 탭 뱃지에 복식 3위 적용
         function renderHistory() { 
             const selector = document.getElementById('history-season-selector');
             const mode = selector ? selector.value : "current";
@@ -1165,7 +1507,7 @@
                     if(arr && arr.length > 0) { winHtml += `<div class="flex items-start gap-1.5 mb-1.5"><span class="shrink-0 text-[10px] font-extrabold text-white ${bgClass} px-1.5 py-0.5 rounded shadow-sm text-center">${label}</span> <span class="text-slate-700 font-bold text-[12px] break-keep leading-tight pt-0.5">${arr.map(escapeHTML).join(', ')}</span></div>`; } 
                 }; 
                 addBadge(match.lg1, '리그1위', 'bg-indigo-600'); addBadge(match.lg2, '리그2위', 'bg-indigo-500'); addBadge(match.lg3, '리그3위', 'bg-indigo-400'); addBadge(match.tm1, '단체1위', 'bg-teal-600'); addBadge(match.tm2, '단체2위', 'bg-teal-500'); addBadge(match.tm3, '단체3위', 'bg-teal-400'); addBadge(match.tn1, '토너1위', 'bg-violet-600'); addBadge(match.tn2, '토너2위', 'bg-violet-500'); addBadge(match.tn3, '토너3위', 'bg-violet-400'); 
-                addBadge(match.db1, '복식1위', 'bg-pink-600'); addBadge(match.db2, '복식2위', 'bg-pink-500'); addBadge(match.db3, '복식3위', 'bg-pink-400'); 
+                addBadge(match.db1, '복식1위', 'bg-pink-600'); addBadge(match.db2, '복식2위', 'bg-pink-500'); addBadge(match.db3, '복식3위', 'bg-pink-400'); // 추가됨
                 addBadge(match.ev1, '이벤트', 'bg-amber-500'); 
                 
                 if(!winHtml) winHtml = '<div class="text-[11px] text-slate-400 font-medium py-1">입상 기록 없음</div>'; 
@@ -1202,7 +1544,7 @@
             } catch(e) { alert("다운로드 실패"); } 
         }
         
-        // 🔄 [수정됨]: 점수 산출 시 NaN 전파 방어(Defensive Programming) 도입
+        // 수정됨: 점수 계산에 복식 3위 합산 추가
         function recalculateAllScores() { 
             members.forEach(m => {
                 m.score = 0;
@@ -1217,19 +1559,10 @@
             
             sortedMatches.forEach((match, index) => { 
                 const addScoreAndCount = (nameArr, points, place) => {
-                    // 🚨 핵심 수정: undefined 또는 숫자가 아닌 값이 넘어오면 무조건 0으로 형변환하여 연산 오염 방지
-                    const safePoints = parseFloat(points) || 0;
-
                     (nameArr || []).forEach(name => {
                         const m = members.find(x => x.name === name);
                         if(m && m.type === '연회원') {
-                            m.score += safePoints;
-                            
-                            // (추가 요청 반영): stats가 존재할 경우 방어적 더하기
-                            if (m.stats !== undefined) {
-                                m.stats.winScore = (parseFloat(m.stats.winScore) || 0) + safePoints;
-                            }
-
+                            m.score += points;
                             if(place === 1) m.win1Count = (m.win1Count || 0) + 1;
                             if(place === 2) m.win2Count = (m.win2Count || 0) + 1;
                             if(place === 3) m.win3Count = (m.win3Count || 0) + 1;
@@ -1240,12 +1573,10 @@
                 (match.attend || []).forEach(name => { 
                     const m = members.find(x => x.name === name); 
                     if(m && m.type === '연회원') { 
-                        // 기본 참석 점수도 NaN 방어
-                        m.score += parseFloat(scoreRules.attend) || 0; 
+                        m.score += scoreRules.attend; 
                         m.attendCount = (m.attendCount || 0) + 1;
                         if(!(match.lazy || []).includes(name)) {
-                            // 성실 점수도 NaN 방어
-                            m.score += parseFloat(scoreRules.sincerity) || 0; 
+                            m.score += scoreRules.sincerity; 
                             m.sincereCount = (m.sincereCount || 0) + 1;
                         }
                     } 
@@ -1261,7 +1592,7 @@
                 addScoreAndCount(match.tn3, scoreRules.tn3, 3); 
                 addScoreAndCount(match.db1, scoreRules.db1, 1); 
                 addScoreAndCount(match.db2, scoreRules.db2, 2); 
-                addScoreAndCount(match.db3, scoreRules.db3, 3); // 정상 작동
+                addScoreAndCount(match.db3, scoreRules.db3, 3); // 추가됨
                 addScoreAndCount(match.ev1, scoreRules.ev1, 1); 
                 
                 if (index === sortedMatches.length - 2) { 
@@ -1356,3 +1687,6 @@
         // 초기화
         generateGroupSizeInputs(); 
         loadDataFromStorage();
+    </script>
+</body>
+</html>
