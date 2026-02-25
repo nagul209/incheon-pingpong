@@ -397,13 +397,19 @@
         function restoreAdminState() { if (sessionStorage.getItem('isAdminLoggedIn') === 'true') { isAdmin = true; document.getElementById('app-body').classList.add('admin-mode-active'); document.getElementById('btn-admin-lock').innerText = "🔓"; } applyViewMode(); }
         restoreAdminState();
 
-        // 수정됨: applyParsedData에 db3 추가
+// 1. 데이터 로딩 시 누락된 설정값 자동 복구 (Migration 로직) 및 히스토리 안전성 보장
         function applyParsedData(parsed) {
             members = parsed.members || []; 
             matchHistory = (parsed.matchHistory || []).map(m => ({...m, attend: m.attend||[], lazy: m.lazy||[], lg1: m.lg1||[], lg2: m.lg2||[], lg3: m.lg3||[], tm1: m.tm1||[], tm2: m.tm2||[], tm3: m.tm3||[], tn1: m.tn1||[], tn2: m.tn2||[], tn3: m.tn3||[], db1: m.db1||[], db2: m.db2||[], db3: m.db3||[], ev1: m.ev1||[] }));
             appConfig = parsed.appConfig || {...defaultAppConfig}; 
             if (!appConfig.pastSeasons) appConfig.pastSeasons = []; 
-            scoreRules = parsed.scoreRules || {...defaultScoreRules}; nextMemberId = parsed.nextMemberId || 1; nextMatchId = parsed.nextMatchId || 1;
+            
+            // 기존 객체와 defaultScoreRules를 병합하여 누락된 키 방어 (Deep Merge)
+            scoreRules = { ...defaultScoreRules, ...(parsed.scoreRules || {}) };
+            // 혹시라도 db3가 누락되었을 경우를 대비해 Fallback 값을 명시적으로 보장
+            scoreRules.db3 = scoreRules.db3 ?? 1.0; 
+
+            nextMemberId = parsed.nextMemberId || 1; nextMatchId = parsed.nextMatchId || 1;
             renderAll(); switchTab(appConfig.defaultTab); if (isAdmin) loadSettingsUI();
         }
         function loadLocalFallback() { try { const localData = localStorage.getItem('pingpongLocalData'); if(localData) { applyParsedData(JSON.parse(localData)); } else { injectSampleData(); } } catch(e) { injectSampleData(); } }
@@ -1544,7 +1550,7 @@
             } catch(e) { alert("다운로드 실패"); } 
         }
         
-        // 수정됨: 점수 계산에 복식 3위 합산 추가
+// 2. 점수 합산 로직(recalculateAllScores)의 철저한 방어 코드
         function recalculateAllScores() { 
             members.forEach(m => {
                 m.score = 0;
@@ -1559,10 +1565,17 @@
             
             sortedMatches.forEach((match, index) => { 
                 const addScoreAndCount = (nameArr, points, place) => {
+                    // 전달받은 점수가 유효한 숫자인지 체크하고 아닐 경우 0으로 Fallback
+                    let validPoints = Number(points) || 0;
+
                     (nameArr || []).forEach(name => {
                         const m = members.find(x => x.name === name);
                         if(m && m.type === '연회원') {
-                            m.score += points;
+                            m.score += validPoints;
+                            
+                            // 최후의 안전장치: 혹시라도 m.score 연산 결과가 NaN이 될 경우 즉시 0으로 리셋
+                            if (isNaN(m.score)) m.score = 0;
+                            
                             if(place === 1) m.win1Count = (m.win1Count || 0) + 1;
                             if(place === 2) m.win2Count = (m.win2Count || 0) + 1;
                             if(place === 3) m.win3Count = (m.win3Count || 0) + 1;
@@ -1573,14 +1586,17 @@
                 (match.attend || []).forEach(name => { 
                     const m = members.find(x => x.name === name); 
                     if(m && m.type === '연회원') { 
-                        m.score += scoreRules.attend; 
+                        m.score += (Number(scoreRules.attend) || 0); 
+                        if (isNaN(m.score)) m.score = 0;
                         m.attendCount = (m.attendCount || 0) + 1;
                         if(!(match.lazy || []).includes(name)) {
-                            m.score += scoreRules.sincerity; 
+                            m.score += (Number(scoreRules.sincerity) || 0); 
+                            if (isNaN(m.score)) m.score = 0;
                             m.sincereCount = (m.sincereCount || 0) + 1;
                         }
                     } 
                 }); 
+                
                 addScoreAndCount(match.lg1, scoreRules.lg1, 1); 
                 addScoreAndCount(match.lg2, scoreRules.lg2, 2); 
                 addScoreAndCount(match.lg3, scoreRules.lg3, 3); 
@@ -1592,7 +1608,8 @@
                 addScoreAndCount(match.tn3, scoreRules.tn3, 3); 
                 addScoreAndCount(match.db1, scoreRules.db1, 1); 
                 addScoreAndCount(match.db2, scoreRules.db2, 2); 
-                addScoreAndCount(match.db3, scoreRules.db3, 3); // 추가됨
+                // 복식 3위를 더할 때 Fallback(1.0) 값을 명시하여 절대 undefined가 넘어가지 않게 방어
+                addScoreAndCount(match.db3, scoreRules.db3 ?? 1.0, 3); 
                 addScoreAndCount(match.ev1, scoreRules.ev1, 1); 
                 
                 if (index === sortedMatches.length - 2) { 
@@ -1690,3 +1707,4 @@
     </script>
 </body>
 </html>
+
