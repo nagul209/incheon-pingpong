@@ -92,12 +92,7 @@
                     📊 엑셀 저장
                 </button>
             </div>
-           <div class="mb-2 px-1 flex justify-between items-center">
-    <span id="ranking-base-date" class="text-[10px] text-slate-500 font-bold ml-1 tracking-tight"></span>
-    <span id="ranking-instruction" class="text-[11px] text-indigo-600 font-bold bg-white/80 backdrop-blur-sm px-2.5 py-1.5 rounded-lg border border-indigo-100 shadow-sm transition-all">👆 이름을 터치하면 상세기록</span>
-</div> 
-            <div class="mb-2 px-1 flex justify-between items-center">
-                <span id="ranking-base-date" class="text-[10px] text-slate-500 font-bold ml-1 tracking-tight"></span>
+            <div class="mb-2 px-1 text-right">
                 <span id="ranking-instruction" class="text-[11px] text-indigo-600 font-bold bg-white/80 backdrop-blur-sm px-2.5 py-1.5 rounded-lg border border-indigo-100 shadow-sm transition-all">👆 이름을 터치하면 상세기록</span>
             </div>
             
@@ -269,21 +264,8 @@
                     <label class="block text-[11px] font-extrabold text-emerald-100 mb-1.5">🗄️ 보관할 시즌 이름 (예: 25년 상반기 리그)</label>
                     <input type="text" id="cfg-season-name" class="w-full border border-emerald-400 bg-white/20 text-white placeholder-emerald-100/60 p-3 rounded-xl text-sm focus:ring-2 focus:ring-white transition font-bold outline-none" placeholder="시즌명을 입력하세요">
                 </div>
-                <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6">
-    <h2 class="font-extrabold text-lg text-slate-800 mb-4 flex items-center gap-2"><span>🗄️</span> 보관된 과거 시즌 관리</h2>
-    <div id="past-seasons-container" class="space-y-2">
-        </div>
-</div>
                 <button onclick="startNewSeason()" class="w-full bg-white text-emerald-700 py-3.5 rounded-xl font-extrabold shadow-md btn-press relative z-10">보관하고 새 시즌 시작하기</button>
             </div>
-            
-            <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6">
-                <h2 class="font-extrabold text-lg text-slate-800 mb-4 flex items-center gap-2"><span>🗄️</span> 보관된 과거 시즌 관리</h2>
-                <div id="past-seasons-container" class="space-y-2">
-                    </div>
-            </div>
-            <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6">
-                <h2 class="font-extrabold text-lg text-slate-800 mb-5 flex items-center gap-2"><span>🔢</span> 획득 점수 룰 설정</h2>
             
             <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6">
                 <h2 class="font-extrabold text-lg text-slate-800 mb-5 flex items-center gap-2"><span>🔢</span> 획득 점수 룰 설정</h2>
@@ -1447,75 +1429,41 @@
         // ==============================================================================
         // 🗄️ [시즌 아카이브] 새 시즌 시작 및 과거 데이터 열람 로직
         // ==============================================================================
-       function startNewSeason() { 
-            // ... (기존 startNewSeason 함수 내용) ...
+        function startNewSeason() { 
+            const seasonName = document.getElementById('cfg-season-name').value.trim();
+            if (!seasonName) { alert("보관할 시즌 이름을 입력해주세요."); return; }
+            
+            if(confirm(`현재 진행 중인 데이터를 '${seasonName}'(으)로 보관하고\n모든 점수와 기록을 0점으로 초기화하여 새 시즌을 시작하시겠습니까?`)) { 
+                let finalMembers = JSON.parse(JSON.stringify(members.filter(m => m.status !== 'inactive' && m.type === '연회원' && m.score > 0)));
+                
+                appConfig.pastSeasons.push({
+                    seasonName: seasonName,
+                    date: new Date().toISOString().substring(0, 10),
+                    members: finalMembers,
+                    matchHistory: JSON.parse(JSON.stringify(matchHistory)) // 경기 기록 100% 딥카피 백업
+                });
+
+                matchHistory = []; 
+                members.forEach(m => { 
+                    m.score = 0; m.prevRank = 1; m.currentRank = 1; 
+                    m.attendCount = 0; m.sincereCount = 0;
+                    m.win1Count = 0; m.win2Count = 0; m.win3Count = 0;
+                }); 
+                
+                document.getElementById('cfg-season-name').value = '';
+                
+                saveDataToStorage(); 
+                renderAll(); 
+                alert(`새 시즌이 시작되었습니다!\n과거 기록은 [순위] 및 [기록] 탭에서 '${seasonName}'(으)로 열람할 수 있습니다.`); 
                 switchTab('ranking'); 
             } 
         }
 
-        // ▼▼▼ 여기에 신규 추가: 과거 시즌 관리 (렌더링, 수정, 삭제) 코드를 통째로 붙여넣습니다 ▼▼▼
-        function renderPastSeasonsList() {
-            const container = document.getElementById('past-seasons-container');
-            if (!container) return;
-            
-            if (!appConfig.pastSeasons || appConfig.pastSeasons.length === 0) {
-                container.innerHTML = '<p class="text-[12px] text-slate-400 font-medium text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">보관된 과거 시즌이 없습니다.</p>';
-                return;
-            }
-            
-            let html = '';
-            appConfig.pastSeasons.forEach((season, index) => {
-                html += `
-                <div class="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-200 shadow-sm mb-2">
-                    <div>
-                        <span class="font-extrabold text-slate-700 text-sm">${escapeHTML(season.seasonName)}</span>
-                        <span class="text-[10px] text-slate-400 ml-2 font-bold">${season.date || ''}</span>
-                    </div>
-                    <div class="flex gap-1.5 shrink-0">
-                        <button onclick="editPastSeasonName(${index})" class="text-[11px] bg-white text-indigo-600 px-2.5 py-1.5 rounded-lg font-bold border border-slate-200 hover:bg-indigo-50 shadow-sm transition btn-press">✏️ 이름 수정</button>
-                        <button onclick="deletePastSeason(${index})" class="text-[11px] bg-red-50 text-red-600 px-2.5 py-1.5 rounded-lg font-bold border border-red-100 hover:bg-red-100 shadow-sm transition btn-press">❌ 삭제</button>
-                    </div>
-                </div>
-                `;
-            });
-            container.innerHTML = html;
-        }
-
-        function editPastSeasonName(index) {
-            if (!appConfig.pastSeasons || !appConfig.pastSeasons[index]) return;
-            
-            const currentName = appConfig.pastSeasons[index].seasonName;
-            const newName = prompt("새로운 시즌 이름을 입력하세요:", currentName);
-            
-            if (newName !== null && newName.trim() !== "") {
-                appConfig.pastSeasons[index].seasonName = newName.trim();
-                saveDataToStorage();
-                
-                // 데이터 변경 후 UI 동기화
-                renderPastSeasonsList();
-                renderSeasonDropdown();
-                renderRanking();
-                renderHistory();
-                alert("시즌 이름이 변경되었습니다.");
-            }
-        }
-
-        function deletePastSeason(index) {
-            if (confirm("이 과거 시즌을 완전히 삭제하시겠습니까? (복구 불가)")) {
-                appConfig.pastSeasons.splice(index, 1);
-                saveDataToStorage();
-                renderPastSeasonsList();
-                renderSeasonDropdown();
-                renderRanking();
-                renderHistory();
-            }
-        }
-        // ▲▲▲ 신규 추가 끝 ▲▲▲
-
         function renderSeasonDropdown() {
             const rSelector = document.getElementById('season-selector');
             const hSelector = document.getElementById('history-season-selector');
-            // ... (기존 renderSeasonDropdown 함수 내용 이어짐) ...
+            
+            let html = `<option value="current">📍 현재 진행중인 시즌</option>`;
             if (appConfig.pastSeasons && appConfig.pastSeasons.length > 0) {
                 [...appConfig.pastSeasons].reverse().forEach((season, index) => {
                     let originalIndex = appConfig.pastSeasons.length - 1 - index;
@@ -1688,42 +1636,24 @@
             const mode = selector ? selector.value : "current";
             const tbody = document.getElementById('ranking-table-body'); 
             const instruction = document.getElementById('ranking-instruction');
-            const baseDateEl = document.getElementById('ranking-base-date'); // 신규: 기준일 요소 가져오기
             
             tbody.innerHTML = ''; 
             
             let displayMembers = [];
-            let displayHistory = []; // 신규: 기준일 계산을 위해 경기 기록을 담을 배열
             let isPastSeason = mode !== "current";
 
             if (isPastSeason) {
                 const seasonIndex = parseInt(mode);
                 if (appConfig.pastSeasons && appConfig.pastSeasons[seasonIndex]) {
                     displayMembers = appConfig.pastSeasons[seasonIndex].members;
-                    displayHistory = appConfig.pastSeasons[seasonIndex].matchHistory || []; // 과거 경기 기록 할당
                 }
                 instruction.innerText = "🔒 과거 시즌 (조회 전용)";
                 instruction.className = "text-[11px] text-slate-500 font-bold bg-slate-100 backdrop-blur-sm px-2.5 py-1.5 rounded-lg border border-slate-200 shadow-sm";
             } else {
                 displayMembers = members.filter(m => m.status !== 'inactive' && m.type === '연회원' && m.score > 0);
-                displayHistory = matchHistory || []; // 현재 경기 기록 할당
                 instruction.innerText = "👆 이름을 터치하면 상세기록";
                 instruction.className = "text-[11px] text-indigo-600 font-bold bg-white/80 backdrop-blur-sm px-2.5 py-1.5 rounded-lg border border-indigo-100 shadow-sm transition-all";
             }
-
-            // [신규 로직] 기준일 동적 추출 및 화면 표시
-            let baseDateText = "기준일(기록 없음)";
-            if (displayHistory && displayHistory.length > 0) {
-                let maxDate = displayHistory.reduce((max, match) => (match.date && match.date > max) ? match.date : max, displayHistory[0]?.date || "");
-                if (maxDate) {
-                    let parts = maxDate.split('-');
-                    if (parts.length === 3) {
-                        // 월, 일 앞의 '0' 제거 (예: 2026-01-05 -> 2026.1.5.)
-                        baseDateText = `기준일(${parts[0]}.${parseInt(parts[1], 10)}.${parseInt(parts[2], 10)}.)`;
-                    }
-                }
-            }
-            if (baseDateEl) baseDateEl.innerText = baseDateText;
 
             if(displayMembers.length === 0) { 
                 tbody.innerHTML = `<tr><td colspan="8" class="py-16 text-center"><div class="text-5xl mb-4 drop-shadow-sm">📭</div><p class="font-extrabold text-slate-700 text-base">점수가 등록된 회원이 없습니다</p><p class="text-xs mt-2 text-slate-400">경기를 진행하면 순위가 나타납니다.</p></td></tr>`; 
@@ -1762,13 +1692,13 @@
                 }
             }); 
         }
-      function renderAll() { 
+
+        function renderAll() { 
             renderSeasonDropdown(); 
             recalculateAllScores(); 
             renderRanking(); 
             renderHistory(); 
             renderMembersList(); 
-            renderPastSeasonsList(); // 신규: 설정 탭의 과거 시즌 목록 렌더링 호출
         }
         
         // 초기화
@@ -1777,5 +1707,3 @@
     </script>
 </body>
 </html>
-
-
