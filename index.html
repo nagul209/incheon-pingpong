@@ -1580,49 +1580,60 @@ function renderPastSeasonList() {
             }
         }
         // 수정됨: 기록 탭 뱃지에 복식 3위 적용
-        function renderHistory() { 
-            const selector = document.getElementById('history-season-selector');
-            const mode = selector ? selector.value : "current";
-            const list = document.getElementById('match-history-list'); 
-            const adminTh = document.getElementById('history-admin-th');
-            list.innerHTML = ''; 
+       function renderHistory() { 
+    const selector = document.getElementById('history-season-selector');
+    const mode = selector ? selector.value : "current";
+    const list = document.getElementById('match-history-list'); 
+    const adminTh = document.getElementById('history-admin-th');
+    list.innerHTML = ''; 
 
-            let displayHistory = [];
-            let isPastSeason = mode !== "current";
+    let displayHistory = [];
+    let isPastSeason = mode !== "current";
 
-            if (isPastSeason) {
-                const seasonIndex = parseInt(mode);
-                displayHistory = appConfig.pastSeasons[seasonIndex].matchHistory || [];
-                if(adminTh) adminTh.classList.add('hidden');
-            } else {
-                displayHistory = matchHistory;
-                if(adminTh) adminTh.classList.remove('hidden');
-            }
+    if (isPastSeason) {
+        const seasonIndex = parseInt(mode);
+        displayHistory = appConfig.pastSeasons[seasonIndex].matchHistory || [];
+        if(adminTh) adminTh.classList.add('hidden');
+    } else {
+        displayHistory = matchHistory;
+        if(adminTh) adminTh.classList.remove('hidden');
+    }
 
-            if(displayHistory.length === 0) { 
-                list.innerHTML = `<tr><td colspan="3" class="text-center py-16"><div class="text-5xl mb-4 drop-shadow-sm opacity-80">🏓</div><p class="font-extrabold text-slate-700 text-base">경기 기록이 없습니다</p></td></tr>`; 
-                return; 
-            } 
-            
-            [...displayHistory].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)).forEach(match => { 
-                let winHtml = ''; 
-                const addBadge = (arr, label, bgClass) => { 
-                    if(arr && arr.length > 0) { winHtml += `<div class="flex items-start gap-1.5 mb-1.5"><span class="shrink-0 text-[10px] font-extrabold text-white ${bgClass} px-1.5 py-0.5 rounded shadow-sm text-center">${label}</span> <span class="text-slate-700 font-bold text-[12px] break-keep leading-tight pt-0.5">${arr.map(escapeHTML).join(', ')}</span></div>`; } 
-                }; 
-                addBadge(match.lg1, '리그1위', 'bg-indigo-600'); addBadge(match.lg2, '리그2위', 'bg-indigo-500'); addBadge(match.lg3, '리그3위', 'bg-indigo-400'); addBadge(match.tm1, '단체1위', 'bg-teal-600'); addBadge(match.tm2, '단체2위', 'bg-teal-500'); addBadge(match.tm3, '단체3위', 'bg-teal-400'); addBadge(match.tn1, '토너1위', 'bg-violet-600'); addBadge(match.tn2, '토너2위', 'bg-violet-500'); addBadge(match.tn3, '토너3위', 'bg-violet-400'); 
-                addBadge(match.db1, '복식1위', 'bg-pink-600'); addBadge(match.db2, '복식2위', 'bg-pink-500'); addBadge(match.db3, '복식3위', 'bg-pink-400'); // 추가됨
-                addBadge(match.ev1, '이벤트', 'bg-amber-500'); 
-                
-                if(!winHtml) winHtml = '<div class="text-[11px] text-slate-400 font-medium py-1">입상 기록 없음</div>'; 
-                let lazyHtml = ''; 
-                if(match.lazy && match.lazy.length > 0) { lazyHtml = `<div class="mt-2 pt-2 border-t border-slate-200/60 flex items-start gap-1"><span class="shrink-0 text-[10px] font-extrabold text-red-500 mr-0.5 mt-0.5">🚨 불성실</span><span class="text-[11px] text-slate-600 font-bold leading-tight pt-0.5">${match.lazy.map(escapeHTML).join(', ')}</span></div>`; } 
-                
-                const adminButtons = isPastSeason ? '' : `<td class="px-2 py-4 admin-only-table-cell align-middle w-14"><div class="flex flex-col gap-1.5 items-center"><button onclick="openAnnouncement(${match.id})" class="w-full px-2 py-1.5 bg-indigo-50 text-indigo-700 text-[10px] rounded-lg border border-indigo-100 hover:bg-indigo-100 font-extrabold shadow-sm btn-press">공지</button><button onclick="editMatch(${match.id})" class="w-full px-2 py-1.5 bg-white text-slate-600 text-[10px] rounded-lg border border-slate-200 hover:bg-slate-50 font-extrabold shadow-sm btn-press">수정</button><button onclick="deleteMatch(${match.id})" class="w-full px-2 py-1.5 bg-red-50 text-red-600 text-[10px] rounded-lg border border-red-100 hover:bg-red-100 font-extrabold shadow-sm btn-press">삭제</button></div></td>`; 
-                let displayDate = match.date ? escapeHTML(match.date.substring(5)) : '미정'; 
-                
-                list.innerHTML += `<tr class="bg-white hover:bg-slate-50 border-b border-slate-100 transition-colors"><td class="px-2 py-4 text-center align-top whitespace-nowrap pt-5"><div class="font-extrabold text-slate-800 text-[13px]">${displayDate}</div><div class="text-[10px] mt-1.5"><span class="bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200 font-bold">${escapeHTML(match.type) || ''}</span></div></td><td class="px-2 py-4 text-left align-top"><div class="bg-slate-50 p-3 rounded-xl border border-slate-100 mb-2 shadow-inner"><div class="flex justify-between items-center mb-1.5"><span class="text-[10px] font-black text-slate-500">✅ 참석자 명단</span><span class="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-bold">${(match.attend || []).length}명</span></div><div class="text-[11px] text-slate-700 font-medium leading-relaxed break-keep">${(match.attend || []).map(escapeHTML).join(', ')}</div>${lazyHtml}</div><div class="bg-indigo-50/40 p-3 rounded-xl border border-indigo-50"><div class="text-[10px] font-black text-indigo-800 mb-2.5">🏆 입상 내역</div><div class="flex flex-col">${winHtml}</div></div></td>${adminButtons}</tr>`; 
-            }); 
-        }
+    if(displayHistory.length === 0) { 
+        list.innerHTML = `<tr><td colspan="3" class="text-center py-16"><div class="text-5xl mb-4 drop-shadow-sm opacity-80">🏓</div><p class="font-extrabold text-slate-700 text-base">경기 기록이 없습니다</p></td></tr>`; 
+        return; 
+    } 
+    
+    // 1. 이름을 변환해주는 헬퍼 함수 정의 (초청 회원이면 괄호 추가)
+    const formatName = (name) => {
+        const m = members.find(x => x.name === name);
+        let safeName = escapeHTML(name);
+        if (m && m.affiliation === '초청') return `(${safeName})`;
+        return safeName;
+    };
+    
+    [...displayHistory].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)).forEach(match => { 
+        let winHtml = ''; 
+        // 2. addBadge 내부에 escapeHTML 대신 formatName 맵핑 적용
+        const addBadge = (arr, label, bgClass) => { 
+            if(arr && arr.length > 0) { winHtml += `<div class="flex items-start gap-1.5 mb-1.5"><span class="shrink-0 text-[10px] font-extrabold text-white ${bgClass} px-1.5 py-0.5 rounded shadow-sm text-center">${label}</span> <span class="text-slate-700 font-bold text-[12px] break-keep leading-tight pt-0.5">${arr.map(formatName).join(', ')}</span></div>`; } 
+        }; 
+        addBadge(match.lg1, '리그1위', 'bg-indigo-600'); addBadge(match.lg2, '리그2위', 'bg-indigo-500'); addBadge(match.lg3, '리그3위', 'bg-indigo-400'); addBadge(match.tm1, '단체1위', 'bg-teal-600'); addBadge(match.tm2, '단체2위', 'bg-teal-500'); addBadge(match.tm3, '단체3위', 'bg-teal-400'); addBadge(match.tn1, '토너1위', 'bg-violet-600'); addBadge(match.tn2, '토너2위', 'bg-violet-500'); addBadge(match.tn3, '토너3위', 'bg-violet-400'); 
+        addBadge(match.db1, '복식1위', 'bg-pink-600'); addBadge(match.db2, '복식2위', 'bg-pink-500'); addBadge(match.db3, '복식3위', 'bg-pink-400');
+        addBadge(match.ev1, '이벤트', 'bg-amber-500'); 
+        
+        if(!winHtml) winHtml = '<div class="text-[11px] text-slate-400 font-medium py-1">입상 기록 없음</div>'; 
+        let lazyHtml = ''; 
+        // 3. 불성실 명단 렌더링에 formatName 적용
+        if(match.lazy && match.lazy.length > 0) { lazyHtml = `<div class="mt-2 pt-2 border-t border-slate-200/60 flex items-start gap-1"><span class="shrink-0 text-[10px] font-extrabold text-red-500 mr-0.5 mt-0.5">🚨 불성실</span><span class="text-[11px] text-slate-600 font-bold leading-tight pt-0.5">${match.lazy.map(formatName).join(', ')}</span></div>`; } 
+        
+        const adminButtons = isPastSeason ? '' : `<td class="px-2 py-4 admin-only-table-cell align-middle w-14"><div class="flex flex-col gap-1.5 items-center"><button onclick="openAnnouncement(${match.id})" class="w-full px-2 py-1.5 bg-indigo-50 text-indigo-700 text-[10px] rounded-lg border border-indigo-100 hover:bg-indigo-100 font-extrabold shadow-sm btn-press">공지</button><button onclick="editMatch(${match.id})" class="w-full px-2 py-1.5 bg-white text-slate-600 text-[10px] rounded-lg border border-slate-200 hover:bg-slate-50 font-extrabold shadow-sm btn-press">수정</button><button onclick="deleteMatch(${match.id})" class="w-full px-2 py-1.5 bg-red-50 text-red-600 text-[10px] rounded-lg border border-red-100 hover:bg-red-100 font-extrabold shadow-sm btn-press">삭제</button></div></td>`; 
+        let displayDate = match.date ? escapeHTML(match.date.substring(5)) : '미정'; 
+        
+        // 4. 참석자 명단 렌더링에 formatName 적용
+        list.innerHTML += `<tr class="bg-white hover:bg-slate-50 border-b border-slate-100 transition-colors"><td class="px-2 py-4 text-center align-top whitespace-nowrap pt-5"><div class="font-extrabold text-slate-800 text-[13px]">${displayDate}</div><div class="text-[10px] mt-1.5"><span class="bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200 font-bold">${escapeHTML(match.type) || ''}</span></div></td><td class="px-2 py-4 text-left align-top"><div class="bg-slate-50 p-3 rounded-xl border border-slate-100 mb-2 shadow-inner"><div class="flex justify-between items-center mb-1.5"><span class="text-[10px] font-black text-slate-500">✅ 참석자 명단</span><span class="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-bold">${(match.attend || []).length}명</span></div><div class="text-[11px] text-slate-700 font-medium leading-relaxed break-keep">${(match.attend || []).map(formatName).join(', ')}</div>${lazyHtml}</div><div class="bg-indigo-50/40 p-3 rounded-xl border border-indigo-50"><div class="text-[10px] font-black text-indigo-800 mb-2.5">🏆 입상 내역</div><div class="flex flex-col">${winHtml}</div></div></td>${adminButtons}</tr>`; 
+    }); 
+}
 
         function downloadRankingExcel() { 
             try { 
@@ -1853,6 +1864,7 @@ function renderPastSeasonList() {
     </script>
 </body>
 </html>
+
 
 
 
