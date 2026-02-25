@@ -1762,11 +1762,23 @@ function renderPastSeasonList() {
     
     displayMembers.forEach((m, index) => { 
         let rankDisplay = m.currentRank; 
-        if (m.currentRank === 1) rankDisplay = `<div class="w-7 h-7 mx-auto bg-gradient-to-br from-yellow-300 to-yellow-500 text-white rounded-full flex items-center justify-center font-extrabold shadow-[0_2px_10px_rgba(234,179,8,0.4)]">1</div>`; 
-        else if (m.currentRank === 2) rankDisplay = `<div class="w-6 h-6 mx-auto bg-gradient-to-br from-slate-300 to-slate-400 text-white rounded-full flex items-center justify-center font-bold shadow-[0_2px_10px_rgba(148,163,184,0.4)]">2</div>`; 
-        else if (m.currentRank === 3) rankDisplay = `<div class="w-6 h-6 mx-auto bg-gradient-to-br from-orange-400 to-orange-600 text-white rounded-full flex items-center justify-center font-bold shadow-[0_2px_10px_rgba(234,88,12,0.4)]">3</div>`; 
-        else if(index > 0 && displayMembers[index-1].currentRank === m.currentRank) rankDisplay = `<span class="text-slate-300 font-medium">-</span>`; 
-        else rankDisplay = `<span class="text-slate-500 font-extrabold">${m.currentRank}</span>`; 
+        
+        if (m.currentRank === 1) {
+            rankDisplay = `<div class="w-7 h-7 mx-auto bg-gradient-to-br from-yellow-300 to-yellow-500 text-white rounded-full flex items-center justify-center font-extrabold shadow-[0_2px_10px_rgba(234,179,8,0.4)]">1</div>`; 
+        } else if (m.currentRank === 2) {
+            rankDisplay = `<div class="w-6 h-6 mx-auto bg-gradient-to-br from-slate-300 to-slate-400 text-white rounded-full flex items-center justify-center font-bold shadow-[0_2px_10px_rgba(148,163,184,0.4)]">2</div>`; 
+        } else if (m.currentRank === 3) {
+            rankDisplay = `<div class="w-6 h-6 mx-auto bg-gradient-to-br from-orange-400 to-orange-600 text-white rounded-full flex items-center justify-center font-bold shadow-[0_2px_10px_rgba(234,88,12,0.4)]">3</div>`; 
+        } else if (index > 0 && displayMembers[index-1].currentRank === m.currentRank) {
+            // 동률(Tie) 처리: 이전 회원과 순위가 같으면 '-' 표시 (4~10위 구간 동률 시에도 우선 적용)
+            rankDisplay = `<span class="text-slate-300 font-medium">-</span>`; 
+        } else if (m.currentRank >= 4 && m.currentRank <= 10) {
+            // 4~10위: Top 10 전용 둥근 네모 뱃지 스타일
+            rankDisplay = `<div class="w-6 h-6 mx-auto bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center font-bold shadow-sm">${m.currentRank}</div>`;
+        } else {
+            // 11위 이하: 일반 텍스트 스타일
+            rankDisplay = `<span class="text-slate-500 font-extrabold">${m.currentRank}</span>`; 
+        }
         
         let rankDiff = (m.prevRank === '-' || m.currentRank === '-') ? 0 : m.prevRank - m.currentRank; 
         let rankIcon = rankDiff > 0 ? `<span class="text-red-500">▲ ${rankDiff}</span>` : rankDiff < 0 ? `<span class="text-blue-500">▼ ${Math.abs(rankDiff)}</span>` : `<span class="text-slate-300">-</span>`; 
@@ -1805,6 +1817,7 @@ function renderPastSeasonList() {
     </script>
 </body>
 </html>
+
 
 
 
