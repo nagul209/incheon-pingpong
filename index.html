@@ -19,7 +19,6 @@
         
         body:not(.admin-mode-active) .admin-only { display: none !important; }
         body:not(.admin-mode-active) .admin-only-table-cell { display: none !important; }
-        body:not(.admin-mode-active) .admin-only-block { display: none !important; }
         .member-inactive { opacity: 0.5; filter: grayscale(100%); }
 
         .tab-item { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -74,7 +73,7 @@
         </div>
         <div class="flex gap-2">
             <button onclick="toggleViewMode()" id="btn-view-toggle" class="bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm px-3 py-1.5 rounded-xl transition text-[11px] font-extrabold shadow-inner border border-white/20 btn-press">
-                💻
+                💻 PC화면
             </button>
             <button onclick="toggleAdmin()" id="btn-admin-lock" class="bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm p-2 rounded-full transition w-9 h-9 flex items-center justify-center shadow-inner border border-white/20 btn-press">
                 🔒
@@ -221,19 +220,7 @@
             <div id="input-step-1" class="bg-white p-6 rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-4">
                 <h2 id="input-form-title" class="font-extrabold text-xl mb-5 text-slate-800 tracking-tight">1. 모임 기본 정보 입력</h2>
                 <div class="mb-5"><label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">날짜 선택</label><input type="date" id="match-date" class="block w-full border-0 bg-slate-100 p-3.5 rounded-xl font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all"></div>
-                <div class="mb-8"><label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">모임 종류</label>
-                   <div class="mb-8">
-    <label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">모임 종류</label>
-    <select id="match-type" class="block w-full border-0 bg-slate-100 p-3.5 rounded-xl font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all">
-        <option>정기모임</option>
-        <option>월례대회</option>
-        <option>교류전</option>
-        <option>결산대회</option>
-        <option>송년대회</option>
-        <option>신년대회</option>
-        <option>훈련</option>
-    </select>
-</div>
+                <div class="mb-8"><label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">모임 종류</label><select id="match-type" class="block w-full border-0 bg-slate-100 p-3.5 rounded-xl font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all"><option>정기모임</option><option>월례대회</option><option>교류전</option></select></div>
                 <button onclick="openInputStep2()" class="w-full bg-gradient-to-r from-indigo-500 to-violet-500 text-white py-4 rounded-xl font-bold shadow-lg shadow-indigo-200 hover:shadow-xl transition-all btn-press text-lg">다음 단계로 이동 👉</button>
             </div>
             
@@ -408,8 +395,8 @@
         let isPcMode = sessionStorage.getItem('isPcMode') === 'true';
         function applyViewMode() {
             const body = document.getElementById('app-body'); const tabbar = document.getElementById('bottom-tab-bar');
-            if(isPcMode) { body.classList.remove('max-w-md'); body.classList.add('max-w-[1200px]'); tabbar.classList.remove('max-w-md'); tabbar.classList.add('max-w-[1200px]'); document.getElementById('btn-view-toggle').innerText = "📱"; } 
-            else { body.classList.add('max-w-md'); body.classList.remove('max-w-[1200px]'); tabbar.classList.add('max-w-md'); tabbar.classList.remove('max-w-[1200px]'); document.getElementById('btn-view-toggle').innerText = "💻 "; }
+            if(isPcMode) { body.classList.remove('max-w-md'); body.classList.add('max-w-[1200px]'); tabbar.classList.remove('max-w-md'); tabbar.classList.add('max-w-[1200px]'); document.getElementById('btn-view-toggle').innerText = "📱 모바일"; } 
+            else { body.classList.add('max-w-md'); body.classList.remove('max-w-[1200px]'); tabbar.classList.add('max-w-md'); tabbar.classList.remove('max-w-[1200px]'); document.getElementById('btn-view-toggle').innerText = "💻 PC화면"; }
         }
         function toggleViewMode() { isPcMode = !isPcMode; sessionStorage.setItem('isPcMode', isPcMode); applyViewMode(); }
         function restoreAdminState() { if (sessionStorage.getItem('isAdminLoggedIn') === 'true') { isAdmin = true; document.getElementById('app-body').classList.add('admin-mode-active'); document.getElementById('btn-admin-lock').innerText = "🔓"; } applyViewMode(); }
@@ -455,26 +442,13 @@
             renderAll(); 
         }
         function getCurrentTab() { return ['ranking', 'input', 'history', 'member', 'setting', 'operation'].find(t => document.getElementById(`btn-${t}`).classList.contains('tab-active')); }
-function switchTab(tabName) {
-    try {
-        const tabs = ['ranking', 'input', 'history', 'member', 'setting', 'operation'];
-        tabs.forEach(name => {
-            const viewEl = document.getElementById(`view-${name}`);
-            const btnEl = document.getElementById(`btn-${name}`);
-            if (viewEl) viewEl.classList.add('hidden');
-            if (btnEl) btnEl.classList.remove('tab-active');
-            if (name === tabName) {
-                if (viewEl) viewEl.classList.remove('hidden');
-                if (btnEl) btnEl.classList.add('tab-active');
-            }
-        });
-        if (tabName === 'input' && typeof cancelInputStep2 === 'function' && !editingMatchId) cancelInputStep2();
-        if (tabName === 'member' && typeof cancelEdit === 'function' && editingMemberId) cancelEdit();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (error) {
-        console.error("탭 전환 오류:", error);
-    }
-}
+        function switchTab(tabName) {
+            ['ranking', 'input', 'history', 'member', 'setting', 'operation'].forEach(name => {
+                document.getElementById(`view-${name}`).classList.add('hidden'); document.getElementById(`btn-${name}`).classList.remove('tab-active');
+                if(name === tabName) { document.getElementById(`view-${name}`).classList.remove('hidden'); document.getElementById(`btn-${name}`).classList.add('tab-active'); }
+            });
+            if(tabName === 'input' && !editingMatchId) cancelInputStep2(); if(tabName === 'member' && editingMemberId) cancelEdit(); window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
 
         // ==============================================================================
         // 🎮 경기 운영 - 리그전표 생성 및 계산 
@@ -1487,22 +1461,8 @@ function switchTab(tabName) {
         function generateTeams() { if((formState.attend||[]).length < 2) { alert("조를 편성하려면 먼저 [입력]탭의 [오늘 참석자] 명단을 선택해 주세요."); return; } let players = formState.attend.map(name => { const member = members.find(m => m.name === name); return { name: name, handicap: member ? member.handicap : 5 }; }); players.sort((a, b) => a.handicap - b.handicap); let teams = []; let left = 0; let right = players.length - 1; while(left < right) { teams.push([players[left], players[right]]); left++; right--; } if (left === right) { teams.push([players[left]]); } let resultHtml = `<div class="font-extrabold mb-4 text-indigo-900 border-b border-indigo-200/50 pb-3 text-center bg-white rounded-xl p-3 shadow-sm text-sm">🔥 총 ${formState.attend.length}명 참여 / ${teams.length}개 조 편성 완료</div>`; teams.forEach((team, idx) => { const sumHandicap = team.reduce((sum, p) => sum + p.handicap, 0); const namesStr = team.map(p => `<span class="font-bold">${escapeHTML(p.name)}</span><span class="text-slate-400 font-normal">(${p.handicap})</span>`).join(' <span class="text-slate-300">+</span> '); resultHtml += `<div class="mb-2 bg-white p-3 rounded-xl border border-slate-100 flex justify-between items-center shadow-sm"><span class="font-black text-white bg-indigo-500 px-2 py-1 rounded-lg text-[11px] mr-2 shadow-sm">${idx+1}조</span> <span class="flex-1 text-right text-[13px] tracking-tight">${namesStr}</span> <span class="text-[10px] text-indigo-700 font-extrabold ml-3 bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100 whitespace-nowrap">합 ${sumHandicap}부</span></div>`; }); document.getElementById('team-result-box').innerHTML = resultHtml; document.getElementById('team-maker-modal').classList.remove('hidden'); }
         function closeTeamMaker() { document.getElementById('team-maker-modal').classList.add('hidden'); }
         function copyTeams() { const tempDiv = document.createElement("div"); tempDiv.innerHTML = document.getElementById('team-result-box').innerHTML.replace(/<\/div>/g, '\n').replace(/<[^>]*>?/gm, ''); const textArea = document.createElement("textarea"); textArea.value = tempDiv.textContent || tempDiv.innerText || ""; document.body.appendChild(textArea); textArea.select(); document.execCommand('copy'); document.body.removeChild(textArea); alert('조 편성 결과가 복사되었습니다!'); }
-        function loadSettingsUI() { 
-    try {
-        for (let key in scoreRules) { 
-            let el = document.getElementById(`cfg-score-${key}`);
-            if(el) el.value = scoreRules[key]; 
-        } 
-        const prefixEl = document.getElementById('cfg-announce-prefix');
-        if (prefixEl) prefixEl.value = appConfig.announcePrefix; 
-        const suffixEl = document.getElementById('cfg-announce-suffix');
-        if (suffixEl) suffixEl.value = appConfig.announceSuffix; 
-        const defaultTabEl = document.getElementById('cfg-default-tab');
-        if (defaultTabEl) defaultTabEl.value = appConfig.defaultTab; 
-    } catch (error) {
-        console.error("설정창 로드 오류:", error);
-    }
-}
+        function loadSettingsUI() { for (let key in scoreRules) { if(document.getElementById(`cfg-score-${key}`)) { document.getElementById(`cfg-score-${key}`).value = scoreRules[key]; } } document.getElementById('cfg-announce-prefix').value = appConfig.announcePrefix; document.getElementById('cfg-announce-suffix').value = appConfig.announceSuffix; document.getElementById('cfg-default-tab').value = appConfig.defaultTab; }
+        function saveScoreRules() { for (let key in scoreRules) { let val = parseFloat(document.getElementById(`cfg-score-${key}`).value); if(!isNaN(val)) scoreRules[key] = val; } recalculateAllScores(); renderAll(); saveDataToStorage(); alert("점수 체계가 저장되었으며, 과거 기록이 새 규칙에 맞게 재계산되었습니다."); }
         function saveUIConfig() { appConfig.announcePrefix = document.getElementById('cfg-announce-prefix').value; appConfig.announceSuffix = document.getElementById('cfg-announce-suffix').value; appConfig.defaultTab = document.getElementById('cfg-default-tab').value; saveDataToStorage(); alert("환경 설정이 저장되었습니다."); }
         function changePassword() { const newPw = document.getElementById('cfg-password').value; if(newPw.trim() === '') { alert("비밀번호를 입력하세요."); return; } appConfig.password = newPw; document.getElementById('cfg-password').value = ''; saveDataToStorage(); alert("관리자 비밀번호가 성공적으로 변경되었습니다."); }
         
@@ -1620,60 +1580,49 @@ function renderPastSeasonList() {
             }
         }
         // 수정됨: 기록 탭 뱃지에 복식 3위 적용
-       function renderHistory() { 
-    const selector = document.getElementById('history-season-selector');
-    const mode = selector ? selector.value : "current";
-    const list = document.getElementById('match-history-list'); 
-    const adminTh = document.getElementById('history-admin-th');
-    list.innerHTML = ''; 
+        function renderHistory() { 
+            const selector = document.getElementById('history-season-selector');
+            const mode = selector ? selector.value : "current";
+            const list = document.getElementById('match-history-list'); 
+            const adminTh = document.getElementById('history-admin-th');
+            list.innerHTML = ''; 
 
-    let displayHistory = [];
-    let isPastSeason = mode !== "current";
+            let displayHistory = [];
+            let isPastSeason = mode !== "current";
 
-    if (isPastSeason) {
-        const seasonIndex = parseInt(mode);
-        displayHistory = appConfig.pastSeasons[seasonIndex].matchHistory || [];
-        if(adminTh) adminTh.classList.add('hidden');
-    } else {
-        displayHistory = matchHistory;
-        if(adminTh) adminTh.classList.remove('hidden');
-    }
+            if (isPastSeason) {
+                const seasonIndex = parseInt(mode);
+                displayHistory = appConfig.pastSeasons[seasonIndex].matchHistory || [];
+                if(adminTh) adminTh.classList.add('hidden');
+            } else {
+                displayHistory = matchHistory;
+                if(adminTh) adminTh.classList.remove('hidden');
+            }
 
-    if(displayHistory.length === 0) { 
-        list.innerHTML = `<tr><td colspan="3" class="text-center py-16"><div class="text-5xl mb-4 drop-shadow-sm opacity-80">🏓</div><p class="font-extrabold text-slate-700 text-base">경기 기록이 없습니다</p></td></tr>`; 
-        return; 
-    } 
-    
-    // 1. 이름을 변환해주는 헬퍼 함수 정의 (초청 회원이면 괄호 추가)
-    const formatName = (name) => {
-        const m = members.find(x => x.name === name);
-        let safeName = escapeHTML(name);
-        if (m && m.affiliation === '초청') return `(${safeName})`;
-        return safeName;
-    };
-    
-    [...displayHistory].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)).forEach(match => { 
-        let winHtml = ''; 
-        // 2. addBadge 내부에 escapeHTML 대신 formatName 맵핑 적용
-        const addBadge = (arr, label, bgClass) => { 
-            if(arr && arr.length > 0) { winHtml += `<div class="flex items-start gap-1.5 mb-1.5"><span class="shrink-0 text-[10px] font-extrabold text-white ${bgClass} px-1.5 py-0.5 rounded shadow-sm text-center">${label}</span> <span class="text-slate-700 font-bold text-[12px] break-keep leading-tight pt-0.5">${arr.map(formatName).join(', ')}</span></div>`; } 
-        }; 
-        addBadge(match.lg1, '리그1위', 'bg-indigo-600'); addBadge(match.lg2, '리그2위', 'bg-indigo-500'); addBadge(match.lg3, '리그3위', 'bg-indigo-400'); addBadge(match.tm1, '단체1위', 'bg-teal-600'); addBadge(match.tm2, '단체2위', 'bg-teal-500'); addBadge(match.tm3, '단체3위', 'bg-teal-400'); addBadge(match.tn1, '토너1위', 'bg-violet-600'); addBadge(match.tn2, '토너2위', 'bg-violet-500'); addBadge(match.tn3, '토너3위', 'bg-violet-400'); 
-        addBadge(match.db1, '복식1위', 'bg-pink-600'); addBadge(match.db2, '복식2위', 'bg-pink-500'); addBadge(match.db3, '복식3위', 'bg-pink-400');
-        addBadge(match.ev1, '이벤트', 'bg-amber-500'); 
-        
-        if(!winHtml) winHtml = '<div class="text-[11px] text-slate-400 font-medium py-1">입상 기록 없음</div>'; 
-        let lazyHtml = ''; 
-        // 3. 불성실 명단 렌더링에 formatName 적용
-        if(match.lazy && match.lazy.length > 0) { lazyHtml = `<div class="mt-2 pt-2 border-t border-slate-200/60 flex items-start gap-1"><span class="shrink-0 text-[10px] font-extrabold text-red-500 mr-0.5 mt-0.5">🚨 불성실</span><span class="text-[11px] text-slate-600 font-bold leading-tight pt-0.5">${match.lazy.map(formatName).join(', ')}</span></div>`; } 
-        
-        const adminButtons = isPastSeason ? '' : `<td class="px-2 py-4 admin-only-table-cell align-middle w-14"><div class="flex flex-col gap-1.5 items-center"><button onclick="openAnnouncement(${match.id})" class="w-full px-2 py-1.5 bg-indigo-50 text-indigo-700 text-[10px] rounded-lg border border-indigo-100 hover:bg-indigo-100 font-extrabold shadow-sm btn-press">공지</button><button onclick="editMatch(${match.id})" class="w-full px-2 py-1.5 bg-white text-slate-600 text-[10px] rounded-lg border border-slate-200 hover:bg-slate-50 font-extrabold shadow-sm btn-press">수정</button><button onclick="deleteMatch(${match.id})" class="w-full px-2 py-1.5 bg-red-50 text-red-600 text-[10px] rounded-lg border border-red-100 hover:bg-red-100 font-extrabold shadow-sm btn-press">삭제</button></div></td>`; 
-        let displayDate = match.date ? escapeHTML(match.date.substring(5)) : '미정'; 
-        
-        // 4. 참석자 명단 렌더링에 formatName 적용
-        list.innerHTML += `<tr class="bg-white hover:bg-slate-50 border-b border-slate-100 transition-colors"><td class="px-2 py-4 text-center align-top whitespace-nowrap pt-5"><div class="font-extrabold text-slate-800 text-[13px]">${displayDate}</div><div class="text-[10px] mt-1.5"><span class="bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200 font-bold">${escapeHTML(match.type) || ''}</span></div></td><td class="px-2 py-4 text-left align-top"><div class="bg-slate-50 p-3 rounded-xl border border-slate-100 mb-2 shadow-inner"><div class="flex justify-between items-center mb-1.5"><span class="text-[10px] font-black text-slate-500">✅ 참석자 명단</span><span class="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-bold">${(match.attend || []).length}명</span></div><div class="text-[11px] text-slate-700 font-medium leading-relaxed break-keep">${(match.attend || []).map(formatName).join(', ')}</div>${lazyHtml}</div><div class="bg-indigo-50/40 p-3 rounded-xl border border-indigo-50"><div class="text-[10px] font-black text-indigo-800 mb-2.5">🏆 입상 내역</div><div class="flex flex-col">${winHtml}</div></div></td>${adminButtons}</tr>`; 
-    }); 
-}
+            if(displayHistory.length === 0) { 
+                list.innerHTML = `<tr><td colspan="3" class="text-center py-16"><div class="text-5xl mb-4 drop-shadow-sm opacity-80">🏓</div><p class="font-extrabold text-slate-700 text-base">경기 기록이 없습니다</p></td></tr>`; 
+                return; 
+            } 
+            
+            [...displayHistory].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)).forEach(match => { 
+                let winHtml = ''; 
+                const addBadge = (arr, label, bgClass) => { 
+                    if(arr && arr.length > 0) { winHtml += `<div class="flex items-start gap-1.5 mb-1.5"><span class="shrink-0 text-[10px] font-extrabold text-white ${bgClass} px-1.5 py-0.5 rounded shadow-sm text-center">${label}</span> <span class="text-slate-700 font-bold text-[12px] break-keep leading-tight pt-0.5">${arr.map(escapeHTML).join(', ')}</span></div>`; } 
+                }; 
+                addBadge(match.lg1, '리그1위', 'bg-indigo-600'); addBadge(match.lg2, '리그2위', 'bg-indigo-500'); addBadge(match.lg3, '리그3위', 'bg-indigo-400'); addBadge(match.tm1, '단체1위', 'bg-teal-600'); addBadge(match.tm2, '단체2위', 'bg-teal-500'); addBadge(match.tm3, '단체3위', 'bg-teal-400'); addBadge(match.tn1, '토너1위', 'bg-violet-600'); addBadge(match.tn2, '토너2위', 'bg-violet-500'); addBadge(match.tn3, '토너3위', 'bg-violet-400'); 
+                addBadge(match.db1, '복식1위', 'bg-pink-600'); addBadge(match.db2, '복식2위', 'bg-pink-500'); addBadge(match.db3, '복식3위', 'bg-pink-400'); // 추가됨
+                addBadge(match.ev1, '이벤트', 'bg-amber-500'); 
+                
+                if(!winHtml) winHtml = '<div class="text-[11px] text-slate-400 font-medium py-1">입상 기록 없음</div>'; 
+                let lazyHtml = ''; 
+                if(match.lazy && match.lazy.length > 0) { lazyHtml = `<div class="mt-2 pt-2 border-t border-slate-200/60 flex items-start gap-1"><span class="shrink-0 text-[10px] font-extrabold text-red-500 mr-0.5 mt-0.5">🚨 불성실</span><span class="text-[11px] text-slate-600 font-bold leading-tight pt-0.5">${match.lazy.map(escapeHTML).join(', ')}</span></div>`; } 
+                
+                const adminButtons = isPastSeason ? '' : `<td class="px-2 py-4 admin-only-table-cell align-middle w-14"><div class="flex flex-col gap-1.5 items-center"><button onclick="openAnnouncement(${match.id})" class="w-full px-2 py-1.5 bg-indigo-50 text-indigo-700 text-[10px] rounded-lg border border-indigo-100 hover:bg-indigo-100 font-extrabold shadow-sm btn-press">공지</button><button onclick="editMatch(${match.id})" class="w-full px-2 py-1.5 bg-white text-slate-600 text-[10px] rounded-lg border border-slate-200 hover:bg-slate-50 font-extrabold shadow-sm btn-press">수정</button><button onclick="deleteMatch(${match.id})" class="w-full px-2 py-1.5 bg-red-50 text-red-600 text-[10px] rounded-lg border border-red-100 hover:bg-red-100 font-extrabold shadow-sm btn-press">삭제</button></div></td>`; 
+                let displayDate = match.date ? escapeHTML(match.date.substring(5)) : '미정'; 
+                
+                list.innerHTML += `<tr class="bg-white hover:bg-slate-50 border-b border-slate-100 transition-colors"><td class="px-2 py-4 text-center align-top whitespace-nowrap pt-5"><div class="font-extrabold text-slate-800 text-[13px]">${displayDate}</div><div class="text-[10px] mt-1.5"><span class="bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200 font-bold">${escapeHTML(match.type) || ''}</span></div></td><td class="px-2 py-4 text-left align-top"><div class="bg-slate-50 p-3 rounded-xl border border-slate-100 mb-2 shadow-inner"><div class="flex justify-between items-center mb-1.5"><span class="text-[10px] font-black text-slate-500">✅ 참석자 명단</span><span class="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-bold">${(match.attend || []).length}명</span></div><div class="text-[11px] text-slate-700 font-medium leading-relaxed break-keep">${(match.attend || []).map(escapeHTML).join(', ')}</div>${lazyHtml}</div><div class="bg-indigo-50/40 p-3 rounded-xl border border-indigo-50"><div class="text-[10px] font-black text-indigo-800 mb-2.5">🏆 입상 내역</div><div class="flex flex-col">${winHtml}</div></div></td>${adminButtons}</tr>`; 
+            }); 
+        }
 
         function downloadRankingExcel() { 
             try { 
@@ -1904,11 +1853,6 @@ function renderPastSeasonList() {
     </script>
 </body>
 </html>
-
-
-
-
-
 
 
 
