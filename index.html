@@ -395,8 +395,8 @@
         let isPcMode = sessionStorage.getItem('isPcMode') === 'true';
         function applyViewMode() {
             const body = document.getElementById('app-body'); const tabbar = document.getElementById('bottom-tab-bar');
-            if(isPcMode) { body.classList.remove('max-w-md'); body.classList.add('max-w-[1200px]'); tabbar.classList.remove('max-w-md'); tabbar.classList.add('max-w-[1200px]'); document.getElementById('btn-view-toggle').innerText = "📱 모바일"; } 
-            else { body.classList.add('max-w-md'); body.classList.remove('max-w-[1200px]'); tabbar.classList.add('max-w-md'); tabbar.classList.remove('max-w-[1200px]'); document.getElementById('btn-view-toggle').innerText = "💻 PC화면"; }
+            if(isPcMode) { body.classList.remove('max-w-md'); body.classList.add('max-w-[1200px]'); tabbar.classList.remove('max-w-md'); tabbar.classList.add('max-w-[1200px]'); document.getElementById('btn-view-toggle').innerText = "📱"; } 
+            else { body.classList.add('max-w-md'); body.classList.remove('max-w-[1200px]'); tabbar.classList.add('max-w-md'); tabbar.classList.remove('max-w-[1200px]'); document.getElementById('btn-view-toggle').innerText = "💻"; }
         }
         function toggleViewMode() { isPcMode = !isPcMode; sessionStorage.setItem('isPcMode', isPcMode); applyViewMode(); }
         function restoreAdminState() { if (sessionStorage.getItem('isAdminLoggedIn') === 'true') { isAdmin = true; document.getElementById('app-body').classList.add('admin-mode-active'); document.getElementById('btn-admin-lock').innerText = "🔓"; } applyViewMode(); }
@@ -438,7 +438,7 @@
 
         function toggleAdmin() {
             if (isAdmin) { isAdmin = false; sessionStorage.removeItem('isAdminLoggedIn'); document.getElementById('app-body').classList.remove('admin-mode-active'); document.getElementById('btn-admin-lock').innerText = "🔒"; if(!['ranking', 'history'].includes(getCurrentTab())) switchTab('ranking'); } 
-            else { const pw = prompt("관리자 비밀번호를 입력하세요.\n(기본: 1156)"); if (pw === appConfig.password) { isAdmin = true; sessionStorage.setItem('isAdminLoggedIn', 'true'); document.getElementById('app-body').classList.add('admin-mode-active'); document.getElementById('btn-admin-lock').innerText = "🔓"; loadSettingsUI(); } else if (pw !== null) alert("비밀번호가 틀렸습니다."); }
+            else { const pw = prompt("관리자 비밀번호를 입력하세요.); if (pw === appConfig.password) { isAdmin = true; sessionStorage.setItem('isAdminLoggedIn', 'true'); document.getElementById('app-body').classList.add('admin-mode-active'); document.getElementById('btn-admin-lock').innerText = "🔓"; loadSettingsUI(); } else if (pw !== null) alert("비밀번호가 틀렸습니다."); }
             renderAll(); 
         }
         function getCurrentTab() { return ['ranking', 'input', 'history', 'member', 'setting', 'operation'].find(t => document.getElementById(`btn-${t}`).classList.contains('tab-active')); }
