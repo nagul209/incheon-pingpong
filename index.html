@@ -389,7 +389,7 @@
         function getRoundRobinPairs(n) { return ROUND_ROBIN_ORDERS[n] || []; }
 
         let isAdmin = false; let editingMatchId = null; let editingMemberId = null; let currentPhotoBase64 = "";
-        let defaultAppConfig = { password: "1156", defaultTab: "ranking", announcePrefix: "🏓 [ {date} {type} 결과 ]\n\n", announceSuffix: "\n모두 수고하셨습니다! 다음 모임에서 뵙겠습니다. 👏", pastSeasons: [] };
+        let defaultAppConfig = { password: "0000", defaultTab: "ranking", announcePrefix: "🏓 [ {date} {type} 결과 ]\n\n", announceSuffix: "\n모두 수고하셨습니다! 다음 모임에서 뵙겠습니다. 👏", pastSeasons: [] };
         // 수정됨: db3 변수 추가
         let defaultScoreRules = { attend: 3.0, sincerity: 0.5, lg1: 2.5, lg2: 2.0, lg3: 1.5, tm1: 2.5, tm2: 2.0, tm3: 1.5, tn1: 2.5, tn2: 2.0, tn3: 1.5, db1: 2.0, db2: 1.5, db3: 1.0, ev1: 2.0 };
         let appConfig = {...defaultAppConfig}; let scoreRules = {...defaultScoreRules}; let members = []; let matchHistory = []; let nextMemberId = 1; let nextMatchId = 1; 
@@ -1860,6 +1860,7 @@ function renderPastSeasonList() {
     </script>
 </body>
 </html>
+
 
 
 
