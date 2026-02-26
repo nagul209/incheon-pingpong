@@ -73,7 +73,7 @@
         </div>
         <div class="flex gap-2">
             <button onclick="toggleViewMode()" id="btn-view-toggle" class="bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm px-3 py-1.5 rounded-xl transition text-[11px] font-extrabold shadow-inner border border-white/20 btn-press">
-                💻 PC화면
+                💻
             </button>
             <button onclick="toggleAdmin()" id="btn-admin-lock" class="bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm p-2 rounded-full transition w-9 h-9 flex items-center justify-center shadow-inner border border-white/20 btn-press">
                 🔒
@@ -407,8 +407,8 @@
         let isPcMode = sessionStorage.getItem('isPcMode') === 'true';
         function applyViewMode() {
             const body = document.getElementById('app-body'); const tabbar = document.getElementById('bottom-tab-bar');
-            if(isPcMode) { body.classList.remove('max-w-md'); body.classList.add('max-w-[1200px]'); tabbar.classList.remove('max-w-md'); tabbar.classList.add('max-w-[1200px]'); document.getElementById('btn-view-toggle').innerText = "📱 모바일"; } 
-            else { body.classList.add('max-w-md'); body.classList.remove('max-w-[1200px]'); tabbar.classList.add('max-w-md'); tabbar.classList.remove('max-w-[1200px]'); document.getElementById('btn-view-toggle').innerText = "💻 PC화면"; }
+            if(isPcMode) { body.classList.remove('max-w-md'); body.classList.add('max-w-[1200px]'); tabbar.classList.remove('max-w-md'); tabbar.classList.add('max-w-[1200px]'); document.getElementById('btn-view-toggle').innerText = "📱"; } 
+            else { body.classList.add('max-w-md'); body.classList.remove('max-w-[1200px]'); tabbar.classList.add('max-w-md'); tabbar.classList.remove('max-w-[1200px]'); document.getElementById('btn-view-toggle').innerText = "💻 "; }
         }
         function toggleViewMode() { isPcMode = !isPcMode; sessionStorage.setItem('isPcMode', isPcMode); applyViewMode(); }
         function restoreAdminState() { if (sessionStorage.getItem('isAdminLoggedIn') === 'true') { isAdmin = true; document.getElementById('app-body').classList.add('admin-mode-active'); document.getElementById('btn-admin-lock').innerText = "🔓"; } applyViewMode(); }
@@ -1876,6 +1876,7 @@ function renderPastSeasonList() {
     </script>
 </body>
 </html>
+
 
 
 
