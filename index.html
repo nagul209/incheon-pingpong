@@ -1439,7 +1439,7 @@
         function saveMatch() { if(!formState.attend || formState.attend.length === 0) { alert("최소 1명 이상의 참석자가 선택되어야 합니다."); return; } let clonedState = {}; for(let k in formState) { clonedState[k] = [...(formState[k] || [])]; } const matchData = { id: editingMatchId ? editingMatchId : nextMatchId++, date: document.getElementById('match-date').value || new Date().toISOString().substring(0, 10), type: document.getElementById('match-type').value || '정기모임', ...clonedState }; if(editingMatchId) { const index = matchHistory.findIndex(m => m.id === editingMatchId); if(index !== -1) matchHistory[index] = matchData; alert('기록이 수정되었습니다!'); } else { matchHistory.push(matchData); alert('결과가 저장되었습니다!'); } editingMatchId = null; document.getElementById('input-form-title').innerText = "1. 모임 기본 정보 입력"; document.getElementById('input-step-1').classList.remove('hidden'); document.getElementById('input-step-2').classList.add('hidden'); initFormState(); renderAll(); saveDataToStorage(); switchTab('history'); }
         function openInputStep2() { const dateStr = document.getElementById('match-date').value; const typeStr = document.getElementById('match-type').value; document.getElementById('display-match-info').innerText = `${dateStr} | ${typeStr}`; document.getElementById('input-step-1').classList.add('hidden'); document.getElementById('input-step-2').classList.remove('hidden'); if(!editingMatchId) initFormState(); }
         function cancelInputStep2() { document.getElementById('input-step-1').classList.remove('hidden'); document.getElementById('input-step-2').classList.add('hidden'); if(editingMatchId) { editingMatchId = null; document.getElementById('input-form-title').innerText = "1. 모임 기본 정보 입력"; initFormState(); switchTab('history'); } }
-        function editMatch(id) { const match = matchHistory.find(m => m.id === id); if(!match) return; editingMatchId = id; switchTab('input'); document.getElementById('input-form-title').innerText = "✏️ 모임 정보 수정"; document.getElementById('match-date').value = match.date; document.getElementById('match-type').value = match.type; for(let key in formState) { formState[key] = match[key] ? [...match[key]] : []; } updateFormUI(); openInputStep2(); }
+        function editMatch(id) { const match = matchHistory.find(m => m.id === id); if(!match) return; editingMatchId = id; switchTab('input'); document.getElementById('input-form-title').innerText = "✏️ 모임 정보 수정"; document.getElementById('match-date').value = match.date; document.getElementById('match-type').value = match.type; for(let key in formState) { formState[key] = match[key] ? [...match[key]] : []; } updateFormUI(); document.getElementById('input-step-1').classList.remove('hidden'); document.getElementById('input-step-2').classList.add('hidden'); }
         function deleteMatch(id) { if(confirm("이 경기 기록을 삭제하시겠습니까?\n이 경기로 얻은 점수들이 회원들의 총점에서 모두 차감됩니다.")) { matchHistory = matchHistory.filter(m => m.id !== id); renderAll(); saveDataToStorage(); alert('기록이 삭제되었습니다.'); } }
         
         // 수정됨: 카톡 공지 내용에 복식 3위 추가
@@ -1860,6 +1860,7 @@ function renderPastSeasonList() {
     </script>
 </body>
 </html>
+
 
 
 
