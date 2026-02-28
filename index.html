@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>인천광역시 탁구동호회 토요리그</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 
@@ -407,8 +409,8 @@
     </div>
 
     <script>
-        // -------------------------------------------------------------
-        // 🔴 Firebase 연결 설정
+       // -------------------------------------------------------------
+        // 🔴 Firebase Realtime Database 연결 설정
         // -------------------------------------------------------------
         const firebaseConfig = {
             apiKey: "AIzaSyC1t-mJJXV6GBZ7-kWcvpRd35vpPZU0wmA",
@@ -417,12 +419,26 @@
             storageBucket: "table-tennis-6334b.firebasestorage.app",
             messagingSenderId: "967760713131",
             appId: "1:967760713131:web:17288e738222768aa1aeee",
-            measurementId: "G-V3FBQ4FZB7"
+            measurementId: "G-V3FBQ4FZB7",
+            // Realtime Database URL 명시 (프로젝트 ID 기반 기본값)
+            databaseURL: "https://table-tennis-6334b-default-rtdb.firebaseio.com"
         };
         
-        let db; let isFirebaseActive = false;
-        try { if(firebaseConfig.apiKey && firebaseConfig.apiKey !== "본인의 실제 API키값") { firebase.initializeApp(firebaseConfig); db = firebase.firestore(); isFirebaseActive = true; } } catch(e) { console.error("Firebase 연결 안됨:", e); }
+        let database; 
+        let dbRef; 
+        let isFirebaseActive = false;
 
+        try { 
+            // Firebase 앱이 중복 초기화되지 않도록 체크
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig); 
+            }
+            database = firebase.database(); 
+            dbRef = database.ref('incheonPingpongData'); // Realtime DB 최상위 저장 경로
+            isFirebaseActive = true; 
+        } catch(e) { 
+            console.error("Firebase Realtime DB 연결 실패:", e); 
+        }
         function escapeHTML(str) {
             if(typeof str !== 'string') return str;
             return str.replace(/[&<>'"]/g, tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag] || tag));
@@ -478,11 +494,63 @@ function applyParsedData(parsed) {
             nextMemberId = parsed.nextMemberId || 1; nextMatchId = parsed.nextMatchId || 1;
             renderAll(); switchTab(appConfig.defaultTab); if (isAdmin) loadSettingsUI();
         }
-        function loadLocalFallback() { try { const localData = localStorage.getItem('pingpongLocalData'); if(localData) { applyParsedData(JSON.parse(localData)); } else { injectSampleData(); } } catch(e) { injectSampleData(); } }
-        function loadDataFromStorage() { if(isFirebaseActive && db) { db.collection("tableTennis").doc("leagueData").get().then((doc) => { if (doc.exists) applyParsedData(doc.data()); else loadLocalFallback(); }).catch((error) => { loadLocalFallback(); }); } else { loadLocalFallback(); } }
-        function saveDataToStorage() { 
-            try { localStorage.setItem('pingpongLocalData', JSON.stringify({ members, matchHistory, appConfig, scoreRules, nextMemberId, nextMatchId })); } catch(e) {}
-            if(isFirebaseActive && db) { db.collection("tableTennis").doc("leagueData").set({ members, matchHistory, appConfig, scoreRules, nextMemberId, nextMatchId }).catch((error) => { console.error("FB 저장 오류"); }); }
+        function loadLocalFallback() { 
+            try { 
+                const localData = localStorage.getItem('pingpongLocalData'); 
+                if(localData) { applyParsedData(JSON.parse(localData)); } 
+                else { renderAll(); /* 빈 화면 유지 (injectSampleData 호출로 인한 덮어쓰기 방지) */ } 
+            } catch(e) { renderAll(); } 
+        }
+
+        function loadDataFromStorage() { 
+            if(isFirebaseActive && dbRef) { 
+                // ✨ 핵심: get() 대신 on('value')를 사용하여 데이터가 변경될 때마다 실시간으로 화면을 자동 갱신합니다.
+                dbRef.on('value', (snapshot) => { 
+                    const data = snapshot.val(); 
+                    if (data) { 
+                        // Firebase에 데이터가 있으면 로컬 변수에 덮어씌우고 화면을 갱신합니다.
+                        applyParsedData(data); 
+                    } else { 
+                        // [중요 방어 로직] Firebase가 비어있을 경우 절대 로컬 데이터로 덮어쓰지 않습니다.
+                        console.warn("Firebase에 저장된 데이터가 없습니다. 관리자 저장을 대기합니다."); 
+                        loadLocalFallback();
+                    } 
+                }, (error) => { 
+                    console.error("Firebase 데이터 동기화 실패:", error); 
+                    loadLocalFallback(); 
+                }); 
+            } else { 
+                loadLocalFallback(); 
+            } 
+        }
+function saveDataToStorage() { 
+            // ✨ 핵심 1: 관리자 모드가 아닐 경우 서버 데이터 덮어쓰기를 원천 차단합니다.
+            if (!isAdmin) {
+                console.warn("보안 차단: 일반 사용자는 데이터를 저장/수정할 수 없습니다.");
+                return; 
+            }
+
+            const dataToSave = { 
+                members, 
+                matchHistory, 
+                appConfig, 
+                scoreRules, 
+                nextMemberId, 
+                nextMatchId 
+            };
+
+            // 네트워크 끊김 등을 대비한 로컬 백업 유지
+            try { localStorage.setItem('pingpongLocalData', JSON.stringify(dataToSave)); } catch(e) {}
+            
+            // ✨ 핵심 2: 기존 Firestore(db.collection) 대신 Realtime DB(dbRef)로 데이터를 Push 합니다.
+            if(isFirebaseActive && dbRef) { 
+                dbRef.set(dataToSave).then(() => {
+                    console.log("Firebase 서버 동기화 완료");
+                }).catch((error) => { 
+                    console.error("Firebase 저장 오류:", error); 
+                    alert("서버에 데이터를 저장하는 중 오류가 발생했습니다.");
+                }); 
+            }
         }
         function injectSampleData() { members = [{ id: 1, name: "박선행", handicap: 5, score: 0, prevRank: 1, status: "active", type: "연회원", affiliation: "시", dept: "혁신성장도시과", rank: "주무관", phone: "" }]; saveDataToStorage(); renderAll(); switchTab(appConfig.defaultTab); }
         document.getElementById('match-date').value = new Date().toISOString().substring(0, 10);
@@ -491,6 +559,7 @@ function applyParsedData(parsed) {
         function importData(event) { const file = event.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = function(e) { try { const data = JSON.parse(e.target.result); applyParsedData(data); saveDataToStorage(); alert("데이터 복원이 완료되었습니다!"); } catch(err) { alert("잘못된 백업 파일입니다."); } event.target.value = ""; }; reader.readAsText(file); }
         
         function resetAllMembers() {
+            if (!isAdmin) { alert("관리자 모드에서만 사용할 수 있는 기능입니다."); return; }
             if(confirm("⚠️ 경고: 등록된 모든 회원 명단이 삭제됩니다.\n\n기존 경기 기록에 있는 이름은 유지되지만, 회원 정보(부수, 연락처 등)는 모두 사라집니다.\n\n정말 진행하시겠습니까?")) {
                 const check = prompt("진행을 원하시면 '초기화' 라고 입력해주세요.");
                 if(check === "초기화") { members = []; nextMemberId = 1; renderAll(); saveDataToStorage(); alert("모든 회원 명단이 초기화되었습니다."); switchTab('member'); } else { alert("초기화가 취소되었습니다."); }
@@ -1470,7 +1539,9 @@ let excludedNames = [];
             }); 
         }
         function editMember(id) { const member = members.find(m => m.id === id); if(!member) return; editingMemberId = id; document.getElementById('form-title').innerText = "✏️ 회원 정보 수정"; document.getElementById('btn-save-member').innerText = "수정 완료"; document.getElementById('btn-save-member').classList.replace('bg-slate-800', 'bg-indigo-600'); document.getElementById('btn-cancel-edit').classList.remove('hidden'); document.getElementById('mem-affiliation').value = member.affiliation || '시'; document.getElementById('mem-dept').value = member.dept || ''; document.getElementById('mem-type').value = member.type || '연회원'; document.getElementById('mem-duty').value = member.duty || ''; document.getElementById('mem-rank').value = member.rank || ''; document.getElementById('mem-name').value = member.name || ''; document.getElementById('mem-handicap').value = member.handicap || '5'; document.getElementById('mem-gender').value = member.gender || '남'; document.getElementById('mem-status').value = member.status || 'active'; document.getElementById('mem-phone').value = member.phone || ''; currentPhotoBase64 = member.photo || ''; if (currentPhotoBase64) { document.getElementById('photo-preview').src = currentPhotoBase64; document.getElementById('photo-preview').classList.remove('hidden'); document.getElementById('photo-placeholder').classList.add('hidden'); } else { document.getElementById('photo-preview').classList.add('hidden'); document.getElementById('photo-placeholder').classList.remove('hidden'); } document.getElementById('member-form-container').scrollIntoView({ behavior: 'smooth' }); }
-        function saveMember() { const name = document.getElementById('mem-name').value; if(!name) { alert("이름을 입력해주세요."); return; } const handicapVal = document.getElementById('mem-handicap').value; const memberData = { name: name, affiliation: document.getElementById('mem-affiliation').value, dept: document.getElementById('mem-dept').value, type: document.getElementById('mem-type').value, duty: document.getElementById('mem-duty').value, rank: document.getElementById('mem-rank').value, handicap: parseInt(handicapVal) || 5, gender: document.getElementById('mem-gender').value, phone: document.getElementById('mem-phone').value, photo: currentPhotoBase64, status: document.getElementById('mem-status').value }; if (editingMemberId !== null) { const index = members.findIndex(m => m.id === editingMemberId); if(index !== -1) members[index] = { ...members[index], ...memberData }; alert('회원 정보가 수정되었습니다.'); } else { memberData.id = nextMemberId++; memberData.score = 0.0; memberData.prevRank = members.length + 1; members.push(memberData); alert('신규 회원이 등록되었습니다.'); } cancelEdit(); renderAll(); saveDataToStorage(); }
+        function saveMember() { 
+            if (!isAdmin) { alert("관리자 모드에서만 사용할 수 있는 기능입니다."); return; }
+            const name = document.getElementById('mem-name').value; if(!name) { alert("이름을 입력해주세요."); return; } const handicapVal = document.getElementById('mem-handicap').value; const memberData = { name: name, affiliation: document.getElementById('mem-affiliation').value, dept: document.getElementById('mem-dept').value, type: document.getElementById('mem-type').value, duty: document.getElementById('mem-duty').value, rank: document.getElementById('mem-rank').value, handicap: parseInt(handicapVal) || 5, gender: document.getElementById('mem-gender').value, phone: document.getElementById('mem-phone').value, photo: currentPhotoBase64, status: document.getElementById('mem-status').value }; if (editingMemberId !== null) { const index = members.findIndex(m => m.id === editingMemberId); if(index !== -1) members[index] = { ...members[index], ...memberData }; alert('회원 정보가 수정되었습니다.'); } else { memberData.id = nextMemberId++; memberData.score = 0.0; memberData.prevRank = members.length + 1; members.push(memberData); alert('신규 회원이 등록되었습니다.'); } cancelEdit(); renderAll(); saveDataToStorage(); }
         function cancelEdit() { editingMemberId = null; document.getElementById('form-title').innerText = "회원 개별 등록"; document.getElementById('btn-save-member').innerText = "회원 저장하기"; document.getElementById('btn-save-member').classList.replace('bg-indigo-600', 'bg-slate-800'); document.getElementById('btn-cancel-edit').classList.add('hidden'); ['mem-name','mem-dept','mem-duty','mem-rank','mem-phone'].forEach(id => document.getElementById(id).value = ''); document.getElementById('mem-affiliation').value = '시'; document.getElementById('mem-type').value = '연회원'; document.getElementById('mem-handicap').value = '5'; document.getElementById('mem-gender').value = '남'; document.getElementById('mem-status').value = 'active'; currentPhotoBase64 = ''; document.getElementById('photo-preview').classList.add('hidden'); document.getElementById('photo-placeholder').classList.remove('hidden'); document.getElementById('mem-photo').value = ''; }
         
         function handlePhotoUpload(event) { 
@@ -1500,13 +1571,19 @@ let excludedNames = [];
             reader.readAsDataURL(file); 
         }
 
-        function deleteMember(id) { const mem = members.find(m=>m.id===id); if(confirm(`⚠️ [${mem.name}] 회원을 완전히 삭제하시겠습니까?`)) { members = members.filter(m => m.id !== id); renderAll(); saveDataToStorage(); } }
+        function deleteMember(id) { 
+        if (!isAdmin) { alert("관리자 모드에서만 사용할 수 있는 기능입니다."); return; }    
+            const mem = members.find(m=>m.id===id); if(confirm(`⚠️ [${mem.name}] 회원을 완전히 삭제하시겠습니까?`)) { members = members.filter(m => m.id !== id); renderAll(); saveDataToStorage(); } }
         
-        function saveMatch() { if(!formState.attend || formState.attend.length === 0) { alert("최소 1명 이상의 참석자가 선택되어야 합니다."); return; } let clonedState = {}; for(let k in formState) { clonedState[k] = [...(formState[k] || [])]; } const matchData = { id: editingMatchId ? editingMatchId : nextMatchId++, date: document.getElementById('match-date').value || new Date().toISOString().substring(0, 10), type: document.getElementById('match-type').value || '정기모임', ...clonedState }; if(editingMatchId) { const index = matchHistory.findIndex(m => m.id === editingMatchId); if(index !== -1) matchHistory[index] = matchData; alert('기록이 수정되었습니다!'); } else { matchHistory.push(matchData); alert('결과가 저장되었습니다!'); } editingMatchId = null; document.getElementById('input-form-title').innerText = "1. 모임 기본 정보 입력"; document.getElementById('input-step-1').classList.remove('hidden'); document.getElementById('input-step-2').classList.add('hidden'); initFormState(); renderAll(); saveDataToStorage(); switchTab('history'); }
+        function saveMatch() { 
+            if (!isAdmin) { alert("관리자 모드에서만 사용할 수 있는 기능입니다."); return; }
+            if(!formState.attend || formState.attend.length === 0) { alert("최소 1명 이상의 참석자가 선택되어야 합니다."); return; } let clonedState = {}; for(let k in formState) { clonedState[k] = [...(formState[k] || [])]; } const matchData = { id: editingMatchId ? editingMatchId : nextMatchId++, date: document.getElementById('match-date').value || new Date().toISOString().substring(0, 10), type: document.getElementById('match-type').value || '정기모임', ...clonedState }; if(editingMatchId) { const index = matchHistory.findIndex(m => m.id === editingMatchId); if(index !== -1) matchHistory[index] = matchData; alert('기록이 수정되었습니다!'); } else { matchHistory.push(matchData); alert('결과가 저장되었습니다!'); } editingMatchId = null; document.getElementById('input-form-title').innerText = "1. 모임 기본 정보 입력"; document.getElementById('input-step-1').classList.remove('hidden'); document.getElementById('input-step-2').classList.add('hidden'); initFormState(); renderAll(); saveDataToStorage(); switchTab('history'); }
         function openInputStep2() { const dateStr = document.getElementById('match-date').value; const typeStr = document.getElementById('match-type').value; document.getElementById('display-match-info').innerText = `${dateStr} | ${typeStr}`; document.getElementById('input-step-1').classList.add('hidden'); document.getElementById('input-step-2').classList.remove('hidden'); if(!editingMatchId) initFormState(); }
         function cancelInputStep2() { document.getElementById('input-step-1').classList.remove('hidden'); document.getElementById('input-step-2').classList.add('hidden'); if(editingMatchId) { editingMatchId = null; document.getElementById('input-form-title').innerText = "1. 모임 기본 정보 입력"; initFormState(); switchTab('history'); } }
         function editMatch(id) { const match = matchHistory.find(m => m.id === id); if(!match) return; editingMatchId = id; switchTab('input'); document.getElementById('input-form-title').innerText = "✏️ 모임 정보 수정"; document.getElementById('match-date').value = match.date; document.getElementById('match-type').value = match.type; for(let key in formState) { formState[key] = match[key] ? [...match[key]] : []; } updateFormUI(); document.getElementById('input-step-1').classList.remove('hidden'); document.getElementById('input-step-2').classList.add('hidden'); }
-        function deleteMatch(id) { if(confirm("이 경기 기록을 삭제하시겠습니까?\n이 경기로 얻은 점수들이 회원들의 총점에서 모두 차감됩니다.")) { matchHistory = matchHistory.filter(m => m.id !== id); renderAll(); saveDataToStorage(); alert('기록이 삭제되었습니다.'); } }
+        function deleteMatch(id) { 
+            if (!isAdmin) { alert("관리자 모드에서만 사용할 수 있는 기능입니다."); return; }
+            if(confirm("이 경기 기록을 삭제하시겠습니까?\n이 경기로 얻은 점수들이 회원들의 총점에서 모두 차감됩니다.")) { matchHistory = matchHistory.filter(m => m.id !== id); renderAll(); saveDataToStorage(); alert('기록이 삭제되었습니다.'); } }
         
         // 수정됨: 카톡 공지 내용에 복식 3위 추가
         function openAnnouncement(id) { 
@@ -1537,14 +1614,20 @@ let excludedNames = [];
         function closeTeamMaker() { document.getElementById('team-maker-modal').classList.add('hidden'); }
         function copyTeams() { const tempDiv = document.createElement("div"); tempDiv.innerHTML = document.getElementById('team-result-box').innerHTML.replace(/<\/div>/g, '\n').replace(/<[^>]*>?/gm, ''); const textArea = document.createElement("textarea"); textArea.value = tempDiv.textContent || tempDiv.innerText || ""; document.body.appendChild(textArea); textArea.select(); document.execCommand('copy'); document.body.removeChild(textArea); alert('조 편성 결과가 복사되었습니다!'); }
         function loadSettingsUI() { for (let key in scoreRules) { if(document.getElementById(`cfg-score-${key}`)) { document.getElementById(`cfg-score-${key}`).value = scoreRules[key]; } } document.getElementById('cfg-announce-prefix').value = appConfig.announcePrefix; document.getElementById('cfg-announce-suffix').value = appConfig.announceSuffix; document.getElementById('cfg-default-tab').value = appConfig.defaultTab; }
-        function saveScoreRules() { for (let key in scoreRules) { let val = parseFloat(document.getElementById(`cfg-score-${key}`).value); if(!isNaN(val)) scoreRules[key] = val; } recalculateAllScores(); renderAll(); saveDataToStorage(); alert("점수 체계가 저장되었으며, 과거 기록이 새 규칙에 맞게 재계산되었습니다."); }
-        function saveUIConfig() { appConfig.announcePrefix = document.getElementById('cfg-announce-prefix').value; appConfig.announceSuffix = document.getElementById('cfg-announce-suffix').value; appConfig.defaultTab = document.getElementById('cfg-default-tab').value; saveDataToStorage(); alert("환경 설정이 저장되었습니다."); }
+        function saveScoreRules() { 
+            if (!isAdmin) { alert("관리자 모드에서만 사용할 수 있는 기능입니다."); return; }
+            for (let key in scoreRules) { let val = parseFloat(document.getElementById(`cfg-score-${key}`).value); if(!isNaN(val)) scoreRules[key] = val; } recalculateAllScores(); renderAll(); saveDataToStorage(); alert("점수 체계가 저장되었으며, 과거 기록이 새 규칙에 맞게 재계산되었습니다."); }
+        function saveUIConfig() { 
+           if (!isAdmin) { alert("관리자 모드에서만 사용할 수 있는 기능입니다."); return; } 
+            appConfig.announcePrefix = document.getElementById('cfg-announce-prefix').value; appConfig.announceSuffix = document.getElementById('cfg-announce-suffix').value; appConfig.defaultTab = document.getElementById('cfg-default-tab').value; saveDataToStorage(); alert("환경 설정이 저장되었습니다."); }
         function changePassword() { const newPw = document.getElementById('cfg-password').value; if(newPw.trim() === '') { alert("비밀번호를 입력하세요."); return; } appConfig.password = newPw; document.getElementById('cfg-password').value = ''; saveDataToStorage(); alert("관리자 비밀번호가 성공적으로 변경되었습니다."); }
         
         // ==============================================================================
         // 🗄️ [시즌 아카이브] 새 시즌 시작 및 과거 데이터 열람 로직
         // ==============================================================================
         function startNewSeason() { 
+            if (!isAdmin) { alert("관리자 모드에서만 사용할 수 있는 기능입니다."); return; }
+            
             const seasonName = document.getElementById('cfg-season-name').value.trim();
             if (!seasonName) { alert("보관할 시즌 이름을 입력해주세요."); return; }
             
@@ -1626,6 +1709,7 @@ function renderPastSeasonList() {
 
         // 과거 시즌 삭제 로직 (경고창, 데이터 삭제, 즉시 동기화 및 예외 처리 포함)
         function deletePastSeason(index) {
+            if (!isAdmin) { alert("관리자 모드에서만 사용할 수 있는 기능입니다."); return; }
             if (confirm("정말 이 시즌 기록을 영구적으로 삭제하시겠습니까? 이 작업은 복구할 수 없습니다.")) {
                 // 1. 데이터 삭제 및 저장 (Firebase 및 로컬 스토리지 동기화)
                 appConfig.pastSeasons.splice(index, 1);
@@ -1957,6 +2041,7 @@ function renderPastSeasonList() {
     </script>
 </body>
 </html>
+
 
 
 
