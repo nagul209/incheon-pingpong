@@ -208,6 +208,20 @@
             background-color: #f1f5f9 !important;
         }
 
+        /* 대진표 전체보기 모드 */
+        .tourn-full-view {
+            transform: scale(0.5);
+            transform-origin: top center;
+            width: 200% !important;
+            max-width: none !important;
+            max-height: none !important;
+        }
+
+        #op-tourn-container.full-view-active {
+            overflow: visible !important;
+            max-height: none !important;
+        }
+
         /* 스크롤바 커스텀 */
         #op-tourn-container::-webkit-scrollbar {
             height: 8px;
@@ -330,6 +344,17 @@
                             </select>
                         </div>
 
+                        <div class="flex items-center gap-1.5 border-l border-slate-300 pl-2">
+                            <span class="text-xs font-bold text-slate-600">경기 방식</span>
+                            <select id="op-match-type"
+                                class="text-xs border border-slate-200 rounded p-1.5 font-bold text-indigo-700 bg-white"
+                                onchange="renderGroupTable(true)">
+                                <option value="individual" selected>개인전</option>
+                                <option value="doubles">복식전</option>
+                                <option value="team">단체전</option>
+                            </select>
+                        </div>
+
                         <div id="dynamic-group-sizes"
                             class="flex flex-wrap gap-1.5 items-center border-l border-slate-300 pl-2"></div>
 
@@ -366,9 +391,14 @@
                         <h3 class="font-extrabold text-slate-800 text-base">⚔️ 본선 대진표</h3>
                         <p class="text-[10px] text-slate-400 font-medium mt-0.5">최대 128강까지 자동 생성 지원</p>
                     </div>
-                    <button onclick="printTournament()"
-                        class="text-[11px] bg-rose-600 text-white px-3 py-2 rounded-lg font-bold shadow-md btn-press flex items-center gap-1">🖨️
-                        대진표 인쇄</button>
+                    <div class="flex items-center gap-1.5">
+                        <button onclick="toggleTournFullView()" id="btn-tourn-fullview"
+                            class="text-[11px] bg-slate-100 text-slate-700 px-3 py-2 rounded-lg font-bold shadow-sm border border-slate-200 btn-press flex items-center gap-1">📱
+                            한화면 전체보기</button>
+                        <button onclick="printTournament()"
+                            class="text-[11px] bg-rose-600 text-white px-3 py-2 rounded-lg font-bold shadow-md btn-press flex items-center gap-1">🖨️
+                            대진표 인쇄</button>
+                    </div>
                 </div>
 
                 <div
@@ -454,19 +484,7 @@
                     <option value="current">📍 현재 진행중인 시즌</option>
                 </select>
             </div>
-            <div
-                class="shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 rounded-2xl bg-white overflow-hidden">
-                <table class="w-full text-sm text-center text-slate-700">
-                    <thead class="text-xs text-slate-500 uppercase bg-gray-50 border-b border-gray-200">
-                        <tr>
-                            <th class="px-2 py-3 w-20">날짜/종류</th>
-                            <th class="px-2 py-3 text-left">참석 및 입상 내역</th>
-                            <th class="px-2 py-3 admin-only-table-cell w-16" id="history-admin-th">기능</th>
-                        </tr>
-                    </thead>
-                    <tbody id="match-history-list" class="divide-y divide-slate-100"></tbody>
-                </table>
-            </div>
+            <div id="match-history-list" class="space-y-4"></div>
         </div>
 
         <div id="view-member-public" class="hidden animate-fade-in pb-20">
@@ -554,11 +572,17 @@
                 <div class="mb-5 bg-white p-4 border rounded-xl border-gray-200 shadow-sm relative">
                     <div class="flex justify-between items-center mb-2 border-b pb-2"><label
                             class="block text-sm font-extrabold text-gray-800">✅ 오늘 참석자</label>
-                        <div class="flex gap-1"><button onclick="generateTeams()"
+                        <div class="flex gap-1">
+                            <button onclick="loadParticipants()"
+                                class="text-[10px] bg-green-600 text-white px-2 py-1 rounded shadow-sm font-bold btn-press">📥
+                                참석자 불러오기</button>
+                            <button onclick="generateTeams()"
                                 class="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-1 rounded border border-indigo-200 font-bold hover:bg-indigo-100 btn-press">🤖
-                                조편성</button><button onclick="openSelector('attend', '오늘 참석자 선택', false)"
+                                조편성</button>
+                            <button onclick="openSelector('attend', '오늘 참석자 선택', false)"
                                 class="text-[10px] bg-blue-600 text-white px-2 py-1 rounded shadow-sm font-bold btn-press">명단
-                                선택</button></div>
+                                선택</button>
+                        </div>
                     </div>
                     <div id="ui-box-attend"
                         class="min-h-[40px] bg-gray-50 rounded-lg p-2 border border-gray-200 cursor-pointer"
@@ -576,6 +600,16 @@
                 </div>
 
                 <div class="space-y-4">
+                    <!-- 결과 불러오기 버튼 추가 -->
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <button onclick="loadPreliminaryResults()"
+                            class="bg-indigo-600 text-white py-2.5 rounded-xl text-[11px] font-black shadow-md btn-press border border-indigo-700">📥
+                            예선 결과 불러오기</button>
+                        <button onclick="loadTournamentResults()"
+                            class="bg-rose-600 text-white py-2.5 rounded-xl text-[11px] font-black shadow-md btn-press border border-rose-700">🏆
+                            본선 결과 불러오기</button>
+                    </div>
+
                     <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
                         <h3 class="font-extrabold text-sm text-indigo-700 mb-3 flex items-center gap-2"><span
                                 class="text-lg">🏅</span> 개인 리그전</h3>
@@ -1655,6 +1689,31 @@
                 players.forEach(p => { let rankInput = document.getElementById(`rank-g${g}-p${p.id}`); if (rankInput) { rankInput.value = p.finalRank; syncText(rankInput); } });
             }
             alert("🧮 1칸 1숫자 방식이 반영된 탁구 공식 룰 자동 계산이 완료되었습니다.");
+
+            // 예선 결과 저장 (입력 탭 연계용)
+            const matchType = document.getElementById('op-match-type').value;
+            const results = {
+                matchType: matchType,
+                groups: []
+            };
+
+            for (let g = 1; g <= count; g++) {
+                let groupResults = { g: g, ranks: { 1: [], 2: [], 3: [] } };
+                let sizeInput = document.getElementById(`op-group-size-${g}`);
+                let size = sizeInput ? parseInt(sizeInput.value) : 0;
+                for (let p = 1; p <= size; p++) {
+                    let player = window.leaguePlayers && window.leaguePlayers[`g${g}_p${p}`];
+                    let name = player ? player.name : null;
+                    let rankInput = document.getElementById(`rank-g${g}-p${p}`);
+                    let rank = rankInput ? parseInt(rankInput.value) : 0;
+                    if (name && rank >= 1 && rank <= 3) {
+                        groupResults.ranks[rank].push(name);
+                    }
+                }
+                results.groups.push(groupResults);
+            }
+            localStorage.setItem('preliminaryResults', JSON.stringify(results));
+            alert("✅ 결과 데이터 저장이 완료되었습니다. [입력] 탭에서 '예선 결과 불러오기'를 클릭하세요.");
         }
 
         function sortGroupPlayers() {
@@ -1685,18 +1744,86 @@
         }
 
         function selectLeaguePlayer(inputElem, g, p) {
-            isSinglePickMode = true; document.getElementById('selector-title').innerText = `${g}조 ${p}번 선수 선택`; document.getElementById('selector-count').classList.add('hidden'); document.getElementById('btn-selector-confirm').classList.add('hidden'); document.getElementById('selector-search').value = "";
+            const matchTypeEl = document.getElementById('op-match-type');
+            const matchType = matchTypeEl ? matchTypeEl.value : 'individual';
+            const limit = matchType === 'doubles' ? 2 : (matchType === 'team' ? 999 : 1);
+
+            isSinglePickMode = (limit === 1);
+            const titleSuffix = matchType === 'individual' ? '선수' : (matchType === 'doubles' ? '복식팀' : '팀');
+            const limitText = matchType === 'individual' ? '1명' : (matchType === 'doubles' ? '2명' : '무제한');
+            document.getElementById('selector-title').innerText = `${g}조 ${p}번 ${titleSuffix} 선택 (${limitText})`;
+
+            if (isSinglePickMode) {
+                document.getElementById('selector-count').classList.add('hidden');
+                document.getElementById('btn-selector-confirm').classList.add('hidden');
+            } else {
+                document.getElementById('selector-count').classList.remove('hidden');
+                document.getElementById('btn-selector-confirm').classList.remove('hidden');
+            }
+
+            document.getElementById('selector-search').value = "";
             let excludedNames = [];
-            for (let key in window.leaguePlayers) { if (key !== `g${g}_p${p}` && window.leaguePlayers[key]) excludedNames.push(window.leaguePlayers[key].name); }
+            for (let key in window.leaguePlayers) {
+                if (key !== `g${g}_p${p}` && window.leaguePlayers[key]) {
+                    const names = String(window.leaguePlayers[key].name).split(',').map(n => n.trim());
+                    excludedNames.push(...names);
+                }
+            }
+
+            tempSelectorList = [];
+            if (window.leaguePlayers[`g${g}_p${p}`]) {
+                tempSelectorList = String(window.leaguePlayers[`g${g}_p${p}`].name).split(',').map(n => n.trim());
+            }
+
+            currentSelectorTarget = 'league';
             if (renderSelectorList(true, 'league', excludedNames) === false) return;
             document.getElementById('member-selector-modal').classList.remove('hidden');
+            updateSelectorCount();
+
             window.singlePickCallback = function (memberId) {
+                if (currentSelectorTarget !== 'league') return;
                 const m = members.find(x => x.id == memberId);
                 if (m) {
-                    const displayName = `${m.name}(${m.handicap})`; window.leaguePlayers[`g${g}_p${p}`] = { id: m.id, name: m.name, display: displayName, handicap: m.handicap };
-                    inputElem.value = displayName; inputElem.nextElementSibling.innerText = displayName; document.getElementById(`th-g${g}-p${p}`).innerText = m.name;
+                    const displayName = `${m.name}(${m.handicap})`;
+                    window.leaguePlayers[`g${g}_p${p}`] = { id: m.id, name: m.name, display: displayName, handicap: m.handicap };
+                    inputElem.value = displayName;
+                    if (inputElem.nextElementSibling) inputElem.nextElementSibling.innerText = displayName;
+                    const th = document.getElementById(`th-g${g}-p${p}`);
+                    if (th) th.innerText = m.name;
                     updateMatchOrderDisplay(g, document.getElementById(`table-g${g}`).querySelectorAll('tbody tr').length);
                 }
+            };
+
+            window.leaguePickCallback = function () {
+                if (tempSelectorList.length === 0) {
+                    window.leaguePlayers[`g${g}_p${p}`] = null;
+                    inputElem.value = "";
+                    if (inputElem.nextElementSibling) inputElem.nextElementSibling.innerText = "";
+                    const th = document.getElementById(`th-g${g}-p${p}`);
+                    if (th) th.innerText = `${p}번`;
+                } else {
+                    if (matchType === 'doubles' && tempSelectorList.length > 2) {
+                        alert("복식전은 최대 2명까지만 선택 가능합니다.");
+                        return false;
+                    }
+                    const selectedMembers = tempSelectorList.map(name => members.find(m => m.name === name)).filter(Boolean);
+                    const teamName = selectedMembers.map(m => m.name).join(', ');
+                    const teamDisplay = selectedMembers.map(m => `${m.name}(${m.handicap})`).join(', ');
+                    const avgHandicap = selectedMembers.length > 0 ? Math.round(selectedMembers.reduce((sum, m) => sum + m.handicap, 0) / selectedMembers.length) : 0;
+
+                    window.leaguePlayers[`g${g}_p${p}`] = {
+                        id: 'team_' + Date.now(),
+                        name: teamName,
+                        display: teamDisplay,
+                        handicap: avgHandicap
+                    };
+                    inputElem.value = teamDisplay;
+                    if (inputElem.nextElementSibling) inputElem.nextElementSibling.innerText = teamDisplay;
+                    const th = document.getElementById(`th-g${g}-p${p}`);
+                    if (th) th.innerText = teamName;
+                }
+                updateMatchOrderDisplay(g, document.getElementById(`table-g${g}`).querySelectorAll('tbody tr').length);
+                return true;
             };
         }
 
@@ -1836,6 +1963,26 @@
             renderTournamentUI();
         }
 
+        function toggleTournFullView() {
+            const container = document.getElementById('op-tourn-container');
+            const area = document.getElementById('op-tourn-scroll-area');
+            const btn = document.getElementById('btn-tourn-fullview');
+            if (!container || !area) return;
+
+            container.classList.toggle('full-view-active');
+            area.classList.toggle('tourn-full-view');
+
+            if (area.classList.contains('tourn-full-view')) {
+                btn.innerHTML = "🔙 원래대로 보기";
+                btn.classList.replace('bg-slate-100', 'bg-slate-800');
+                btn.classList.replace('text-slate-700', 'text-white');
+            } else {
+                btn.innerHTML = "📱 한화면 전체보기";
+                btn.classList.replace('bg-slate-800', 'bg-slate-100');
+                btn.classList.replace('text-white', 'text-slate-700');
+            }
+        }
+
         function renderTournamentUI() {
             if (!tournamentState || tournamentState.size === 0) return;
 
@@ -1857,8 +2004,8 @@
             }
             filterContainer.innerHTML = filterHtml;
 
-            let minHeight = Math.max((size / Math.pow(2, vRound) / 2) * 50, 350);
-            let html = `<div id="op-tourn-scroll-area" class="flex w-max min-w-full font-bold text-sm bg-slate-50/50 p-6 rounded-xl border border-slate-200 relative transition-all" style="min-height: ${minHeight}px; justify-content: center;">`;
+            let minHeight = Math.max((size / Math.pow(2, vRound) / 2) * 60, 400);
+            let html = `<div id="op-tourn-scroll-area" class="flex w-max min-w-full font-bold text-sm bg-slate-50/50 p-8 rounded-xl border border-slate-200 relative transition-all" style="min-height: ${minHeight}px; justify-content: center;">`;
 
             const createNodeHtml = (r, n, isLeftBracket) => {
                 let player = tournamentState.tree[r][n];
@@ -1880,57 +2027,77 @@
                 let content = '';
                 if (isBye) {
                     content = `
-                    <div class="flex items-center justify-center relative w-full h-12 my-2.5 z-10 px-3">
-                        <div class="border-2 border-dashed border-slate-300 bg-slate-100/50 text-slate-400 rounded-lg w-full max-w-[130px] flex flex-col justify-center h-10 shadow-inner opacity-60">
-                            <div class="text-[11px] text-center w-full font-extrabold tracking-widest">BYE</div>
+                    <div class="flex items-center justify-center relative w-full h-14 my-3 z-10 px-3">
+                        <div class="border-2 border-dashed border-slate-200 bg-slate-100/30 text-slate-300 rounded-xl w-full max-w-[130px] flex flex-col justify-center h-10 shadow-inner opacity-60">
+                            <div class="text-[10px] text-center w-full font-black tracking-widest">BYE</div>
                         </div>
                     </div>`;
                 } else {
                     let displayVal = player || '';
                     let isAutoPlaceholder = displayVal.includes('조') && displayVal.includes('위');
-                    let placeholder = r === 0 ? '터치선택' : '승자 선택';
+                    let placeholder = r === 0 ? '터치선택' : '대기중';
                     let inputValue = isAutoPlaceholder ? '' : displayVal;
 
                     let bgClass = 'bg-white';
                     let textClass = 'text-slate-700';
-                    let borderCol = 'border-slate-300';
+                    let borderCol = 'border-slate-200';
+                    let shadowStyle = 'shadow-md';
 
-                    if (isWinner) { bgClass = 't-winner'; }
-                    else if (isLoser) { bgClass = 't-loser'; }
-                    else if (r > 0 && !inputValue) { bgClass = 'bg-indigo-50'; textClass = 'text-indigo-800'; borderCol = 'border-indigo-300'; }
+                    if (isWinner) {
+                        bgClass = 'bg-blue-600 text-white';
+                        textClass = 'text-white font-black';
+                        borderCol = 'border-blue-700';
+                        shadowStyle = 'shadow-[0_4px_12px_rgba(37,99,235,0.3)]';
+                    }
+                    else if (isLoser) {
+                        bgClass = 'bg-slate-50 opacity-40 grayscale';
+                        textClass = 'text-slate-400 font-bold';
+                        borderCol = 'border-slate-200';
+                        shadowStyle = 'shadow-none';
+                    }
+                    else if (r > 0 && !inputValue) {
+                        bgClass = 'bg-indigo-50/50';
+                        textClass = 'text-indigo-300';
+                        borderCol = 'border-indigo-100';
+                        shadowStyle = 'shadow-sm';
+                    }
 
-                    let badgeHtml = isAutoPlaceholder ? `<div class="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-slate-100 border border-slate-300 text-slate-600 px-2 py-0.5 rounded-full text-[9px] font-black shadow-sm whitespace-nowrap z-20">${displayVal}</div>` : '';
+                    let badgeHtml = isAutoPlaceholder ? `<div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-white border border-slate-200 text-indigo-600 px-2 py-0.5 rounded-full text-[9px] font-black shadow-sm whitespace-nowrap z-20">${displayVal}</div>` : '';
 
                     let matchNumHtml = '';
                     if (r === vRound) {
                         let totalNodesInRound = size / Math.pow(2, vRound);
                         let mNum = isLeftBracket ? (n + 1) : (totalNodesInRound - n);
-                        let posClass = isLeftBracket ? 'left-0 -ml-1.5' : 'right-0 -mr-1.5';
-                        matchNumHtml = `<div class="absolute ${posClass} top-1/2 -translate-y-1/2 bg-slate-700 text-white text-[8px] font-black w-4 h-4 flex items-center justify-center rounded shadow-sm z-30">${mNum}</div>`;
+                        let posClass = isLeftBracket ? 'left-0 -ml-2' : 'right-0 -mr-2';
+                        matchNumHtml = `<div class="absolute ${posClass} top-1/2 -translate-y-1/2 bg-slate-800 text-white text-[9px] font-black w-5 h-5 flex items-center justify-center rounded-lg shadow-md z-30">${mNum}</div>`;
                     }
 
                     let clickHandler = r === 0 ? `openLeafSelector(${n})` : `openWinnerModal(${r}, ${n})`;
 
                     content = `
-                    <div class="flex items-center justify-center relative w-full h-12 my-2.5 z-10 px-3">
+                    <div class="flex items-center justify-center relative w-full h-14 my-3 z-10 px-3">
                         ${matchNumHtml}
-                        <div onclick="${clickHandler}" class="border ${borderCol} ${bgClass} rounded-lg w-full max-w-[130px] shadow-sm flex items-center justify-center h-10 hover:ring-2 hover:ring-indigo-400 transition-all relative cursor-pointer">
+                        <div onclick="${clickHandler}" class="border-2 ${borderCol} ${bgClass} rounded-xl w-full max-w-[140px] ${shadowStyle} flex items-center justify-center h-11 hover:scale-105 transition-all relative cursor-pointer group">
                             ${badgeHtml}
-                            <input class="w-full h-full text-center outline-none text-[12px] font-extrabold cursor-pointer bg-transparent ${textClass}" placeholder="${placeholder}" value="${inputValue}" readonly>
-                            <span class="capture-text font-extrabold text-[12px] ${textClass}">${inputValue || placeholder}</span>
+                            <input class="w-full h-full text-center outline-none text-[11px] font-black cursor-pointer bg-transparent ${textClass}" placeholder="${placeholder}" value="${inputValue}" readonly>
+                            <span class="capture-text font-black text-[12px] ${textClass}">${inputValue || placeholder}</span>
+                            <div class="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 rounded-xl transition-opacity"></div>
                         </div>
                     </div>`;
                 }
 
+                let lineColor = (isWinner) ? '#3b82f6' : '#cbd5e1';
+                let lineWidth = (isWinner) ? '3px' : '2px';
+
                 let linesHtml = "";
                 if (isLeftBracket) {
-                    linesHtml += r > vRound ? `<div class="absolute left-0 w-1/2 h-[2px] bg-slate-400 top-1/2 z-0"></div>` : '';
-                    linesHtml += `<div class="absolute right-0 w-1/2 h-[2px] bg-slate-400 top-1/2 z-0"></div>`;
-                    linesHtml += `<div class="absolute right-0 w-1/2 ${borderClass} z-0" style="height: 50%; ${isTop ? 'bottom: 0;' : 'top: 0;'}"></div>`;
+                    linesHtml += r > vRound ? `<div class="absolute left-0 w-1/2 z-0" style="height: ${lineWidth}; background-color: ${lineColor}; top: 50%; transform: translateY(-50%);"></div>` : '';
+                    linesHtml += `<div class="absolute right-0 w-1/2 z-0" style="height: ${lineWidth}; background-color: ${lineColor}; top: 50%; transform: translateY(-50%);"></div>`;
+                    linesHtml += `<div class="absolute right-0 w-1/2 ${borderClass} z-0" style="height: 50%; ${isTop ? 'bottom: 0;' : 'top: 0;'} border-color: ${lineColor}; border-width: ${lineWidth};"></div>`;
                 } else {
-                    linesHtml += r > vRound ? `<div class="absolute right-0 w-1/2 h-[2px] bg-slate-400 top-1/2 z-0"></div>` : '';
-                    linesHtml += `<div class="absolute left-0 w-1/2 h-[2px] bg-slate-400 top-1/2 z-0"></div>`;
-                    linesHtml += `<div class="absolute left-0 w-1/2 ${borderClass} z-0" style="height: 50%; ${isTop ? 'bottom: 0;' : 'top: 0;'}"></div>`;
+                    linesHtml += r > vRound ? `<div class="absolute right-0 w-1/2 z-0" style="height: ${lineWidth}; background-color: ${lineColor}; top: 50%; transform: translateY(-50%);"></div>` : '';
+                    linesHtml += `<div class="absolute left-0 w-1/2 z-0" style="height: ${lineWidth}; background-color: ${lineColor}; top: 50%; transform: translateY(-50%);"></div>`;
+                    linesHtml += `<div class="absolute left-0 w-1/2 ${borderClass} z-0" style="height: 50%; ${isTop ? 'bottom: 0;' : 'top: 0;'} border-color: ${lineColor}; border-width: ${lineWidth};"></div>`;
                 }
 
                 return `<div class="flex-1 flex flex-col justify-center relative tourn-node">${linesHtml}${content}</div>`;
@@ -1938,7 +2105,7 @@
 
             for (let r = vRound; r < rounds; r++) {
                 let numNodes = size / Math.pow(2, r);
-                let colWidth = r === vRound ? '145px' : '155px';
+                let colWidth = r === vRound ? '160px' : '170px';
                 html += `<div class="flex flex-col justify-around relative" style="width: ${colWidth}; z-index: ${rounds - r};">`;
                 for (let n = 0; n < numNodes / 2; n++) html += createNodeHtml(r, n, true);
                 html += `</div>`;
@@ -1946,20 +2113,21 @@
 
             let champion = tournamentState.tree[rounds][0];
             html += `
-            <div class="flex flex-col justify-center relative px-2 z-50" style="width: 190px;">
+            <div class="flex flex-col justify-center relative px-2 z-50" style="width: 220px;">
                 <div class="absolute left-0 w-1/2 h-[2px] bg-slate-400 top-1/2 z-0"></div>
                 <div class="absolute right-0 w-1/2 h-[2px] bg-slate-400 top-1/2 z-0"></div>
-                <div onclick="openWinnerModal(${rounds}, 0)" class="bg-gradient-to-br from-yellow-100 to-amber-50 border-2 border-yellow-400 p-3 rounded-2xl text-center shadow-2xl z-10 w-full relative transform scale-110 cursor-pointer hover:scale-115 transition-transform">
-                    <div class="text-[11px] text-rose-600 mb-1 font-black tracking-widest drop-shadow-sm">👑 최종 우승</div>
-                    <input class="w-full text-center bg-transparent outline-none font-black text-[15px] text-amber-800 cursor-pointer" placeholder="터치하여 확정" value="${champion || ''}" readonly>
-                    <span class="capture-text font-black text-lg text-amber-800">${champion || '우승자'}</span>
+                <div onclick="openWinnerModal(${rounds}, 0)" class="bg-gradient-to-br from-yellow-400 via-amber-500 to-orange-500 border-4 border-white p-4 rounded-[2rem] text-center shadow-[0_15px_40px_rgba(245,158,11,0.4)] z-10 w-full relative transform scale-110 cursor-pointer hover:scale-115 transition-transform flex flex-col items-center">
+                    <div class="bg-white/20 px-3 py-0.5 rounded-full text-[10px] text-white mb-2 font-black tracking-[0.2em] shadow-sm uppercase">Champion</div>
+                    <div class="text-3xl mb-1">🏆</div>
+                    <input class="w-full text-center bg-transparent outline-none font-black text-[16px] text-white cursor-pointer placeholder-yellow-100/70" placeholder="승자 결정" value="${champion || ''}" readonly>
+                    <span class="capture-text font-black text-xl text-white mt-1">${champion || '우승자'}</span>
                 </div>
             </div>
             `;
 
             for (let r = rounds - 1; r >= vRound; r--) {
                 let numNodes = size / Math.pow(2, r);
-                let colWidth = r === vRound ? '145px' : '155px';
+                let colWidth = r === vRound ? '160px' : '170px';
                 html += `<div class="flex flex-col justify-around relative" style="width: ${colWidth}; z-index: ${rounds - r};">`;
                 for (let n = numNodes / 2; n < numNodes; n++) html += createNodeHtml(r, n, false);
                 html += `</div>`;
@@ -2228,14 +2396,20 @@
         function updateSelectorCount() { document.getElementById('selector-count').innerText = `${tempSelectorList.length}명 선택됨`; }
         function closeSelector() { document.getElementById('member-selector-modal').classList.add('hidden'); }
         function confirmSelector() {
-            formState[currentSelectorTarget] = [...tempSelectorList];
-            if (currentSelectorTarget === 'attend' || currentSelectorTarget === 'opAttend') {
-                for (let key in formState) {
-                    if (key !== 'attend' && key !== 'opAttend') formState[key] = (formState[key] || []).filter(name => formState[currentSelectorTarget].includes(name));
+            if (currentSelectorTarget === 'league') {
+                if (window.leaguePickCallback) {
+                    if (window.leaguePickCallback() === false) return;
                 }
+            } else {
+                formState[currentSelectorTarget] = [...tempSelectorList];
+                if (currentSelectorTarget === 'attend' || currentSelectorTarget === 'opAttend') {
+                    for (let key in formState) {
+                        if (key !== 'attend' && key !== 'opAttend') formState[key] = (formState[key] || []).filter(name => formState[currentSelectorTarget].includes(name));
+                    }
+                }
+                updateFormUI();
+                if (currentSelectorTarget === 'opAttend') generateGroupSizeInputs(); // 조 크기 자동 세팅 연동
             }
-            updateFormUI();
-            if (currentSelectorTarget === 'opAttend') generateGroupSizeInputs(); // 조 크기 자동 세팅 연동
             closeSelector();
         }
         function initFormState() { for (let key in formState) if (key !== 'opAttend') formState[key] = []; updateFormUI(); }
@@ -2308,6 +2482,111 @@
             document.querySelectorAll('[id^="member-info-"]').forEach(row => { if (row.id !== `member-info-${id}`) row.classList.add('hidden'); });
             if (infoRow.classList.contains('hidden')) { infoRow.classList.remove('hidden'); } else { infoRow.classList.add('hidden'); }
         }
+
+        // 결과 자동 불러오기 로직 (입력 탭)
+        function loadParticipants() {
+            const opAttendees = formState.opAttend || [];
+            if (opAttendees.length === 0) {
+                alert("🚨 불러올 데이터가 없습니다.\n운영 탭에서 먼저 참석자를 선택해 주세요.");
+                return;
+            }
+
+            if (!confirm(`운영 탭의 참석자 명단(${opAttendees.length}명)을 불러오시겠습니까?\n기존 참석자 명단에 추가되며, 중복된 이름은 제외됩니다.`)) return;
+
+            const currentAttendees = formState.attend || [];
+            const combined = [...new Set([...currentAttendees, ...opAttendees])];
+            formState.attend = combined;
+            updateFormUI();
+            alert(`✅ 참석자 명단 연동 완료! (총 ${combined.length}명)`);
+        }
+
+        function loadPreliminaryResults() {
+            const dataStr = localStorage.getItem('preliminaryResults');
+            if (!dataStr) {
+                alert("🚨 불러올 데이터가 없습니다.\n운영 탭에서 먼저 예선 표를 생성하고 [자동순위]를 계산해 주세요.");
+                return;
+            }
+            const data = JSON.parse(dataStr);
+            const matchType = data.matchType;
+            const groups = data.groups;
+
+            let typeLabel = matchType === 'individual' ? '개인전' : (matchType === 'doubles' ? '복식전' : '단체전');
+            let targetKeyPrefix = matchType === 'individual' ? 'lg' : (matchType === 'doubles' ? 'db' : 'tm');
+
+            if (!confirm(`운영 탭의 예선 결과(${typeLabel})를 입력 탭으로 불러오시겠습니까?`)) return;
+
+            // 초기화 (해당 방식의 결과만 초기화)
+            formState[targetKeyPrefix + '1'] = [];
+            formState[targetKeyPrefix + '2'] = [];
+            formState[targetKeyPrefix + '3'] = [];
+
+            let foundRankCount = 0;
+            groups.forEach(group => {
+                for (let r = 1; r <= 3; r++) {
+                    if (group.ranks[r] && group.ranks[r].length > 0) {
+                        formState[targetKeyPrefix + r].push(...group.ranks[r]);
+                        foundRankCount += group.ranks[r].length;
+                    }
+                }
+            });
+
+            if (foundRankCount === 0) {
+                alert("🚨 불러올 순위 데이터가 없습니다.");
+                return;
+            }
+
+            updateFormUI();
+            alert(`✅ ${typeLabel} 1, 2, 3위 명단을 성공적으로 불러왔습니다.`);
+        }
+
+        function loadTournamentResults() {
+            if (!tournamentState || !tournamentState.tree) {
+                alert("🚨 불러올 데이터가 없습니다.\n운영 탭에서 먼저 본선 대진표를 생성하고 경기를 진행해 주세요.");
+                return;
+            }
+            if (!confirm("운영 탭의 본선 토너먼트 최종 결과(우승, 준우승, 3위)를 불러오시겠습니까?\n기존 입력된 내용은 덮어씌워집니다.")) return;
+
+            // 초기화
+            formState.tn1 = []; formState.tn2 = []; formState.tn3 = [];
+
+            const rounds = tournamentState.rounds;
+            const tree = tournamentState.tree;
+
+            // 1위 (우승)
+            let winner = tree[rounds][0];
+            if (winner) formState.tn1.push(winner.split('(')[0]);
+
+            // 2위 (준우승) - 결승전 패자
+            let finalist1 = tree[rounds - 1][0];
+            let finalist2 = tree[rounds - 1][1];
+            if (finalist1 && finalist2) {
+                let loser = (finalist1 === winner) ? finalist2 : finalist1;
+                if (loser && loser !== "부전승(BYE)") formState.tn2.push(loser.split('(')[0]);
+            }
+
+            // 3위 (공동 3위) - 준결승전 패자들
+            if (rounds >= 2) {
+                for (let n = 0; n < 4; n++) {
+                    let semiPlayer = tree[rounds - 2][n];
+                    let advanced = tree[rounds - 1][Math.floor(n / 2)];
+                    if (semiPlayer && semiPlayer !== advanced && semiPlayer !== "부전승(BYE)") {
+                        formState.tn3.push(semiPlayer.split('(')[0]);
+                    }
+                }
+            }
+
+            if (formState.tn1.length === 0 && formState.tn2.length === 0 && formState.tn3.length === 0) {
+                alert("🚨 불러올 입상자가 없습니다.\n본선 경기를 진행하여 승자를 확정해 주세요.");
+                return;
+            }
+
+            updateFormUI();
+            alert("✅ 본선 최종 순위 명단을 성공적으로 불러왔습니다.");
+        }
+
+        // 별칭 유지 (이전 호환성)
+        function importQualifierResults() { loadPreliminaryResults(); }
+        function importTournamentResults() { loadTournamentResults(); }
 
         // 추가됨: 누락되어 있던 개인 기록 열람 로직(순위 탭에서 터치 시)
         function toggleMemberDetail(id) {
@@ -2808,11 +3087,18 @@
             }
         }
         // 수정됨: 기록 탭 뱃지에 복식 3위 적용
+        // 경기 기록 상세 토글 함수
+        function toggleMatchDetail(id) {
+            const el = document.getElementById(`match-detail-${id}`);
+            if (el) {
+                el.classList.toggle('hidden');
+            }
+        }
+
         function renderHistory() {
             const selector = document.getElementById('history-season-selector');
             const mode = selector ? selector.value : "current";
             const list = document.getElementById('match-history-list');
-            const adminTh = document.getElementById('history-admin-th');
             list.innerHTML = '';
 
             let displayHistory = [];
@@ -2821,57 +3107,147 @@
             if (isPastSeason) {
                 const seasonIndex = parseInt(mode);
                 displayHistory = appConfig.pastSeasons[seasonIndex].matchHistory || [];
-                if (adminTh) adminTh.classList.add('hidden');
             } else {
                 displayHistory = matchHistory;
-                if (adminTh) adminTh.classList.remove('hidden');
             }
 
             if (displayHistory.length === 0) {
-                list.innerHTML = `<tr><td colspan="3" class="text-center py-16"><div class="text-5xl mb-4 drop-shadow-sm opacity-80">🏓</div><p class="font-extrabold text-slate-700 text-base">경기 기록이 없습니다</p></td></tr>`;
+                list.innerHTML = `<div class="bg-white rounded-2xl border border-slate-100 shadow-sm py-16 text-center"><div class="text-5xl mb-4 drop-shadow-sm opacity-80">🏓</div><p class="font-extrabold text-slate-700 text-base">경기 기록이 없습니다</p></div>`;
                 return;
             }
 
-            [...displayHistory].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)).forEach(match => {
-                let winHtml = '';
-                const addBadge = (arr, label, bgClass) => {
-                    if (arr && arr.length > 0) { winHtml += `<div class="flex items-start gap-1.5 mb-1.5"><span class="shrink-0 text-[10px] font-extrabold text-white ${bgClass} px-1.5 py-0.5 rounded shadow-sm text-center">${label}</span> <span class="text-slate-700 font-bold text-[12px] break-keep leading-tight pt-0.5">${arr.map(escapeHTML).join(', ')}</span></div>`; }
+            // 명단 포맷팅 헬퍼 (신규 Flex-Wrap Badge 스타일)
+            const formatMemberList = (names) => {
+                if (!names || names.length === 0) return "-";
+                return `
+                    <div class="flex flex-wrap gap-2 p-3 border border-slate-200 rounded-xl bg-white w-full">
+                        ${names.map(name => {
+                    const isGray = name.includes('(');
+                    const colorClass = isGray ? 'text-slate-400 font-normal' : 'text-slate-800 font-medium';
+                    return `<span class="bg-slate-50 border border-slate-200 ${colorClass} px-3 py-1.5 rounded-lg text-sm h-fit shadow-sm">${escapeHTML(name)}</span>`;
+                }).join('')}
+                    </div>`;
+            };
+
+            // 헬퍼 함수 1: 비회원(괄호 포함) 이름 회색 처리 및 포맷팅
+            const formatMemberName = (name) => {
+                if (!name) return "";
+                const isGray = name.includes('(');
+                const colorClass = isGray ? 'text-slate-400 font-normal' : 'text-slate-800 font-bold';
+                return `<span class="${colorClass}">${escapeHTML(name)}</span>`;
+            };
+
+            // 헬퍼 함수 2: 종목별 3열 시상대 UI 렌더링
+            const renderTournamentResult = (title, r1, r2, r3) => {
+                const hasData = (r1 && r1.length > 0) || (r2 && r2.length > 0) || (r3 && r3.length > 0);
+                if (!hasData) return "";
+
+                const renderRankCol = (label, names, styles) => {
+                    const nameListHtml = (names && names.length > 0)
+                        ? names.map(name => `<div class="${styles}">${formatMemberName(name)}</div>`).join('')
+                        : '<span class="text-slate-300 font-bold text-sm">-</span>';
+
+                    return `
+                        <div class="flex flex-col gap-1.5 items-center bg-white p-2 rounded-xl border border-slate-100 shadow-sm">
+                            <div class="text-sm font-bold text-slate-400 mb-0.5">${label}</div>
+                            <div class="flex flex-col gap-1 w-full text-sm">
+                                ${nameListHtml}
+                            </div>
+                        </div>
+                    `;
                 };
-                addBadge(match.lg1, '🏅 리그전 1위', 'bg-indigo-600');
-                addBadge(match.lg2, '🥈 리그전 2위', 'bg-indigo-500');
-                addBadge(match.lg3, '🥉 리그전 3위', 'bg-indigo-400');
 
-                addBadge(match.tm1, '🥇 단체전 1위', 'bg-teal-600');
-                addBadge(match.tm2, '🥈 단체전 2위', 'bg-teal-500');
-                addBadge(match.tm3, '🥉 단체전 3위', 'bg-teal-400');
+                return `
+                    <div class="mb-5 last:mb-0">
+                        <div class="text-sm font-bold text-slate-800 mb-2.5 ml-1 flex items-center gap-1.5">${title}</div>
+                        <div class="grid grid-cols-3 gap-2">
+                            ${renderRankCol("🥇 1위", r1 || [], "bg-yellow-100 border border-yellow-400 text-yellow-800 font-bold px-2 py-1 rounded-md text-center w-full shadow-sm")}
+                            ${renderRankCol("🥈 2위", r2 || [], "bg-slate-100 border border-slate-300 text-slate-800 font-bold px-2 py-1 rounded-md text-center w-full shadow-sm")}
+                            ${renderRankCol("🥉 3위", r3 || [], "bg-orange-50 border border-orange-300 text-orange-800 font-bold px-2 py-1 rounded-md text-center w-full shadow-sm")}
+                        </div>
+                    </div>
+                `;
+            };
 
-                // 기존 기록 탭에서 누락되었던 기본 토너먼트(tn) 렌더링 복구
-                addBadge(match.tn1, '🥇 기본 토너먼트 1위', 'bg-blue-600');
-                addBadge(match.tn2, '🥈 기본 토너먼트 2위', 'bg-blue-500');
-                addBadge(match.tn3, '🥉 기본 토너먼트 3위', 'bg-blue-400');
+            [...displayHistory].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)).forEach(match => {
+                // 섹션별 렌더링
+                let lgHtml = renderTournamentResult('🏆 리그전 결과', match.lg1, match.lg2, match.lg3);
+                let tnHtml = renderTournamentResult('⚔️ 토너먼트 결과', match.tn1, match.tn2, match.tn3);
+                let utnHtml = renderTournamentResult('⚔️ 상위 토너먼트 결과', match.utn1, match.utn2, match.utn3);
+                let ltnHtml = renderTournamentResult('⚔️ 하위 토너먼트 결과', match.ltn1, match.ltn2, match.ltn3);
+                let dbHtml = renderTournamentResult('👥 복식 결과', match.db1, match.db2, match.db3);
+                let tmHtml = renderTournamentResult('🛡️ 단체전 결과', match.tm1, match.tm2, match.tm3);
 
-                addBadge(match.utn1, '🏆 상위 토너먼트 1위', 'bg-purple-600');
-                addBadge(match.utn2, '🥈 상위 토너먼트 2위', 'bg-purple-500');
-                addBadge(match.utn3, '🥉 상위 토너먼트 3위', 'bg-purple-400');
+                // 이벤트 우승은 별도 렌더링 (3열 그리드 제외)
+                let evHtml = (match.ev1 && match.ev1.length > 0) ? `
+                    <div class="mb-5 last:mb-0">
+                        <div class="text-sm font-bold text-slate-800 mb-2.5 ml-1 flex items-center gap-1.5">🎉 이벤트 우승</div>
+                        <div class="flex flex-wrap gap-2 p-3 border border-slate-200 rounded-xl bg-white w-full shadow-sm">
+                            ${match.ev1.map(name => `<span class="bg-yellow-100 border border-yellow-400 text-yellow-800 font-bold px-3 py-1.5 rounded-lg text-sm shadow-sm">${formatMemberName(name)}</span>`).join('')}
+                        </div>
+                    </div>
+                ` : "";
 
-                addBadge(match.ltn1, '🏆 하위 토너먼트 1위', 'bg-fuchsia-600');
-                addBadge(match.ltn2, '🥈 하위 토너먼트 2위', 'bg-fuchsia-500');
-                addBadge(match.ltn3, '🥉 하위 토너먼트 3위', 'bg-fuchsia-400');
+                const attend = match.attend || [];
+                const lazy = match.lazy || [];
+                const sincere = attend.filter(name => !lazy.includes(name));
 
-                addBadge(match.db1, '🥇 복식전 1위', 'bg-pink-600');
-                addBadge(match.db2, '🥈 복식전 2위', 'bg-pink-500');
-                addBadge(match.db3, '🥉 복식전 3위', 'bg-pink-400');
+                // 관리자 버튼 (isAdmin일 때만 생성)
+                const adminButtons = (isAdmin && !isPastSeason) ? `
+                <div class="flex gap-1.5 mt-4 pt-3 border-t border-slate-100">
+                    <button onclick="event.stopPropagation(); openAnnouncement(${match.id})" class="flex-1 py-2 bg-indigo-50 text-indigo-700 text-[10px] rounded-xl border border-indigo-100 hover:bg-indigo-100 font-black shadow-sm btn-press transition-all">공지 복사</button>
+                    <button onclick="event.stopPropagation(); editMatch(${match.id})" class="flex-1 py-2 bg-white text-slate-600 text-[10px] rounded-xl border border-slate-200 hover:bg-slate-50 font-black shadow-sm btn-press transition-all">정보 수정</button>
+                    <button onclick="event.stopPropagation(); deleteMatch(${match.id})" class="flex-1 py-2 bg-red-50 text-red-600 text-[10px] rounded-xl border border-red-100 hover:bg-red-100 font-black shadow-sm btn-press transition-all">기록 삭제</button>
+                </div>` : '';
 
-                addBadge(match.ev1, '🎉 이벤트 1위', 'bg-amber-500');
+                let displayDate = match.date ? escapeHTML(match.date) : '날짜 미정';
+                let dateParts = displayDate.split('-');
+                let formattedDate = dateParts.length === 3 ? `${parseInt(dateParts[1])}월 ${parseInt(dateParts[2])}일` : displayDate;
 
-                if (!winHtml) winHtml = '<div class="text-[11px] text-slate-400 font-medium py-1">입상 기록 없음</div>';
-                let lazyHtml = '';
-                if (match.lazy && match.lazy.length > 0) { lazyHtml = `<div class="mt-2 pt-2 border-t border-slate-200/60 flex items-start gap-1"><span class="shrink-0 text-[10px] font-extrabold text-red-500 mr-0.5 mt-0.5">🚨 불성실</span><span class="text-[11px] text-slate-600 font-bold leading-tight pt-0.5">${match.lazy.map(escapeHTML).join(', ')}</span></div>`; }
+                list.innerHTML += `
+                <div class="bg-white shadow-md rounded-xl border border-slate-100 animate-fade-in overflow-hidden">
+                    <!-- 헤더 (아코디언 트리거) -->
+                    <div class="text-center py-4 cursor-pointer hover:bg-slate-50 transition-colors" onclick="toggleMatchDetail(${match.id})">
+                        <div class="text-base font-bold text-slate-800 tracking-tight">${formattedDate} ${escapeHTML(match.type) || ''}</div>
+                        <div class="text-[9px] text-slate-400 mt-1 font-bold">▼ 클릭하여 상세 보기</div>
+                    </div>
 
-                const adminButtons = isPastSeason ? '' : `<td class="px-2 py-4 admin-only-table-cell align-middle w-14"><div class="flex flex-col gap-1.5 items-center"><button onclick="openAnnouncement(${match.id})" class="w-full px-2 py-1.5 bg-indigo-50 text-indigo-700 text-[10px] rounded-lg border border-indigo-100 hover:bg-indigo-100 font-extrabold shadow-sm btn-press">공지</button><button onclick="editMatch(${match.id})" class="w-full px-2 py-1.5 bg-white text-slate-600 text-[10px] rounded-lg border border-slate-200 hover:bg-slate-50 font-extrabold shadow-sm btn-press">수정</button><button onclick="deleteMatch(${match.id})" class="w-full px-2 py-1.5 bg-red-50 text-red-600 text-[10px] rounded-lg border border-red-100 hover:bg-red-100 font-extrabold shadow-sm btn-press">삭제</button></div></td>`;
-                let displayDate = match.date ? escapeHTML(match.date.substring(5)) : '미정';
+                    <!-- 상세 내용 (기본 hidden) -->
+                    <div id="match-detail-${match.id}" class="hidden p-4 pt-0 border-t border-slate-50 animate-slide-down">
+                        <div class="mt-4">
+                            <!-- 참석자 -->
+                            <div class="mb-4">
+                                <div class="text-base font-bold text-slate-800 mb-2">👥 참석자</div>
+                                ${formatMemberList(attend)}
+                            </div>
 
-                list.innerHTML += `<tr class="bg-white hover:bg-slate-50 border-b border-slate-100 transition-colors"><td class="px-2 py-4 text-center align-top whitespace-nowrap pt-5"><div class="font-extrabold text-slate-800 text-[13px]">${displayDate}</div><div class="text-[10px] mt-1.5"><span class="bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200 font-bold">${escapeHTML(match.type) || ''}</span></div></td><td class="px-2 py-4 text-left align-top"><div class="bg-slate-50 p-3 rounded-xl border border-slate-100 mb-2 shadow-inner"><div class="flex justify-between items-center mb-1.5"><span class="text-[10px] font-black text-slate-500">✅ 참석자 명단</span><span class="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-bold">${(match.attend || []).length}명</span></div><div class="text-[11px] text-slate-700 font-medium leading-relaxed break-keep">${(match.attend || []).map(escapeHTML).join(', ')}</div>${lazyHtml}</div><div class="bg-indigo-50/40 p-3 rounded-xl border border-indigo-50"><div class="text-[10px] font-black text-indigo-800 mb-2.5">🏆 입상 내역</div><div class="flex flex-col">${winHtml}</div></div></td>${adminButtons}</tr>`;
+                            <!-- 지각 (있는 경우만 표시) -->
+                            ${lazy.length > 0 ? `
+                            <div class="mb-4 text-left">
+                                <div class="text-base font-bold text-slate-800 mb-2 mt-4">⏰ 지각</div>
+                                ${formatMemberList(lazy)}
+                            </div>` : ''}
+
+                            <!-- 입상내역 -->
+                            <div class="mb-4 text-left">
+                                <div class="text-base font-bold text-slate-800 mb-2 mt-4">🏆 입상 내역</div>
+                                <div class="p-3 border border-slate-200 rounded-xl bg-slate-50/30">
+                                    ${lgHtml}
+                                    ${tnHtml}
+                                    ${utnHtml}
+                                    ${ltnHtml}
+                                    ${dbHtml}
+                                    ${tmHtml}
+                                    ${evHtml}
+                                    ${lgHtml || tnHtml || utnHtml || ltnHtml || dbHtml || tmHtml || evHtml ? "" : `<div class="h-full flex items-center text-[10px] text-slate-400 font-medium px-1 italic">입상 내역 없음</div>`}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 관리자 버튼 -->
+                        ${adminButtons}
+                    </div>
+                </div>`;
             });
         }
 
