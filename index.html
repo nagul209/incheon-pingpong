@@ -1909,16 +1909,22 @@
         }
 
         function propagateByes() {
+            if (!tournamentState || !tournamentState.tree) return;
             for (let r = 1; r <= tournamentState.rounds; r++) {
                 let numNodes = tournamentState.size / Math.pow(2, r);
                 for (let n = 0; n < numNodes; n++) {
                     let p1 = tournamentState.tree[r - 1][n * 2];
                     let p2 = tournamentState.tree[r - 1][n * 2 + 1];
 
-                    if (tournamentState.tree[r][n] === null) {
-                        if (p1 === "부전승(BYE)" && p2 && p2 !== "부전승(BYE)") tournamentState.tree[r][n] = p2;
-                        else if (p2 === "부전승(BYE)" && p1 && p1 !== "부전승(BYE)") tournamentState.tree[r][n] = p1;
-                        else if (p1 === "부전승(BYE)" && p2 === "부전승(BYE)") tournamentState.tree[r][n] = "부전승(BYE)";
+                    // 현재 칸이 비어있을 때만 부전승 체크 (이미 승자가 결정된 경우는 건드리지 않음)
+                    if (!tournamentState.tree[r][n]) {
+                        if (p1 === "부전승(BYE)" && p2 && p2 !== "부전승(BYE)") {
+                            tournamentState.tree[r][n] = p2;
+                        } else if (p2 === "부전승(BYE)" && p1 && p1 !== "부전승(BYE)") {
+                            tournamentState.tree[r][n] = p1;
+                        } else if (p1 === "부전승(BYE)" && p2 === "부전승(BYE)") {
+                            tournamentState.tree[r][n] = "부전승(BYE)";
+                        }
                     }
                 }
             }
@@ -2103,6 +2109,8 @@
                 tournamentState.tree[r][affectedIdx] = "";
             }
 
+            // 새로운 승자가 상위 라운드에서 이미 부전승을 만나는 경우 자동 진출
+            propagateByes();
             saveDataToStorage();
         }
 
