@@ -393,9 +393,6 @@
                         <p class="text-[10px] text-slate-400 font-medium mt-0.5">최대 128강까지 자동 생성 지원</p>
                     </div>
                     <div class="flex items-center gap-1.5">
-                        <button onclick="toggleTournFullView()" id="btn-tourn-fullview"
-                            class="text-[11px] bg-slate-100 text-slate-700 px-3 py-2 rounded-lg font-bold shadow-sm border border-slate-200 btn-press flex items-center gap-1">📱
-                            한화면 전체보기</button>
                         <button onclick="printTournament()"
                             class="text-[11px] bg-rose-600 text-white px-3 py-2 rounded-lg font-bold shadow-md btn-press flex items-center gap-1">🖨️
                             대진표 인쇄</button>
@@ -2003,10 +2000,7 @@
             `;
             for (let r = 0; r < rounds; r++) {
                 let roundSize = size / Math.pow(2, r);
-                let btnText = "";
-                if (roundSize === 2) btnText = "결승";
-                else if (roundSize === 4) btnText = "4강";
-                else btnText = roundSize + "강";
+                let btnText = roundSize === 2 ? "결승" : roundSize === 4 ? "4강" : roundSize + "강";
 
                 const activeClass = vRound === r ? 'bg-indigo-600 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-600';
                 filterHtml += `
@@ -2029,6 +2023,9 @@
 
             if (vRound < rounds) {
                 const numMatches = size / Math.pow(2, vRound + 1);
+                let roundName = size / Math.pow(2, vRound);
+                let roundBadgeText = roundName === 2 ? "결승" : roundName === 4 ? "4강" : roundName + "강";
+
                 for (let m = 0; m < numMatches; m++) {
                     const p1Idx = m * 2;
                     const p2Idx = m * 2 + 1;
@@ -2041,33 +2038,26 @@
                     const isBye = p2 === "부전승(BYE)";
 
                     html += `
-                        <div class="bg-white rounded-2xl shadow-sm p-5 border border-slate-100 transition-all">
+                        <div class="bg-white rounded-2xl shadow-sm p-4 border border-slate-100 transition-all">
                             <div class="flex items-center justify-between gap-3 relative">
-                                <!-- 선수 1 -->
                                 <div onclick="toggleTournamentWinner(${vRound}, ${p1Idx})" 
-                                     class="flex-1 p-3 rounded-xl border-2 transition-all cursor-pointer flex flex-col items-center justify-center min-h-[70px] ${isP1Winner ? 'bg-indigo-50 border-indigo-500 shadow-sm' : 'bg-slate-50 border-transparent'}">
-                                    <span class="text-[10px] text-slate-400 font-bold mb-1">PLAYER 1</span>
-                                    <span class="text-sm font-black ${isP1Winner ? 'text-indigo-700' : 'text-slate-700'}">${p1 || (vRound === 0 ? '선택' : '대기중')}</span>
+                                     class="flex-1 p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-center min-h-[60px] ${isP1Winner ? 'bg-indigo-50 border-indigo-500 shadow-sm' : 'bg-slate-50 border-transparent'}">
+                                    <span class="text-sm font-black ${isP1Winner ? 'text-indigo-700' : 'text-slate-700'}">${p1 || (vRound === 0 ? '터치선택' : '대기중')}</span>
                                 </div>
-
-                                <!-- VS 마크 -->
-                                <div class="flex flex-col items-center z-10 bg-white px-2">
+                                <div class="flex flex-col items-center px-1">
                                     <span class="text-[10px] font-black text-slate-300 italic">VS</span>
                                     ${isBye ? '<span class="text-[8px] font-bold text-indigo-500 mt-1">BYE</span>' : ''}
                                 </div>
-
-                                <!-- 선수 2 -->
                                 <div onclick="toggleTournamentWinner(${vRound}, ${p2Idx})" 
-                                     class="flex-1 p-3 rounded-xl border-2 transition-all cursor-pointer flex flex-col items-center justify-center min-h-[70px] ${isP2Winner ? 'bg-indigo-50 border-indigo-500 shadow-sm' : (isBye ? 'bg-slate-100 border-slate-200 opacity-50' : 'bg-slate-50 border-transparent')}">
-                                    <span class="text-[10px] text-slate-400 font-bold mb-1">PLAYER 2</span>
-                                    <span class="text-sm font-black ${isP2Winner ? 'text-indigo-700' : 'text-slate-700'}">${p2 || (vRound === 0 ? '선택' : '대기중')}</span>
+                                     class="flex-1 p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-center min-h-[60px] ${isP2Winner ? 'bg-indigo-50 border-indigo-500 shadow-sm' : (isBye ? 'bg-slate-100 border-slate-200 opacity-50' : 'bg-slate-50 border-transparent')}">
+                                    <span class="text-sm font-black ${isP2Winner ? 'text-indigo-700' : 'text-slate-700'}">${p2 || (vRound === 0 ? '터치선택' : '대기중')}</span>
                                 </div>
                             </div>
-                            <div class="mt-3 flex justify-center">
-                                <span class="bg-slate-100 text-slate-400 text-[9px] px-2 py-0.5 rounded-md font-bold">MATCH ${vRound + 1}-${m + 1}</span>
+                            <div class="mt-3 flex justify-between items-center px-1">
+                                <span class="bg-indigo-600 text-white text-[9px] px-2 py-0.5 rounded-md font-bold shadow-sm">${roundBadgeText}</span>
+                                <span class="text-slate-300 text-[9px] font-bold uppercase tracking-widest">Match ${m + 1}</span>
                             </div>
-                        </div>
-                    `;
+                        </div>`;
                 }
             } else {
                 // 우승자 화면
@@ -2265,23 +2255,58 @@
             }
         }
 
+        function createTraditionalTreeHTML() {
+            if (!tournamentState.tree) return "";
+            const size = tournamentState.size;
+            const rounds = tournamentState.rounds;
+
+            let html = `<div class="flex items-center justify-center min-w-max p-10 bg-white">`;
+
+            for (let r = 0; r <= rounds; r++) {
+                let numNodes = size / Math.pow(2, r);
+                let colClass = "flex flex-col justify-around h-full relative";
+                let colStyle = `width: 180px; min-height: ${Math.max(size * 40, 600)}px;`;
+
+                html += `<div class="${colClass}" style="${colStyle}">`;
+
+                for (let n = 0; n < numNodes; n++) {
+                    let player = tournamentState.tree[r][n] || "";
+                    let isBye = player === "부전승(BYE)";
+                    let isWinner = false;
+
+                    if (r < rounds && player && !isBye) {
+                        if (tournamentState.tree[r + 1][Math.floor(n / 2)] === player) isWinner = true;
+                    }
+
+                    // 커넥터 라인 로직
+                    let borderClass = "";
+                    if (r < rounds) {
+                        let isTop = n % 2 === 0;
+                        borderClass = isTop ? "border-r-2 border-b-2 rounded-br-lg" : "border-r-2 border-t-2 rounded-tr-lg";
+                    }
+
+                    html += `
+                        <div class="flex-1 flex items-center relative py-2">
+                            <!-- 이름 박스 -->
+                            <div class="relative z-10 w-full border-2 ${isWinner ? 'border-blue-600 bg-blue-50' : 'border-slate-300 bg-white'} rounded-md p-2 text-center shadow-sm">
+                                <span class="text-[11px] font-black ${isWinner ? 'text-blue-700' : 'text-slate-800'}">${player || (isBye ? 'BYE' : '-')}</span>
+                            </div>
+                            <!-- 연결선 -->
+                            ${r < rounds ? `
+                                <div class="absolute right-0 w-1/2 h-1/2 ${n % 2 === 0 ? 'bottom-0' : 'top-0'} ${borderClass} border-slate-400 z-0" style="right: -90px; width: 90px;"></div>
+                            ` : ''}
+                        </div>
+                    `;
+                }
+                html += `</div>`;
+            }
+            html += `</div>`;
+            return html;
+        }
+
         function printTournament() {
-            const target = document.getElementById('op-tourn-scroll-area');
-            target.querySelectorAll('input').forEach(input => syncText(input));
-
-            const originalMinWidth = target.style.minWidth;
-            const originalOverflow = target.style.overflow;
-            target.style.minWidth = 'max-content';
-            target.style.overflow = 'visible';
-            target.classList.add('capture-mode');
-
-            const printContent = target.outerHTML;
-
-            target.classList.remove('capture-mode');
-            target.style.minWidth = originalMinWidth;
-            target.style.overflow = originalOverflow;
-
-            const printWindow = window.open('', '', 'width=1100,height=800');
+            const treeHtml = createTraditionalTreeHTML();
+            const printWindow = window.open('', '', 'width=1200,height=800');
             printWindow.document.write(`
                 <html>
                 <head>
@@ -2289,39 +2314,41 @@
                     <script src="https://cdn.tailwindcss.com"><\/script>
                     <style>
                         @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;700;800;900&display=swap');
-                        body { font-family: 'Pretendard', sans-serif; padding: 20px; background: white; text-align: center; }
-                        h1 { margin-bottom: 30px; font-size: 28px; font-weight: 900; color: #1e293b; }
+                        body { font-family: 'Pretendard', sans-serif; background: white; margin: 0; padding: 0; }
+                        h1 { text-align: center; font-size: 24px; font-weight: 900; padding: 20px 0; color: #1e293b; border-bottom: 2px solid #e2e8f0; margin-bottom: 20px; }
                         
-                        .border-r-line { border-right: 2px solid #64748b !important; }
-                        .border-l-line { border-left: 2px solid #64748b !important; }
-                        .border-t-line { border-top: 2px solid #64748b !important; }
-                        .border-b-line { border-bottom: 2px solid #64748b !important; }
-                        .rounded-bl-xl { border-bottom-left-radius: 0.75rem !important; }
-                        .rounded-tl-xl { border-top-left-radius: 0.75rem !important; }
-                        .t-winner { background-color: #eff6ff !important; border: 2px solid #3b82f6 !important; color: #1d4ed8 !important; }
-                        .t-loser { background-color: #f8fafc !important; border: 1px solid #e2e8f0 !important; color: #94a3b8 !important; filter: grayscale(100%); opacity: 0.6; }
-                        
-                        .capture-mode { margin: 0 auto !important; width: max-content !important; transform-origin: top center; overflow: visible !important; }
-                        .capture-mode input { display: none !important; } 
-                        .capture-mode .capture-text { display: block !important; width: 100%; text-align: center; font-weight: 900 !important; }
-                        
+                        /* Custom CSS for tree lines */
+                        .border-r-2 { border-right: 2px solid #94a3b8 !important; }
+                        .border-b-2 { border-bottom: 2px solid #94a3b8 !important; }
+                        .border-t-2 { border-top: 2px solid #94a3b8 !important; }
+                        .rounded-br-lg { border-bottom-right-radius: 0.5rem !important; }
+                        .rounded-tr-lg { border-top-right-radius: 0.5rem !important; }
+
                         @media print { 
-                            @page { size: A4 landscape; margin: 10mm; } 
-                            body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; zoom: 0.6; } 
+                            @page { size: A4 landscape; margin: 5mm; } 
+                            body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; zoom: 0.55; }
+                            h1 { border-bottom: none; }
                         }
+                        .print-container { display: flex; justify-content: center; transform-origin: top center; }
                     </style>
                 </head>
                 <body>
                     <h1>🏓 본선 토너먼트 대진표</h1>
-                    ${printContent}
+                    <div class="print-container">
+                        ${treeHtml}
+                    </div>
                     <script>
-                        setTimeout(() => { window.print(); window.close(); }, 800);
+                        window.onload = () => {
+                            setTimeout(() => { 
+                                window.print(); 
+                                window.close(); 
+                            }, 1000);
+                        };
                     <\/script>
                 </body>
                 </html>
             `);
             printWindow.document.close();
-            printWindow.focus();
         }
 
         // ==============================================================================
