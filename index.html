@@ -1552,18 +1552,18 @@
                             </div>
                         </div>
                         <div class="overflow-x-auto w-full max-w-full">
-                        <table class="w-full text-center text-xs border-collapse min-w-max whitespace-nowrap" id="table-g${g}">
+                        <table class="table-auto text-center text-xs border-collapse whitespace-nowrap mx-auto" id="table-g${g}">
                             <thead>
                                 <tr class="bg-slate-50 border-b-2 border-slate-300 text-slate-700 font-extrabold">
-                                    <th class="p-1.5 sm:p-2 border-r border-slate-200 bg-slate-100 min-w-[60px] whitespace-nowrap">선수명</th>`;
+                                    <th class="px-1.5 py-1 border-r border-slate-200 bg-slate-100 w-auto whitespace-nowrap">선수명</th>`;
 
                 for (let i = 1; i <= currentSize; i++) {
                     let player = window.leaguePlayers[`g${g}_p${i}`];
                     let headerName = player ? escapeHTML(player.name) : `${i}번`;
-                    html += `<th class="p-1 sm:p-1.5 border-r border-slate-200 font-bold text-[11px] whitespace-nowrap min-w-[40px]" id="th-g${g}-p${i}">${headerName}</th>`;
+                    html += `<th class="px-1 py-1 border-r border-slate-200 font-bold text-[11px] whitespace-nowrap w-auto" id="th-g${g}-p${i}">${headerName}</th>`;
                 }
 
-                html += `<th class="p-1.5 sm:p-2 border-r border-slate-200 min-w-[50px] whitespace-nowrap">승/패</th><th class="p-1.5 sm:p-2 border-r border-slate-200 min-w-[50px] whitespace-nowrap">득/실</th><th class="p-1.5 sm:p-2 min-w-[40px] bg-rose-50 text-rose-600 whitespace-nowrap">순위</th></tr></thead><tbody>`;
+                html += `<th class="px-1.5 py-1 border-r border-slate-200 w-auto whitespace-nowrap">승/패</th><th class="px-1.5 py-1 border-r border-slate-200 w-auto whitespace-nowrap">득/실</th><th class="px-1.5 py-1 bg-rose-50 text-rose-600 w-auto whitespace-nowrap">순위</th></tr></thead><tbody>`;
 
                 for (let i = 1; i <= currentSize; i++) {
                     let player = window.leaguePlayers[`g${g}_p${i}`];
@@ -1572,17 +1572,17 @@
 
                     html += `<tr class="border-b border-slate-200 hover:bg-slate-50/50">
                         <td class="p-0 border-r border-slate-200 bg-slate-50 font-bold text-[11px]" id="td-g${g}-p${i}">
-                            <input type="text" value="${displayVal}" class="w-full h-full text-center outline-none cursor-pointer hover:bg-indigo-50 font-bold text-[11px] text-slate-700 p-1.5 sm:p-2 bg-transparent whitespace-nowrap min-w-[60px]" placeholder="터치👉" readonly onclick="selectLeaguePlayer(this, ${g}, ${i})">
-                            <span class="capture-text font-bold text-[11px] text-slate-700 p-1.5 sm:p-2 bg-slate-50 whitespace-nowrap">${placeholderVal}</span>
+                            <input type="text" value="${displayVal}" class="w-full h-full text-center outline-none cursor-pointer hover:bg-indigo-50 font-bold text-[11px] text-slate-700 px-1 py-1 bg-transparent whitespace-nowrap" placeholder="터치👉" readonly onclick="selectLeaguePlayer(this, ${g}, ${i})">
+                            <span class="capture-text font-bold text-[11px] text-slate-700 px-1 py-1 bg-slate-50 whitespace-nowrap">${placeholderVal}</span>
                         </td>`;
 
                     for (let j = 1; j <= currentSize; j++) {
-                        if (i === j) html += `<td class="border-r border-slate-200 diagonal-strike min-w-[40px]"></td>`;
-                        else html += `<td class="border-r border-slate-200 p-0 min-w-[40px]"><input type="text" id="score-g${g}-r${i}-c${j}" class="w-full h-full p-1 sm:p-2 text-center bg-transparent outline-none font-medium text-slate-600 focus:bg-yellow-50" placeholder="" oninput="syncText(this)"><span class="capture-text font-medium text-slate-600 p-1 sm:p-2 bg-white"></span></td>`;
+                        if (i === j) html += `<td class="border-r border-slate-200 diagonal-strike w-auto"></td>`;
+                        else html += `<td class="border-r border-slate-200 p-0"><input type="text" id="score-g${g}-r${i}-c${j}" class="w-full h-full px-1 py-1 text-center bg-transparent outline-none font-medium text-slate-600 focus:bg-yellow-50" placeholder="" oninput="syncText(this)"><span class="capture-text font-medium text-slate-600 px-1 py-1 bg-white"></span></td>`;
                     }
-                    html += `<td class="border-r border-slate-200 p-0 min-w-[50px]"><input type="text" id="wl-g${g}-p${i}" class="w-full h-full p-1 sm:p-2 text-center outline-none font-bold text-slate-700 bg-transparent" placeholder="/" oninput="syncText(this)"><span class="capture-text font-bold text-slate-700 p-1 sm:p-2 bg-white">/</span></td>
-                    <td class="border-r border-slate-200 p-0 min-w-[50px]"><input type="text" id="diff-g${g}-p${i}" class="w-full h-full p-1 sm:p-2 text-center outline-none font-bold text-slate-700 bg-transparent" placeholder="/" oninput="syncText(this)"><span class="capture-text font-bold text-slate-700 p-1 sm:p-2 bg-white">/</span></td>
-                    <td class="bg-rose-50/30 p-0 min-w-[40px]"><input type="text" id="rank-g${g}-p${i}" class="w-full h-full p-1 sm:p-2 text-center outline-none font-black text-rose-600 text-sm bg-transparent border-0" placeholder="" oninput="syncText(this)"><span class="capture-text font-black text-rose-600 p-1 sm:p-2 bg-rose-50"></span></td></tr>`;
+                    html += `<td class="border-r border-slate-200 p-0"><input type="text" id="wl-g${g}-p${i}" class="w-full h-full px-1.5 py-1 text-center outline-none font-bold text-slate-700 bg-transparent" placeholder="/" oninput="syncText(this)"><span class="capture-text font-bold text-slate-700 px-1.5 py-1 bg-white">/</span></td>
+                    <td class="border-r border-slate-200 p-0"><input type="text" id="diff-g${g}-p${i}" class="w-full h-full px-1.5 py-1 text-center outline-none font-bold text-slate-700 bg-transparent" placeholder="/" oninput="syncText(this)"><span class="capture-text font-bold text-slate-700 px-1.5 py-1 bg-white">/</span></td>
+                    <td class="bg-rose-50/30 p-0"><input type="text" id="rank-g${g}-p${i}" class="w-full h-full px-1.5 py-1 text-center outline-none font-black text-rose-600 text-sm bg-transparent border-0" placeholder="" oninput="syncText(this)"><span class="capture-text font-black text-rose-600 px-1.5 py-1 bg-rose-50"></span></td></tr>`;
                 }
                 html += `</tbody></table></div></div><div class="bg-slate-50 border-t border-slate-200 text-[11px] text-left no-print"><div class="p-2.5 flex justify-between items-center cursor-pointer font-extrabold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors" onclick="toggleOrder(${g})"><span>🔄 게임 순서 접기/펼치기</span><span id="order-icon-${g}" class="text-xs">▼</span></div><div id="order-content-${g}" class="hidden p-3 leading-loose break-keep bg-slate-50 shadow-inner"></div></div></div>`;
             }
