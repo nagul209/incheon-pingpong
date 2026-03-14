@@ -1554,16 +1554,17 @@
                         <div class="overflow-x-auto w-full max-w-full">
                         <table class="table-auto text-center text-xs border-collapse whitespace-nowrap mx-auto" id="table-g${g}">
                             <thead>
-                                <tr class="bg-slate-50 border-b-2 border-slate-300 text-slate-700 font-extrabold">
-                                    <th class="px-1.5 py-1 border-r border-slate-200 bg-slate-100 w-auto whitespace-nowrap">선수명</th>`;
+                                <tr class="bg-blue-50 border-b-2 border-slate-200 text-slate-800 font-extrabold">
+                                    <th class="px-1.5 py-1 border-r border-slate-200 bg-blue-100/50 w-auto whitespace-nowrap">선수명</th>`;
 
                 for (let i = 1; i <= currentSize; i++) {
                     let player = window.leaguePlayers[`g${g}_p${i}`];
+                    // 메달은 calculateGroupRankings에서 계산된 후 업데이트됩니다. 초기화 시엔 이름만 표시합니다.
                     let headerName = player ? escapeHTML(player.name) : `${i}번`;
-                    html += `<th class="px-1 py-1 border-r border-slate-200 font-bold text-[11px] whitespace-nowrap w-auto" id="th-g${g}-p${i}">${headerName}</th>`;
+                    html += `<th class="px-1 py-1 border-r border-slate-200 font-bold text-[11px] whitespace-nowrap w-auto text-slate-800" id="th-g${g}-p${i}">${headerName}</th>`;
                 }
 
-                html += `<th class="px-1.5 py-1 border-r border-slate-200 w-auto whitespace-nowrap">승/패</th><th class="px-1.5 py-1 border-r border-slate-200 w-auto whitespace-nowrap">득/실</th><th class="px-1.5 py-1 bg-rose-50 text-rose-600 w-auto whitespace-nowrap">순위</th></tr></thead><tbody>`;
+                html += `<th class="px-1.5 py-1 border-r border-slate-200 w-auto whitespace-nowrap">승/패</th><th class="px-1.5 py-1 border-r border-slate-200 w-auto whitespace-nowrap">득/실</th><th class="px-1.5 py-1 bg-rose-50 text-rose-600 w-auto whitespace-nowrap">순위</th></tr></thead><tbody class="bg-white text-slate-800">`;
 
                 for (let i = 1; i <= currentSize; i++) {
                     let player = window.leaguePlayers[`g${g}_p${i}`];
@@ -1571,9 +1572,9 @@
                     let placeholderVal = player ? displayVal : '터치👉';
 
                     html += `<tr class="border-b border-slate-200 hover:bg-slate-50/50">
-                        <td class="p-0 border-r border-slate-200 bg-slate-50 font-bold text-[11px]" id="td-g${g}-p${i}">
-                            <input type="text" value="${displayVal}" class="w-full h-full text-center outline-none cursor-pointer hover:bg-indigo-50 font-bold text-[11px] text-slate-700 px-1 py-1 bg-transparent whitespace-nowrap" placeholder="터치👉" readonly onclick="selectLeaguePlayer(this, ${g}, ${i})">
-                            <span class="capture-text font-bold text-[11px] text-slate-700 px-1 py-1 bg-slate-50 whitespace-nowrap">${placeholderVal}</span>
+                        <td class="p-0 border-r border-slate-200 bg-white font-bold text-[11px]" id="td-g${g}-p${i}">
+                            <input type="text" value="${displayVal}" class="w-full h-full text-center outline-none cursor-pointer hover:bg-indigo-50 font-bold text-[11px] text-slate-800 px-1 py-1 bg-transparent whitespace-nowrap" placeholder="터치👉" readonly onclick="selectLeaguePlayer(this, ${g}, ${i})">
+                            <span class="capture-text font-bold text-[11px] text-slate-800 px-1 py-1 bg-white whitespace-nowrap">${placeholderVal}</span>
                         </td>`;
 
                     for (let j = 1; j <= currentSize; j++) {
@@ -1713,7 +1714,18 @@
                     }
                     rank += tied.length; idx += tied.length;
                 }
-                players.forEach(p => { let rankInput = document.getElementById(`rank-g${g}-p${p.id}`); if (rankInput) { rankInput.value = p.finalRank; syncText(rankInput); } });
+                players.forEach(p => {
+                    let rankInput = document.getElementById(`rank-g${g}-p${p.id}`);
+                    if (rankInput) { rankInput.value = p.finalRank; syncText(rankInput); }
+
+                    let th = document.getElementById(`th-g${g}-p${p.id}`);
+                    if (th) {
+                        let playerObj = window.leaguePlayers[`g${g}_p${p.id}`];
+                        let name = playerObj ? escapeHTML(playerObj.name) : `${p.id}번`;
+                        let medal = p.finalRank === 1 ? '🥇' : (p.finalRank === 2 ? '🥈' : (p.finalRank === 3 ? '🥉' : ''));
+                        th.innerText = `${medal}${name}`;
+                    }
+                });
             }
             alert("🧮 1칸 1숫자 방식이 반영된 탁구 공식 룰 자동 계산이 완료되었습니다.");
 
@@ -1759,15 +1771,60 @@
         function syncText(inputElem) { inputElem.nextElementSibling.innerText = inputElem.value || inputElem.placeholder; }
 
         async function copyGroupTableImage(g) {
-            const target = document.getElementById(`table-container-g${g}`); const btn = document.getElementById(`btn-copy-g${g}`); btn.innerText = "⏳ 복사중...";
-            target.querySelectorAll('input').forEach(input => { syncText(input); }); target.classList.add('capture-mode');
+            const btn = document.getElementById(`btn-copy-g${g}`);
+            const originalText = btn.innerText;
+            btn.innerText = "⏳ 복사중...";
+
             try {
-                const canvas = await html2canvas(target, { scale: 3, backgroundColor: '#ffffff', logging: false, useCORS: true });
-                canvas.toBlob(async (blob) => {
-                    try { const item = new ClipboardItem({ 'image/png': blob }); await navigator.clipboard.write([item]); alert(`✅ 복사 완료!`); } catch (err) { alert("❌ 지원하지 않는 브라우저입니다."); }
-                    btn.innerText = "📸 카톡 복사"; target.classList.remove('capture-mode');
-                }, 'image/png');
-            } catch (e) { btn.innerText = "📸 카톡 복사"; target.classList.remove('capture-mode'); }
+                let sizeInput = document.getElementById(`op-group-size-${g}`);
+                let size = sizeInput ? parseInt(sizeInput.value) : 4;
+                let playersData = [];
+
+                for (let i = 1; i <= size; i++) {
+                    let pObj = window.leaguePlayers[`g${g}_p${i}`];
+                    let name = pObj ? pObj.name : `${i}번`;
+
+                    let wlInput = document.getElementById(`wl-g${g}-p${i}`);
+                    let rankInput = document.getElementById(`rank-g${g}-p${i}`);
+
+                    let wl = wlInput ? wlInput.value : "";
+                    let rText = rankInput ? rankInput.value : "";
+                    let rNum = parseInt(rText) || 999;
+
+                    let wlFormatted = wl;
+                    if (wl.includes('/')) {
+                        let parts = wl.split('/');
+                        wlFormatted = `${parts[0]}승 ${parts[1]}패`;
+                    }
+
+                    playersData.push({
+                        name: name,
+                        wl: wlFormatted,
+                        rank: rNum,
+                        rankText: rText ? `${rText}위` : ""
+                    });
+                }
+
+                playersData.sort((a, b) => a.rank - b.rank);
+
+                let resultText = `[${g}조 경기 결과]\n`;
+                playersData.forEach(p => {
+                    let medal = "";
+                    if (p.rank === 1) medal = "🥇";
+                    else if (p.rank === 2) medal = "🥈";
+                    else if (p.rank === 3) medal = "🥉";
+
+                    let rankDisplay = p.rankText ? ` (${p.rankText})` : "";
+                    resultText += `${medal}${p.name}: ${p.wl}${rankDisplay}\n`;
+                });
+
+                await navigator.clipboard.writeText(resultText.trim());
+                alert(`✅ 텍스트가 클립보드에 복사되었습니다! 카카오톡에 붙여넣기 하세요.`);
+            } catch (err) {
+                alert("❌ 클립보드 복사에 실패했습니다.");
+            } finally {
+                btn.innerText = originalText;
+            }
         }
 
         function selectLeaguePlayer(inputElem, g, p) {
