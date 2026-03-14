@@ -353,6 +353,7 @@
                                 <option value="individual" selected>개인전</option>
                                 <option value="doubles">복식전</option>
                                 <option value="team">단체전</option>
+                                <option value="full_league">전체 풀리그</option>
                             </select>
                         </div>
 
@@ -1503,6 +1504,30 @@
         }
 
         function renderGroupTable(preserveData = false) {
+            const matchTypeEl = document.getElementById('op-match-type');
+            const matchType = matchTypeEl ? matchTypeEl.value : 'individual';
+
+            if (matchType === 'full_league' && !preserveData) {
+                const attendees = formState.opAttend && formState.opAttend.length > 0 ? formState.opAttend : (formState.attend || []);
+                if (attendees.length > 0) {
+                    document.getElementById('op-group-count').value = "1";
+                    generateGroupSizeInputs();
+                    const sizeInput = document.getElementById('op-group-size-1');
+                    if (sizeInput) sizeInput.value = attendees.length;
+
+                    window.leaguePlayers = {};
+                    let pIdx = 1;
+                    attendees.forEach(name => {
+                        const m = members.find(x => x.name === name);
+                        if (m) {
+                            window.leaguePlayers[`g1_p${pIdx}`] = { id: m.id, name: m.name, display: `${m.name}(${m.handicap})`, handicap: m.handicap };
+                            pIdx++;
+                        }
+                    });
+                    preserveData = true;
+                }
+            }
+
             const count = parseInt(document.getElementById('op-group-count').value);
             if (!preserveData) window.leaguePlayers = {};
             let html = `<div class="flex flex-wrap gap-6 justify-center w-full">`;
@@ -1526,39 +1551,40 @@
                                 <span class="text-[10px] bg-emerald-500/80 px-2 py-0.5 rounded font-bold">총 ${getRoundRobinPairs(currentSize).length}경기</span>
                             </div>
                         </div>
-                        <table class="w-full text-center text-xs border-collapse" id="table-g${g}">
+                        <div class="overflow-x-auto w-full max-w-full">
+                        <table class="w-full text-center text-xs border-collapse min-w-max whitespace-nowrap" id="table-g${g}">
                             <thead>
                                 <tr class="bg-slate-50 border-b-2 border-slate-300 text-slate-700 font-extrabold">
-                                    <th class="p-2 border-r border-slate-200 bg-slate-100 w-24 whitespace-nowrap">선수명</th>`;
+                                    <th class="p-1.5 sm:p-2 border-r border-slate-200 bg-slate-100 min-w-[60px] whitespace-nowrap">선수명</th>`;
 
                 for (let i = 1; i <= currentSize; i++) {
                     let player = window.leaguePlayers[`g${g}_p${i}`];
                     let headerName = player ? escapeHTML(player.name) : `${i}번`;
-                    html += `<th class="p-1 border-r border-slate-200 font-bold break-all text-[11px] whitespace-normal min-w-[60px]" id="th-g${g}-p${i}">${headerName}</th>`;
+                    html += `<th class="p-1 sm:p-1.5 border-r border-slate-200 font-bold text-[11px] whitespace-nowrap min-w-[40px]" id="th-g${g}-p${i}">${headerName}</th>`;
                 }
 
-                html += `<th class="p-2 border-r border-slate-200 w-10 whitespace-nowrap">승/패</th><th class="p-2 border-r border-slate-200 w-10 whitespace-nowrap">득/실</th><th class="p-2 w-10 bg-rose-50 text-rose-600 whitespace-nowrap">순위</th></tr></thead><tbody>`;
+                html += `<th class="p-1.5 sm:p-2 border-r border-slate-200 min-w-[50px] whitespace-nowrap">승/패</th><th class="p-1.5 sm:p-2 border-r border-slate-200 min-w-[50px] whitespace-nowrap">득/실</th><th class="p-1.5 sm:p-2 min-w-[40px] bg-rose-50 text-rose-600 whitespace-nowrap">순위</th></tr></thead><tbody>`;
 
                 for (let i = 1; i <= currentSize; i++) {
                     let player = window.leaguePlayers[`g${g}_p${i}`];
                     let displayVal = player ? escapeHTML(player.display) : '';
                     let placeholderVal = player ? displayVal : '터치👉';
 
-                    html += `<tr class="border-b border-slate-200">
-                        <td class="p-0 border-r border-slate-200 bg-slate-50" id="td-g${g}-p${i}">
-                            <input type="text" value="${displayVal}" class="w-full h-full text-center outline-none cursor-pointer hover:bg-indigo-50 font-bold text-[11px] text-slate-700 p-2 break-all bg-transparent whitespace-normal min-h-[40px]" placeholder="터치👉" readonly onclick="selectLeaguePlayer(this, ${g}, ${i})">
-                            <span class="capture-text font-bold text-[11px] text-slate-700 p-2 break-all bg-slate-50 whitespace-normal">${placeholderVal}</span>
+                    html += `<tr class="border-b border-slate-200 hover:bg-slate-50/50">
+                        <td class="p-0 border-r border-slate-200 bg-slate-50 font-bold text-[11px]" id="td-g${g}-p${i}">
+                            <input type="text" value="${displayVal}" class="w-full h-full text-center outline-none cursor-pointer hover:bg-indigo-50 font-bold text-[11px] text-slate-700 p-1.5 sm:p-2 bg-transparent whitespace-nowrap min-w-[60px]" placeholder="터치👉" readonly onclick="selectLeaguePlayer(this, ${g}, ${i})">
+                            <span class="capture-text font-bold text-[11px] text-slate-700 p-1.5 sm:p-2 bg-slate-50 whitespace-nowrap">${placeholderVal}</span>
                         </td>`;
 
                     for (let j = 1; j <= currentSize; j++) {
-                        if (i === j) html += `<td class="border-r border-slate-200 diagonal-strike"></td>`;
-                        else html += `<td class="border-r border-slate-200 p-0"><input type="text" id="score-g${g}-r${i}-c${j}" class="w-full h-full p-2 text-center bg-transparent outline-none font-medium text-slate-600 focus:bg-yellow-50" placeholder="" oninput="syncText(this)"><span class="capture-text font-medium text-slate-600 p-2 bg-white"></span></td>`;
+                        if (i === j) html += `<td class="border-r border-slate-200 diagonal-strike min-w-[40px]"></td>`;
+                        else html += `<td class="border-r border-slate-200 p-0 min-w-[40px]"><input type="text" id="score-g${g}-r${i}-c${j}" class="w-full h-full p-1 sm:p-2 text-center bg-transparent outline-none font-medium text-slate-600 focus:bg-yellow-50" placeholder="" oninput="syncText(this)"><span class="capture-text font-medium text-slate-600 p-1 sm:p-2 bg-white"></span></td>`;
                     }
-                    html += `<td class="border-r border-slate-200 p-0"><input type="text" id="wl-g${g}-p${i}" class="w-full h-full p-2 text-center outline-none font-bold text-slate-700 bg-transparent" placeholder="/" oninput="syncText(this)"><span class="capture-text font-bold text-slate-700 p-2 bg-white">/</span></td>
-                    <td class="border-r border-slate-200 p-0"><input type="text" id="diff-g${g}-p${i}" class="w-full h-full p-2 text-center outline-none font-bold text-slate-700 bg-transparent" placeholder="/" oninput="syncText(this)"><span class="capture-text font-bold text-slate-700 p-2 bg-white">/</span></td>
-                    <td class="bg-rose-50/30 p-0"><input type="text" id="rank-g${g}-p${i}" class="w-full h-full p-2 text-center outline-none font-black text-rose-600 text-sm bg-transparent" placeholder="" oninput="syncText(this)"><span class="capture-text font-black text-rose-600 p-2 bg-rose-50"></span></td></tr>`;
+                    html += `<td class="border-r border-slate-200 p-0 min-w-[50px]"><input type="text" id="wl-g${g}-p${i}" class="w-full h-full p-1 sm:p-2 text-center outline-none font-bold text-slate-700 bg-transparent" placeholder="/" oninput="syncText(this)"><span class="capture-text font-bold text-slate-700 p-1 sm:p-2 bg-white">/</span></td>
+                    <td class="border-r border-slate-200 p-0 min-w-[50px]"><input type="text" id="diff-g${g}-p${i}" class="w-full h-full p-1 sm:p-2 text-center outline-none font-bold text-slate-700 bg-transparent" placeholder="/" oninput="syncText(this)"><span class="capture-text font-bold text-slate-700 p-1 sm:p-2 bg-white">/</span></td>
+                    <td class="bg-rose-50/30 p-0 min-w-[40px]"><input type="text" id="rank-g${g}-p${i}" class="w-full h-full p-1 sm:p-2 text-center outline-none font-black text-rose-600 text-sm bg-transparent border-0" placeholder="" oninput="syncText(this)"><span class="capture-text font-black text-rose-600 p-1 sm:p-2 bg-rose-50"></span></td></tr>`;
                 }
-                html += `</tbody></table></div><div class="bg-slate-50 border-t border-slate-200 text-[11px] text-left no-print"><div class="p-2.5 flex justify-between items-center cursor-pointer font-extrabold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors" onclick="toggleOrder(${g})"><span>🔄 게임 순서 접기/펼치기</span><span id="order-icon-${g}" class="text-xs">▼</span></div><div id="order-content-${g}" class="hidden p-3 leading-loose break-keep bg-slate-50 shadow-inner"></div></div></div>`;
+                html += `</tbody></table></div></div><div class="bg-slate-50 border-t border-slate-200 text-[11px] text-left no-print"><div class="p-2.5 flex justify-between items-center cursor-pointer font-extrabold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors" onclick="toggleOrder(${g})"><span>🔄 게임 순서 접기/펼치기</span><span id="order-icon-${g}" class="text-xs">▼</span></div><div id="order-content-${g}" class="hidden p-3 leading-loose break-keep bg-slate-50 shadow-inner"></div></div></div>`;
             }
             html += `</div>`; document.getElementById('op-group-container').innerHTML = html;
 
@@ -1750,8 +1776,8 @@
             const limit = matchType === 'doubles' ? 2 : (matchType === 'team' ? 999 : 1);
 
             isSinglePickMode = (limit === 1);
-            const titleSuffix = matchType === 'individual' ? '선수' : (matchType === 'doubles' ? '복식팀' : '팀');
-            const limitText = matchType === 'individual' ? '1명' : (matchType === 'doubles' ? '2명' : '무제한');
+            const titleSuffix = (matchType === 'individual' || matchType === 'full_league') ? '선수' : (matchType === 'doubles' ? '복식팀' : '팀');
+            const limitText = (matchType === 'individual' || matchType === 'full_league') ? '1명' : (matchType === 'doubles' ? '2명' : '무제한');
             document.getElementById('selector-title').innerText = `${g}조 ${p}번 ${titleSuffix} 선택 (${limitText})`;
 
             if (isSinglePickMode) {
@@ -2526,8 +2552,8 @@
             const matchType = data.matchType;
             const groups = data.groups;
 
-            let typeLabel = matchType === 'individual' ? '개인전' : (matchType === 'doubles' ? '복식전' : '단체전');
-            let targetKeyPrefix = matchType === 'individual' ? 'lg' : (matchType === 'doubles' ? 'db' : 'tm');
+            let typeLabel = (matchType === 'individual' || matchType === 'full_league') ? '개인전' : (matchType === 'doubles' ? '복식전' : '단체전');
+            let targetKeyPrefix = (matchType === 'individual' || matchType === 'full_league') ? 'lg' : (matchType === 'doubles' ? 'db' : 'tm');
 
             if (!confirm(`운영 탭의 예선 결과(${typeLabel})를 입력 탭으로 불러오시겠습니까?`)) return;
 
