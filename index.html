@@ -373,6 +373,8 @@
                             <button onclick="sortGroupPlayers()"
                                 class="text-[11px] bg-emerald-600 text-white px-2.5 py-1.5 rounded-lg font-bold shadow-sm btn-press">🔀
                                 정렬</button>
+                            <button onclick="saveLeagueToHistory()"
+                                class="text-[11px] bg-rose-500 hover:bg-rose-400 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm btn-press transition-colors">🗓️ 기록탭 저장</button>
                             <button onclick="renderGroupTable()"
                                 class="text-[11px] bg-slate-800 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm btn-press">표
                                 생성</button>
@@ -1537,7 +1539,7 @@
                 let currentSize = sizeInput ? parseInt(sizeInput.value) : 4;
                 if (isNaN(currentSize) || currentSize < 2) currentSize = 2;
 
-                html += `<div class="border-2 border-slate-800/80 rounded-xl overflow-hidden bg-white flex-1 min-w-[320px] max-w-full shadow-sm">
+                html += `<div class="border-2 border-slate-800/80 rounded-xl overflow-hidden bg-white w-fit max-w-full shadow-sm mx-auto">
                     <div class="bg-slate-100 p-2 flex justify-end items-center gap-1.5 border-b border-slate-200">
                         <span class="text-xs font-bold text-slate-500 mr-auto ml-1">${g}조 관리</span>
                         <button onclick="copyGroupTableImage(${g})" id="btn-copy-g${g}" class="text-[10px] bg-emerald-500 hover:bg-emerald-400 text-white px-2 py-1 rounded font-bold transition-colors btn-press no-print shadow-sm flex items-center">📸 카톡 복사</button>
@@ -1552,19 +1554,19 @@
                             </div>
                         </div>
                         <div class="overflow-x-auto w-full max-w-full px-2 sm:px-0">
-                        <table class="table-auto text-center text-xs border-collapse whitespace-nowrap min-w-max mx-auto" id="table-g${g}">
+                        <table class="table-auto text-center text-xs border-collapse whitespace-nowrap w-max mx-auto" id="table-g${g}">
                             <thead>
                                 <tr class="bg-blue-50 border-b-2 border-sky-200 text-sky-900 font-extrabold">
-                                    <th class="px-1.5 py-1 border-r border-sky-100 bg-blue-100/50 min-w-fit whitespace-nowrap">선수명</th>`;
+                                    <th class="px-1.5 py-1 border-r border-sky-100 bg-blue-100/50 w-px whitespace-nowrap">선수명</th>`;
 
                 for (let i = 1; i <= currentSize; i++) {
                     let player = window.leaguePlayers[`g${g}_p${i}`];
                     // 메달은 calculateGroupRankings에서 계산된 후 업데이트됩니다. 초기화 시엔 이름만 표시합니다.
                     let headerName = player ? escapeHTML(player.name) : `${i}번`;
-                    html += `<th class="px-1 py-1 border-r border-sky-100 font-bold text-[11px] whitespace-nowrap w-auto text-sky-900" id="th-g${g}-p${i}">${headerName}</th>`;
+                    html += `<th class="px-1 py-1 border-r border-sky-100 font-bold text-[11px] whitespace-nowrap w-px text-sky-900" id="th-g${g}-p${i}">${headerName}</th>`;
                 }
 
-                html += `<th class="px-1.5 py-1 border-r border-sky-100 w-auto whitespace-nowrap">승/패</th><th class="px-1.5 py-1 border-r border-sky-100 w-auto whitespace-nowrap">득/실</th><th class="px-1.5 py-1 bg-sky-100 text-sky-700 w-auto whitespace-nowrap drop-shadow-none">순위</th></tr></thead><tbody class="bg-sky-50 text-slate-800">`;
+                html += `<th class="px-1.5 py-1 border-r border-sky-100 w-px whitespace-nowrap">승/패</th><th class="px-1.5 py-1 border-r border-sky-100 w-px whitespace-nowrap">득/실</th><th class="px-1.5 py-1 bg-sky-100 text-sky-700 w-px whitespace-nowrap drop-shadow-none">순위</th></tr></thead><tbody class="bg-sky-50 text-slate-800">`;
 
                 for (let i = 1; i <= currentSize; i++) {
                     let player = window.leaguePlayers[`g${g}_p${i}`];
@@ -1572,18 +1574,18 @@
                     let placeholderVal = player ? displayVal : '터치👉';
 
                     html += `<tr class="border-b border-sky-100 hover:bg-sky-100/50">
-                        <td class="p-0 border-r border-sky-100 bg-sky-50 font-bold text-[11px] min-w-fit whitespace-nowrap" id="td-g${g}-p${i}">
-                            <input type="text" value="${displayVal}" class="w-full h-full text-center outline-none cursor-pointer hover:bg-indigo-50 font-bold text-[11px] text-slate-800 px-1 py-1 bg-transparent whitespace-nowrap" placeholder="터치👉" readonly onclick="selectLeaguePlayer(this, ${g}, ${i})">
+                        <td class="p-0 border-r border-sky-100 bg-sky-50 font-bold text-[11px] w-px whitespace-nowrap" id="td-g${g}-p${i}">
+                            <input type="text" value="${displayVal}" class="w-full min-w-[60px] h-full text-center outline-none cursor-pointer hover:bg-indigo-50 font-bold text-[11px] text-slate-800 px-1 py-1 bg-transparent whitespace-nowrap" placeholder="터치👉" readonly onclick="selectLeaguePlayer(this, ${g}, ${i})">
                             <span class="capture-text font-bold text-[11px] text-slate-800 px-1 py-1 bg-sky-50 whitespace-nowrap truncate drop-shadow-none">${placeholderVal}</span>
                         </td>`;
 
                     for (let j = 1; j <= currentSize; j++) {
-                        if (i === j) html += `<td class="border-r border-sky-100 diagonal-strike w-auto"></td>`;
-                        else html += `<td class="border-r border-sky-100 p-0"><input type="text" id="score-g${g}-r${i}-c${j}" class="w-full h-full px-1 py-1 text-center bg-transparent outline-none font-medium text-slate-600 focus:bg-yellow-50 drop-shadow-none" placeholder="" oninput="syncText(this)"><span class="capture-text font-medium text-slate-600 px-1 py-1 bg-sky-50 drop-shadow-none"></span></td>`;
+                        if (i === j) html += `<td class="border-r border-sky-100 diagonal-strike w-px"></td>`;
+                        else html += `<td class="border-r border-sky-100 p-0 w-px"><input type="text" id="score-g${g}-r${i}-c${j}" class="w-full min-w-[36px] h-full px-1 py-1 text-center bg-transparent outline-none font-medium text-slate-600 focus:bg-yellow-50 drop-shadow-none" placeholder="" oninput="syncText(this)"><span class="capture-text font-medium text-slate-600 px-1 py-1 bg-sky-50 drop-shadow-none"></span></td>`;
                     }
-                    html += `<td class="border-r border-sky-100 p-0"><input type="text" id="wl-g${g}-p${i}" class="w-full h-full px-1.5 py-1 text-center outline-none font-bold text-slate-700 bg-transparent drop-shadow-none" placeholder="/" oninput="syncText(this)"><span class="capture-text font-bold text-slate-700 px-1.5 py-1 bg-sky-50 drop-shadow-none">/</span></td>
-                    <td class="border-r border-sky-100 p-0"><input type="text" id="diff-g${g}-p${i}" class="w-full h-full px-1.5 py-1 text-center outline-none font-bold text-slate-700 bg-transparent drop-shadow-none" placeholder="/" oninput="syncText(this)"><span class="capture-text font-bold text-slate-700 px-1.5 py-1 bg-sky-50 drop-shadow-none">/</span></td>
-                    <td class="bg-sky-100/50 p-0"><input type="text" id="rank-g${g}-p${i}" class="w-full h-full px-1.5 py-1 text-center outline-none font-black text-sky-600 text-sm bg-transparent border-0 drop-shadow-none" placeholder="" oninput="syncText(this)"><span class="capture-text font-black text-sky-600 px-1.5 py-1 bg-sky-100 drop-shadow-none"></span></td></tr>`;
+                    html += `<td class="border-r border-sky-100 p-0 w-px"><input type="text" id="wl-g${g}-p${i}" class="w-full min-w-[40px] h-full px-1.5 py-1 text-center outline-none font-bold text-slate-700 bg-transparent drop-shadow-none" placeholder="/" oninput="syncText(this)"><span class="capture-text font-bold text-slate-700 px-1.5 py-1 bg-sky-50 drop-shadow-none">/</span></td>
+                    <td class="border-r border-sky-100 p-0 w-px"><input type="text" id="diff-g${g}-p${i}" class="w-full min-w-[36px] h-full px-1.5 py-1 text-center outline-none font-bold text-slate-700 bg-transparent drop-shadow-none" placeholder="/" oninput="syncText(this)"><span class="capture-text font-bold text-slate-700 px-1.5 py-1 bg-sky-50 drop-shadow-none">/</span></td>
+                    <td class="bg-sky-100/50 p-0 w-px"><input type="text" id="rank-g${g}-p${i}" class="w-full min-w-[36px] h-full px-1.5 py-1 text-center outline-none font-black text-sky-600 text-sm bg-transparent border-0 drop-shadow-none" placeholder="" oninput="syncText(this)"><span class="capture-text font-black text-sky-600 px-1.5 py-1 bg-sky-100 drop-shadow-none"></span></td></tr>`;
                 }
                 html += `</tbody></table></div></div><div class="bg-slate-50 border-t border-slate-200 text-[11px] text-left no-print"><div class="p-2.5 flex justify-between items-center cursor-pointer font-extrabold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors" onclick="toggleOrder(${g})"><span>🔄 게임 순서 접기/펼치기</span><span id="order-icon-${g}" class="text-xs">▼</span></div><div id="order-content-${g}" class="hidden p-3 leading-loose break-keep bg-slate-50 shadow-inner"></div></div></div>`;
             }
@@ -1722,8 +1724,19 @@
                     if (th) {
                         let playerObj = window.leaguePlayers[`g${g}_p${p.id}`];
                         let name = playerObj ? escapeHTML(playerObj.name) : `${p.id}번`;
+                        th.innerText = name; // 헤더에는 이름만 (메달 제거)
+                    }
+
+                    // 1열(선수명) 쪽에 메달 표시
+                    let tdInput = document.querySelector(`#td-g${g}-p${p.id} input`);
+                    let tdSpan = document.querySelector(`#td-g${g}-p${p.id} span.capture-text`);
+                    if (tdInput && tdSpan) {
+                        let playerObj = window.leaguePlayers[`g${g}_p${p.id}`];
+                        let display = playerObj ? escapeHTML(playerObj.display) : `${p.id}번`;
                         let medal = p.finalRank === 1 ? '🥇' : (p.finalRank === 2 ? '🥈' : (p.finalRank === 3 ? '🥉' : ''));
-                        th.innerText = `${medal}${name}`;
+                        let finalDisplay = medal ? `${medal} ${display}` : display;
+                        tdInput.value = finalDisplay;
+                        tdSpan.innerText = finalDisplay;
                     }
                 });
             }
@@ -1778,53 +1791,145 @@
             try {
                 let sizeInput = document.getElementById(`op-group-size-${g}`);
                 let size = sizeInput ? parseInt(sizeInput.value) : 4;
-                let playersData = [];
 
+                let headers = ['선수명'];
+                for (let i = 1; i <= size; i++) headers.push(`${i}`);
+                headers.push('승/패', '득/실', '순위');
+
+                let rows = [];
                 for (let i = 1; i <= size; i++) {
-                    let pObj = window.leaguePlayers[`g${g}_p${i}`];
-                    let name = pObj ? pObj.name : `${i}번`;
-
-                    let wlInput = document.getElementById(`wl-g${g}-p${i}`);
-                    let rankInput = document.getElementById(`rank-g${g}-p${i}`);
-
-                    let wl = wlInput ? wlInput.value : "";
-                    let rText = rankInput ? rankInput.value : "";
-                    let rNum = parseInt(rText) || 999;
-
-                    let wlFormatted = wl;
-                    if (wl.includes('/')) {
-                        let parts = wl.split('/');
-                        wlFormatted = `${parts[0]}승 ${parts[1]}패`;
+                    let tdInput = document.querySelector(`#td-g${g}-p${i} input`);
+                    let tdSpan = document.querySelector(`#td-g${g}-p${i} span.capture-text`);
+                    let nameField = tdInput && tdInput.value.trim() !== '' && tdInput.value.trim() !== '터치👉' ? tdInput.value : `${i}번`;
+                    if (tdSpan && tdSpan.innerText && tdSpan.innerText.trim() !== '터치👉' && tdSpan.innerText.trim() !== '') {
+                        nameField = tdSpan.innerText.trim();
                     }
-
-                    playersData.push({
-                        name: name,
-                        wl: wlFormatted,
-                        rank: rNum,
-                        rankText: rText ? `${rText}위` : ""
-                    });
+                    
+                    let row = [nameField];
+                    for (let j = 1; j <= size; j++) {
+                        if (i === j) {
+                            row.push('-'); 
+                        } else {
+                            let scoreInput = document.getElementById(`score-g${g}-r${i}-c${j}`);
+                            row.push(scoreInput ? scoreInput.value : '');
+                        }
+                    }
+                    
+                    let wlInput = document.getElementById(`wl-g${g}-p${i}`);
+                    let diffInput = document.getElementById(`diff-g${g}-p${i}`);
+                    let rankInput = document.getElementById(`rank-g${g}-p${i}`);
+                    
+                    row.push(wlInput && wlInput.value && wlInput.value !== '/' ? wlInput.value : '');
+                    row.push(diffInput && diffInput.value && diffInput.value !== '/' ? diffInput.value : '');
+                    row.push(rankInput ? rankInput.value : '');
+                    rows.push(row);
                 }
 
-                playersData.sort((a, b) => a.rank - b.rank);
+                const getStrWidth = (str) => {
+                    if (!str) return 0;
+                    let w = 0;
+                    for (let char of str) {
+                        if (/[^\x00-\x7F]/.test(char)) w += 2;
+                        else w += 1;
+                    }
+                    return w;
+                };
 
-                let resultText = `[${g}조 경기 결과]\n`;
-                playersData.forEach(p => {
-                    let medal = "";
-                    if (p.rank === 1) medal = "🥇";
-                    else if (p.rank === 2) medal = "🥈";
-                    else if (p.rank === 3) medal = "🥉";
+                const padRight = (str, width) => {
+                    if (!str) str = '';
+                    let w = getStrWidth(str);
+                    return str + ' '.repeat(Math.max(0, width - w));
+                };
 
-                    let rankDisplay = p.rankText ? ` (${p.rankText})` : "";
-                    resultText += `${medal}${p.name}: ${p.wl}${rankDisplay}\n`;
+                const padCenter = (str, width) => {
+                    if (!str) str = '';
+                    let w = getStrWidth(str);
+                    let pad = Math.max(0, width - w);
+                    let left = Math.floor(pad / 2);
+                    let right = pad - left;
+                    return ' '.repeat(left) + str + ' '.repeat(right);
+                };
+
+                let colWidths = headers.map((h, colIdx) => {
+                    let maxW = getStrWidth(h);
+                    rows.forEach(r => maxW = Math.max(maxW, getStrWidth(r[colIdx] || '')));
+                    return maxW;
+                });
+
+                let resultText = `[ ${g}조 예선 리그 결과 ]\n`;
+                resultText += '| ' + headers.map((h, i) => padCenter(h, colWidths[i])).join(' | ') + ' |\n';
+                resultText += '|-' + colWidths.map(w => '-'.repeat(w)).join('-|-') + '-|\n';
+                rows.forEach(r => {
+                    resultText += '| ' + r.map((cell, i) => i === 0 ? padRight(cell, colWidths[i]) : padCenter(cell, colWidths[i])).join(' | ') + ' |\n';
                 });
 
                 await navigator.clipboard.writeText(resultText.trim());
-                alert(`✅ 텍스트가 클립보드에 복사되었습니다! 카카오톡에 붙여넣기 하세요.`);
+                alert(`✅ 텍스트 표가 클립보드에 복사되었습니다! 카카오톡에 붙여넣기 하세요.`);
             } catch (err) {
+                console.error(err);
                 alert("❌ 클립보드 복사에 실패했습니다.");
             } finally {
                 btn.innerText = originalText;
             }
+        }
+
+        function saveLeagueToHistory() {
+            const count = parseInt(document.getElementById('op-group-count').value);
+            if (!count || count < 1) {
+                alert("먼저 표를 생성해주세요.");
+                return;
+            }
+            
+            const leagueData = { groups: [] };
+            for (let g = 1; g <= count; g++) {
+                let sizeInput = document.getElementById(`op-group-size-${g}`);
+                let size = sizeInput ? parseInt(sizeInput.value) : 4;
+                
+                let groupInfo = { id: g, players: [] };
+                for(let p = 1; p <= size; p++) {
+                    let playerObj = window.leaguePlayers[`g${g}_p${p}`];
+                    let tdSpan = document.querySelector(`#td-g${g}-p${p} span.capture-text`);
+                    let name = tdSpan && tdSpan.innerText && tdSpan.innerText.trim() !== '터치👉' && tdSpan.innerText.trim() !== '' ? tdSpan.innerText.trim() : (playerObj ? playerObj.name : `${p}번`);
+                    let wlInput = document.getElementById(`wl-g${g}-p${p}`);
+                    let rankInput = document.getElementById(`rank-g${g}-p${p}`);
+                    let diffInput = document.getElementById(`diff-g${g}-p${p}`);
+                    
+                    groupInfo.players.push({
+                        name: name,
+                        wl: wlInput && wlInput.value && wlInput.value !== '/' ? wlInput.value : '',
+                        diff: diffInput && diffInput.value && diffInput.value !== '/' ? diffInput.value : '',
+                        rank: rankInput ? parseInt(rankInput.value) || 999 : 999
+                    });
+                }
+                groupInfo.players.sort((a, b) => a.rank - b.rank);
+                leagueData.groups.push(groupInfo);
+            }
+
+            let dates = [...new Set(matchHistory.map(m => m.date))].sort().reverse();
+            let dateStr = dates.join('\\n');
+            let selDate = prompt(`어느 날짜의 기록에 예선 결과를 저장하시겠습니까?\\n(YYYY-MM-DD 형식으로 입력)\\n\\n[최근 기록된 날짜]\\n${dateStr}`, dates[0] || new Date().toISOString().slice(0,10));
+            
+            if (!selDate) return;
+            
+            let targetMatch = matchHistory.find(m => m.date === selDate);
+            if (!targetMatch) {
+                if(confirm(`${selDate} 기록이 없습니다. 새로 생성하시겠습니까?`)) {
+                    targetMatch = {
+                        id: nextMatchId++,
+                        date: selDate,
+                        type: '예선리그',
+                        attend: []
+                    };
+                    matchHistory.push(targetMatch);
+                } else {
+                    return;
+                }
+            }
+            
+            targetMatch.qualifierResults = leagueData;
+            saveDataToStorage();
+            alert(`✅ ${selDate} 기록에 예선 결과가 저장되었습니다. 기록 탭에서 확인하세요.`);
+            renderHistory();
         }
 
         function selectLeaguePlayer(inputElem, g, p) {
@@ -3287,6 +3392,39 @@
                     </div>
                 ` : "";
 
+            const renderQualifierResultsHistory = (data) => {
+                if (!data || !data.groups) return '';
+                let html = '<div class="mb-4 text-left"><div class="text-base font-bold text-slate-800 mb-2 mt-4">📊 조별 리그전 결과</div><div class="grid grid-cols-1 sm:grid-cols-2 gap-3">';
+                data.groups.forEach(g => {
+                    html += `<div class="bg-indigo-50/50 border border-indigo-100 rounded-lg py-2 px-3 overflow-x-auto w-full shadow-sm">
+                        <div class="text-[11px] font-extrabold text-indigo-800 mb-1.5 ml-1 border-b border-indigo-100 pb-1">${g.id}조 예선 결과</div>
+                        <table class="table-auto text-center text-[10px] w-full min-w-max whitespace-nowrap mx-auto border-collapse">
+                            <thead>
+                                <tr class="bg-indigo-100 text-indigo-700 font-bold text-[10px]">
+                                    <th class="px-1.5 py-1 border-r border-indigo-50 w-px">선수명</th>
+                                    <th class="px-1.5 py-1 border-r border-indigo-50 w-px">승/패</th>
+                                    <th class="px-1.5 py-1 border-r border-indigo-50 w-px">득/실</th>
+                                    <th class="px-1.5 py-1 text-indigo-800 w-px">순위</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white">
+                    `;
+                    g.players.forEach((p, idx) => {
+                        let rankText = p.rank === 999 ? '-' : p.rank;
+                        let rowBg = idx % 2 === 0 ? 'bg-white' : 'bg-slate-50';
+                        html += `<tr class="border-b border-indigo-50 last:border-0 ${rowBg}">
+                            <td class="px-1.5 py-1 border-r border-indigo-50 font-extrabold text-slate-800">${escapeHTML(p.name)}</td>
+                            <td class="px-1.5 py-1 border-r border-indigo-50 text-slate-600 font-medium">${escapeHTML(p.wl)}</td>
+                            <td class="px-1.5 py-1 border-r border-indigo-50 text-slate-500 text-[9px]">${escapeHTML(p.diff)}</td>
+                            <td class="px-1.5 py-1 text-indigo-600 font-black">${rankText}</td>
+                        </tr>`;
+                    });
+                    html += `</tbody></table></div>`;
+                });
+                html += `</div></div>`;
+                return html;
+            };
+
                 const attend = match.attend || [];
                 const lazy = match.lazy || [];
                 const sincere = attend.filter(name => !lazy.includes(name));
@@ -3342,6 +3480,9 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- 예선 리그 결과 (있는 경우에만) -->
+                        ${match.qualifierResults ? renderQualifierResultsHistory(match.qualifierResults) : ''}
 
                         <!-- 관리자 버튼 -->
                         ${adminButtons}
