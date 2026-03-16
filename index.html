@@ -1902,23 +1902,31 @@
                     let sizeInput = document.getElementById(`op-group-size-${g}`);
                     let size = sizeInput ? parseInt(sizeInput.value) : 4;
                     
-                    let groupInfo = { id: g, players: [] };
-                    for(let p = 1; p <= size; p++) {
-                        let playerObj = window.leaguePlayers[`g${g}_p${p}`];
-                        let tdSpan = document.querySelector(`#td-g${g}-p${p} span.capture-text`);
-                        let name = tdSpan && tdSpan.innerText && tdSpan.innerText.trim() !== '터치👉' && tdSpan.innerText.trim() !== '' ? tdSpan.innerText.trim() : (playerObj ? playerObj.name : `${p}번`);
-                        let wlInput = document.getElementById(`wl-g${g}-p${p}`);
-                        let rankInput = document.getElementById(`rank-g${g}-p${p}`);
-                        let diffInput = document.getElementById(`diff-g${g}-p${p}`);
+                    let groupInfo = { id: g, size: size, players: [] };
+                    for(let i = 1; i <= size; i++) {
+                        let playerObj = window.leaguePlayers[`g${g}_p${i}`];
+                        let tdSpan = document.querySelector(`#td-g${g}-p${i} span.capture-text`);
+                        let name = tdSpan && tdSpan.innerText && tdSpan.innerText.trim() !== '터치👉' && tdSpan.innerText.trim() !== '' ? tdSpan.innerText.trim() : (playerObj ? playerObj.name : `${i}번`);
+                        let wlInput = document.getElementById(`wl-g${g}-p${i}`);
+                        let rankInput = document.getElementById(`rank-g${g}-p${i}`);
+                        let diffInput = document.getElementById(`diff-g${g}-p${i}`);
                         
+                        let scores = {};
+                        for (let j = 1; j <= size; j++) {
+                            if (i === j) continue;
+                            let scoreInput = document.getElementById(`score-g${g}-r${i}-c${j}`);
+                            if (scoreInput) scores[j] = scoreInput.value;
+                        }
+
                         groupInfo.players.push({
+                            idx: i,
                             name: name.replace(/🥇 |🥈 |🥉 /g, ''),
                             wl: wlInput && wlInput.value && wlInput.value !== '/' ? wlInput.value : '',
                             diff: diffInput && diffInput.value && diffInput.value !== '/' ? diffInput.value : '',
-                            rank: rankInput && !isNaN(parseInt(rankInput.value)) ? parseInt(rankInput.value) : 999
+                            rank: rankInput && !isNaN(parseInt(rankInput.value)) ? parseInt(rankInput.value) : 999,
+                            scores: scores
                         });
                     }
-                    groupInfo.players.sort((a, b) => a.rank - b.rank);
                     leagueData.groups.push(groupInfo);
                 }
             }
@@ -1983,6 +1991,34 @@
             closeHistoryDateModal();
             alert(`✅ ${selDate} 기록에 완성된 표/대진표가 저장되었습니다.\\n기록 탭에서 확인하세요.`);
             renderHistory();
+        }
+
+        function deleteHistoryLeague(matchId) {
+            if (!isAdmin) return;
+            event.stopPropagation();
+            if (confirm("정말 이 조별 리그전 기록을 삭제하시겠습니까?")) {
+                let match = matchHistory.find(m => m.id === matchId);
+                if (match) {
+                    match.qualifierResults = null;
+                    saveDataToStorage();
+                    renderHistory();
+                    alert("리그전 기록이 삭제되었습니다.");
+                }
+            }
+        }
+
+        function deleteHistoryTournament(matchId) {
+            if (!isAdmin) return;
+            event.stopPropagation();
+            if (confirm("정말 이 토너먼트 대진표 기록을 삭제하시겠습니까?")) {
+                let match = matchHistory.find(m => m.id === matchId);
+                if (match) {
+                    match.tournamentResults = null;
+                    saveDataToStorage();
+                    renderHistory();
+                    alert("토너먼트 대진표 기록이 삭제되었습니다.");
+                }
+            }
         }
 
         function selectLeaguePlayer(inputElem, g, p) {
@@ -3445,45 +3481,97 @@
                     </div>
                 ` : "";
 
-            const renderQualifierResultsHistory = (data) => {
+            const renderQualifierResultsHistory = (data, matchId) => {
                 if (!data || !data.groups) return '';
-                let html = '<div class="mb-4 text-left"><div class="text-base font-bold text-slate-800 mb-2 mt-4">📊 조별 리그전 결과</div><div class="grid grid-cols-1 sm:grid-cols-2 gap-3">';
+                
+                const deleteBtn = isAdmin ? `<button onclick="deleteHistoryLeague(${matchId})" class="text-[10px] bg-red-50 text-red-500 border border-red-100 hover:bg-red-100 px-2 py-1 rounded font-bold transition-all btn-press shadow-sm ml-auto flex items-center gap-1">🗑️ 리그 삭제</button>` : '';
+
+                let html = `
+                <div class="mb-4 text-left">
+                    <div class="text-base font-bold text-slate-800 mb-2 mt-4 flex items-center justify-between">
+                        <span>📊 조별 리그전 결과</span>
+                        ${deleteBtn}
+                    </div>
+                    <div class="grid grid-cols-1 gap-4">
+                `;
+                
                 data.groups.forEach(g => {
-                    html += `<div class="bg-indigo-50/50 border border-indigo-100 rounded-lg py-2 px-3 overflow-x-auto w-full shadow-sm">
+                    const isMatrix = g.players && g.players.length > 0 && g.players.some(p => p.scores && Object.keys(p.scores).length > 0);
+                    
+                    html += `
+                    <div class="bg-indigo-50/50 border border-indigo-100 rounded-lg py-2 px-3 overflow-x-auto w-full shadow-sm">
                         <div class="text-[11px] font-extrabold text-indigo-800 mb-1.5 ml-1 border-b border-indigo-100 pb-1">${g.id}조 예선 결과</div>
                         <table class="table-auto text-center text-[10px] w-full min-w-max whitespace-nowrap mx-auto border-collapse">
                             <thead>
                                 <tr class="bg-indigo-100 text-indigo-700 font-bold text-[10px]">
                                     <th class="px-1.5 py-1 border-r border-indigo-50 w-px">선수명</th>
-                                    <th class="px-1.5 py-1 border-r border-indigo-50 w-px">승/패</th>
-                                    <th class="px-1.5 py-1 border-r border-indigo-50 w-px">득/실</th>
-                                    <th class="px-1.5 py-1 text-indigo-800 w-px">순위</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white">
                     `;
-                    g.players.forEach((p, idx) => {
-                        let rankText = p.rank === 999 ? '-' : p.rank;
-                        let rowBg = idx % 2 === 0 ? 'bg-white' : 'bg-slate-50';
-                        html += `<tr class="border-b border-indigo-50 last:border-0 ${rowBg}">
-                            <td class="px-1.5 py-1 border-r border-indigo-50 font-extrabold text-slate-800">${escapeHTML(p.name)}</td>
-                            <td class="px-1.5 py-1 border-r border-indigo-50 text-slate-600 font-medium">${escapeHTML(p.wl)}</td>
-                            <td class="px-1.5 py-1 border-r border-indigo-50 text-slate-500 text-[9px]">${escapeHTML(p.diff)}</td>
-                            <td class="px-1.5 py-1 text-indigo-600 font-black">${rankText}</td>
-                        </tr>`;
-                    });
+                    
+                    if (isMatrix) {
+                        const tablePlayers = [...g.players].sort((a, b) => (a.idx || 0) - (b.idx || 0));
+                        const size = g.size || tablePlayers.length;
+                        
+                        for (let i = 1; i <= size; i++) {
+                            html += `<th class="px-1.5 py-1 border-r border-indigo-50 w-px">${i}</th>`;
+                        }
+                        html += `<th class="px-1.5 py-1 border-r border-indigo-50 w-px">승/패</th><th class="px-1.5 py-1 border-r border-indigo-50 w-px">득/실</th><th class="px-1.5 py-1 text-indigo-800 w-px">순위</th></tr></thead><tbody class="bg-white">`;
+                        
+                        tablePlayers.forEach((p, i) => {
+                            let rankText = p.rank === 999 ? '-' : p.rank;
+                            let rowBg = i % 2 === 0 ? 'bg-white' : 'bg-slate-50';
+                            html += `<tr class="border-b border-indigo-50 last:border-0 ${rowBg}">
+                                <td class="px-1.5 py-1 border-r border-indigo-50 font-extrabold text-slate-800">${escapeHTML(p.name)}</td>`;
+                            
+                            for (let j = 1; j <= size; j++) {
+                                if (p.idx === j) {
+                                    html += `<td class="border-r border-indigo-50 diagonal-strike w-px"></td>`;
+                                } else {
+                                    let score = (p.scores && p.scores[j]) || '';
+                                    html += `<td class="px-1.5 py-1 border-r border-indigo-50 text-slate-600 font-medium">${escapeHTML(score)}</td>`;
+                                }
+                            }
+                            
+                            html += `
+                                <td class="px-1.5 py-1 border-r border-indigo-50 text-slate-600 font-medium">${escapeHTML(p.wl)}</td>
+                                <td class="px-1.5 py-1 border-r border-indigo-50 text-slate-500 text-[9px]">${escapeHTML(p.diff)}</td>
+                                <td class="px-1.5 py-1 text-indigo-600 font-black">${rankText}</td>
+                            </tr>`;
+                        });
+                    } else {
+                        html += `<th class="px-1.5 py-1 border-r border-indigo-50 w-px">승/패</th><th class="px-1.5 py-1 border-r border-indigo-50 w-px">득/실</th><th class="px-1.5 py-1 text-indigo-800 w-px">순위</th></tr></thead><tbody class="bg-white">`;
+                        
+                        const sortedPlayers = [...g.players].sort((a, b) => a.rank - b.rank);
+                        sortedPlayers.forEach((p, idx) => {
+                            let rankText = p.rank === 999 ? '-' : p.rank;
+                            let rowBg = idx % 2 === 0 ? 'bg-white' : 'bg-slate-50';
+                            html += `<tr class="border-b border-indigo-50 last:border-0 ${rowBg}">
+                                <td class="px-1.5 py-1 border-r border-indigo-50 font-extrabold text-slate-800">${escapeHTML(p.name)}</td>
+                                <td class="px-1.5 py-1 border-r border-indigo-50 text-slate-600 font-medium">${escapeHTML(p.wl)}</td>
+                                <td class="px-1.5 py-1 border-r border-indigo-50 text-slate-500 text-[9px]">${escapeHTML(p.diff)}</td>
+                                <td class="px-1.5 py-1 text-indigo-600 font-black">${rankText}</td>
+                            </tr>`;
+                        });
+                    }
                     html += `</tbody></table></div>`;
                 });
                 html += `</div></div>`;
                 return html;
             };
 
-            const renderTournamentTreeHistory = (data) => {
+            const renderTournamentTreeHistory = (data, matchId) => {
                 if (!data || !data.tree) return '';
                 const size = data.size;
                 const rounds = data.rounds;
 
-                let html = '<div class="mb-4 text-left"><div class="text-base font-bold text-slate-800 mb-2 mt-4 flex items-center gap-1.5">⚔️ 미니 토너먼트 대진표</div>';
+                const deleteBtn = isAdmin ? `<button onclick="deleteHistoryTournament(${matchId})" class="text-[10px] bg-red-50 text-red-500 border border-red-100 hover:bg-red-100 px-2 py-1 rounded font-bold transition-all btn-press shadow-sm ml-auto flex items-center gap-1">🗑️ 대진표 삭제</button>` : '';
+
+                let html = `
+                <div class="mb-4 text-left">
+                    <div class="text-base font-bold text-slate-800 mb-2 mt-4 flex items-center justify-between">
+                        <span>⚔️ 미니 토너먼트 대진표</span>
+                        ${deleteBtn}
+                    </div>
+                `;
                 html += `<div class="bg-slate-50 border border-slate-200 rounded-xl overflow-x-auto p-3 shadow-inner"><div class="flex items-center min-w-max" style="zoom: 0.85;">`;
 
                 for (let r = 0; r <= rounds; r++) {
@@ -3580,10 +3668,10 @@
                         </div>
 
                         <!-- 예선 리그 결과 (있는 경우에만) -->
-                        ${match.qualifierResults ? renderQualifierResultsHistory(match.qualifierResults) : ''}
+                        ${match.qualifierResults ? renderQualifierResultsHistory(match.qualifierResults, match.id) : ''}
                         
                         <!-- 토너먼트 대진표 (있는 경우에만) -->
-                        ${match.tournamentResults ? renderTournamentTreeHistory(match.tournamentResults) : ''}
+                        ${match.tournamentResults ? renderTournamentTreeHistory(match.tournamentResults, match.id) : ''}
 
                         <!-- 관리자 버튼 -->
                         ${adminButtons}
