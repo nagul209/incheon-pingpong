@@ -349,7 +349,7 @@
                             <span class="text-xs font-bold text-slate-600">경기 방식</span>
                             <select id="op-match-type"
                                 class="text-xs border border-slate-200 rounded p-1.5 font-bold text-indigo-700 bg-white"
-                                onchange="renderGroupTable(true)">
+                                onchange="">
                                 <option value="individual" selected>개인전</option>
                                 <option value="doubles">복식전</option>
                                 <option value="team">단체전</option>
@@ -363,7 +363,7 @@
                         <div class="ml-auto flex gap-1.5 mt-2 w-full justify-end flex-wrap items-center">
                             <button onclick="calculateGroupRankings()"
                                 class="text-[11px] bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-2.5 py-1.5 rounded-lg font-extrabold shadow-sm btn-press">🧮
-                                자동순위</button>
+                                전체 자동순위</button>
                             <button onclick="loadTempTable()"
                                 class="text-[11px] bg-amber-500 text-white px-2.5 py-1.5 rounded-lg font-bold shadow-sm btn-press">📂
                                 불러오기</button>
@@ -372,20 +372,19 @@
                                 임시저장</button>
                             <button onclick="sortGroupPlayers()"
                                 class="text-[11px] bg-emerald-600 text-white px-2.5 py-1.5 rounded-lg font-bold shadow-sm btn-press">🔀
-                                정렬</button>
+                                전체 정렬</button>
                             <button onclick="openHistoryDateModal()"
-                                class="text-[11px] bg-rose-500 hover:bg-rose-400 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm btn-press transition-colors">🗓️ 기록탭 저장</button>
-                            <button onclick="renderGroupTable()"
-                                class="text-[11px] bg-slate-800 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm btn-press">표
-                                생성</button>
+                                class="text-[11px] bg-rose-500 hover:bg-rose-400 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm btn-press transition-colors">🗓️ 전체 기록탭 저장</button>
+                            <button onclick="createLeague()"
+                                class="text-[11px] bg-indigo-600 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm btn-press mt-2 sm:mt-0">➕ 새 리그전 추가</button>
                         </div>
                     </div>
                 </div>
 
                 <div id="op-group-container" class="w-full overflow-x-auto pb-4">
-                    <div
+                    <div id="op-group-empty-msg"
                         class="text-center text-slate-400 text-xs py-8 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                        조건을 설정하고 표 생성을 눌러주세요.</div>
+                        조건을 설정하고 '새 리그전 추가'를 눌러주세요.</div>
                 </div>
             </div>
 
@@ -1375,7 +1374,8 @@
 
         let formState = { attend: [], lazy: [], lg1: [], lg2: [], lg3: [], tm1: [], tm2: [], tm3: [], tn1: [], tn2: [], tn3: [], utn1: [], utn2: [], utn3: [], ltn1: [], ltn2: [], ltn3: [], db1: [], db2: [], db3: [], ev1: [], opAttend: [] };
         let currentSelectorTarget = ''; let tempSelectorList = []; let isSinglePickMode = false;
-        window.leaguePlayers = {};
+        window.multiLeagues = [];
+        function getLeagueById(id) { return window.multiLeagues.find(lg => lg.id === id); }
 
         let isPcMode = sessionStorage.getItem('isPcMode') === 'true';
         function applyViewMode() {
@@ -1524,292 +1524,417 @@
             container.innerHTML = html;
         }
 
-        function renderGroupTable(preserveData = false) {
+        function getLeagueById(leagueId) {
+            return window.multiLeagues.find(l => l.id == leagueId);
+        }
+
+        function createLeague() {
+            const count = parseInt(document.getElementById('op-group-count').value) || 2;
             const matchTypeEl = document.getElementById('op-match-type');
             const matchType = matchTypeEl ? matchTypeEl.value : 'individual';
+            const leagueId = Date.now() + Math.floor(Math.random() * 1000);
 
-            if (matchType === 'full_league' && !preserveData) {
+            const newLeague = {
+                id: leagueId,
+                title: '',
+                groupCount: count,
+                matchType: matchType,
+                groupSizes: {},
+                players: {}
+            };
+
+            for (let g = 1; g <= count; g++) {
+                let sizeInput = document.getElementById(`op-group-size-${g}`);
+                newLeague.groupSizes[g] = sizeInput ? parseInt(sizeInput.value) : 4;
+            }
+
+            if (matchType === 'full_league') {
                 const attendees = formState.opAttend && formState.opAttend.length > 0 ? formState.opAttend : (formState.attend || []);
                 if (attendees.length > 0) {
-                    document.getElementById('op-group-count').value = "1";
-                    generateGroupSizeInputs();
-                    const sizeInput = document.getElementById('op-group-size-1');
-                    if (sizeInput) sizeInput.value = attendees.length;
-
-                    window.leaguePlayers = {};
+                    newLeague.groupCount = 1;
+                    newLeague.groupSizes[1] = attendees.length;
                     let pIdx = 1;
                     attendees.forEach(name => {
                         const m = members.find(x => x.name === name);
                         if (m) {
-                            window.leaguePlayers[`g1_p${pIdx}`] = { id: m.id, name: m.name, display: `${m.name}(${m.handicap})`, handicap: m.handicap };
+                            newLeague.players[`g1_p${pIdx}`] = { id: m.id, name: m.name, display: `${m.name}(${m.handicap})`, handicap: m.handicap };
                             pIdx++;
                         }
                     });
-                    preserveData = true;
                 }
             }
 
-            const count = parseInt(document.getElementById('op-group-count').value);
-            if (!preserveData) window.leaguePlayers = {};
-            let html = `<div class="flex flex-wrap gap-6 justify-center w-full">`;
+            window.multiLeagues.push(newLeague);
 
-            for (let g = 1; g <= count; g++) {
-                let sizeInput = document.getElementById(`op-group-size-${g}`);
-                let currentSize = sizeInput ? parseInt(sizeInput.value) : 4;
+            const emptyContainer = document.getElementById('op-group-empty-msg');
+            if (emptyContainer) {
+                emptyContainer.style.display = 'none';
+            }
+
+            const html = buildLeagueHTML(newLeague);
+            document.getElementById('op-group-container').insertAdjacentHTML('beforeend', html);
+
+            for (let g = 1; g <= newLeague.groupCount; g++) {
+                const tableEl = document.getElementById(`table-${leagueId}-g${g}`);
+                if (tableEl) updateMatchOrderDisplay(leagueId, g, tableEl.querySelectorAll('tbody tr').length);
+            }
+        }
+
+        function buildLeagueHTML(league) {
+            let html = `<div id="league-container-${league.id}" class="mb-8 bg-white border-2 border-slate-200 rounded-2xl p-4 shadow-sm relative relative-container">
+                <div class="flex flex-wrap justify-between items-center mb-4 pb-2 border-b border-slate-100 gap-2">
+                    <div class="flex items-center gap-2 flex-1 min-w-[200px]">
+                        <span class="text-xl">🏆</span>
+                        <input type="text" id="league-title-${league.id}" value="${league.title}" placeholder="여기를 터치하여 대회명/그룹명 수정" class="text-lg font-extrabold text-slate-800 border-b-2 border-indigo-200 focus:border-indigo-500 outline-none w-full max-w-[250px] bg-transparent transition-colors px-1" oninput="updateLeagueTitle(${league.id}, this.value)">
+                    </div>
+                    <div class="flex gap-1.5 flex-wrap">
+                        <button onclick="calculateGroupRankings(${league.id})" class="text-[11px] bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">🧮 자동순위</button>
+                        <button onclick="sortGroupPlayers(${league.id})" class="text-[11px] bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">🔀 정렬</button>
+                        <button onclick="deleteLeague(${league.id})" class="text-[11px] bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">🗑️ 삭제</button>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-4 justify-center w-full">`;
+
+            for (let g = 1; g <= league.groupCount; g++) {
+                let currentSize = league.groupSizes[g] || 4;
                 if (isNaN(currentSize) || currentSize < 2) currentSize = 2;
 
                 html += `<div class="border-2 border-slate-800/80 rounded-xl overflow-hidden bg-white w-fit max-w-full shadow-sm mx-auto">
                     <div class="bg-slate-100 p-2 flex justify-end items-center gap-1.5 border-b border-slate-200">
                         <span class="text-xs font-bold text-slate-500 mr-auto ml-1">${g}조 관리</span>
-                        <button onclick="copyGroupTableImage(${g})" id="btn-copy-g${g}" class="text-[10px] bg-emerald-500 hover:bg-emerald-400 text-white px-2 py-1 rounded font-bold transition-colors btn-press no-print shadow-sm flex items-center">📸 카톡 복사</button>
-                        <button onclick="openPrintModal(${g})" class="text-[10px] bg-indigo-500 hover:bg-indigo-400 text-white px-2 py-1 rounded font-bold transition-colors btn-press no-print shadow-sm">🖨️ 조별 인쇄</button>
+                        <button onclick="copyGroupTableImage(${league.id}, ${g})" id="btn-copy-${league.id}-g${g}" class="text-[10px] bg-emerald-500 hover:bg-emerald-400 text-white px-2 py-1 rounded font-bold transition-colors btn-press no-print shadow-sm flex items-center">📸 복사</button>
+                        <button onclick="openPrintModal(${league.id}, ${g})" class="text-[10px] bg-indigo-500 hover:bg-indigo-400 text-white px-2 py-1 rounded font-bold transition-colors btn-press no-print shadow-sm">🖨️ 인쇄</button>
                     </div>
-                    <div id="table-container-g${g}" class="bg-white relative">
+                    <div id="table-container-${league.id}-g${g}" class="bg-white relative">
                         <div class="bg-slate-800 p-2.5 text-white flex items-center justify-between">
                             <div class="flex items-center gap-1.5">
-                                <span class="font-extrabold text-sm tracking-wide">${g}조 예선 리그</span>
+                                <span class="font-extrabold text-sm tracking-wide">${g}조 리그</span>
                                 <span class="text-[10px] bg-white/20 px-2 py-0.5 rounded font-bold ml-1">${currentSize}명 풀리그</span>
-                                <span class="text-[10px] bg-emerald-500/80 px-2 py-0.5 rounded font-bold">총 ${getRoundRobinPairs(currentSize).length}경기</span>
                             </div>
                         </div>
                         <div class="overflow-x-auto w-full max-w-full px-2 sm:px-0">
-                        <table class="table-auto text-center text-xs border-collapse whitespace-nowrap w-max mx-auto" id="table-g${g}">
+                        <table class="table-auto text-center text-xs border-collapse whitespace-nowrap w-max mx-auto" id="table-${league.id}-g${g}">
                             <thead>
                                 <tr class="bg-blue-50 border-b-2 border-sky-200 text-sky-900 font-extrabold">
                                     <th class="px-1.5 py-1 border-r border-sky-100 bg-blue-100/50 w-px whitespace-nowrap">선수명</th>`;
 
                 for (let i = 1; i <= currentSize; i++) {
-                    let player = window.leaguePlayers[`g${g}_p${i}`];
-                    // 메달은 calculateGroupRankings에서 계산된 후 업데이트됩니다. 초기화 시엔 이름만 표시합니다.
+                    let player = league.players[`g${g}_p${i}`];
                     let headerName = player ? escapeHTML(player.name) : `${i}번`;
-                    html += `<th class="px-1 py-1 border-r border-sky-100 font-bold text-[11px] whitespace-nowrap w-px text-sky-900" id="th-g${g}-p${i}">${headerName}</th>`;
+                    html += `<th class="px-1 py-1 border-r border-sky-100 font-bold text-[11px] whitespace-nowrap w-px text-sky-900" id="th-${league.id}-g${g}-p${i}">${headerName}</th>`;
                 }
 
                 html += `<th class="px-1.5 py-1 border-r border-sky-100 w-px whitespace-nowrap">승/패</th><th class="px-1.5 py-1 border-r border-sky-100 w-px whitespace-nowrap">득/실</th><th class="px-1.5 py-1 bg-sky-100 text-sky-700 w-px whitespace-nowrap drop-shadow-none">순위</th></tr></thead><tbody class="bg-sky-50 text-slate-800">`;
 
                 for (let i = 1; i <= currentSize; i++) {
-                    let player = window.leaguePlayers[`g${g}_p${i}`];
+                    let player = league.players[`g${g}_p${i}`];
                     let displayVal = player ? escapeHTML(player.display) : '';
                     let placeholderVal = player ? displayVal : '터치👉';
 
                     html += `<tr class="border-b border-sky-100 hover:bg-sky-100/50">
-                        <td class="p-0 border-r border-sky-100 bg-sky-50 font-bold text-[11px] w-px whitespace-nowrap" id="td-g${g}-p${i}">
-                            <input type="text" value="${displayVal}" class="w-full min-w-[60px] h-full text-center outline-none cursor-pointer hover:bg-indigo-50 font-bold text-[11px] text-slate-800 px-1 py-1 bg-transparent whitespace-nowrap" placeholder="터치👉" readonly onclick="selectLeaguePlayer(this, ${g}, ${i})">
+                        <td class="p-0 border-r border-sky-100 bg-sky-50 font-bold text-[11px] w-px whitespace-nowrap" id="td-${league.id}-g${g}-p${i}">
+                            <input type="text" value="${displayVal}" class="w-full min-w-[60px] h-full text-center outline-none cursor-pointer hover:bg-indigo-50 font-bold text-[11px] text-slate-800 px-1 py-1 bg-transparent whitespace-nowrap" placeholder="터치👉" readonly onclick="selectLeaguePlayer(this, ${league.id}, ${g}, ${i})">
                             <span class="capture-text font-bold text-[11px] text-slate-800 px-1 py-1 bg-sky-50 whitespace-nowrap truncate drop-shadow-none">${placeholderVal}</span>
                         </td>`;
 
                     for (let j = 1; j <= currentSize; j++) {
                         if (i === j) html += `<td class="border-r border-sky-100 diagonal-strike w-px"></td>`;
-                        else html += `<td class="border-r border-sky-100 p-0 w-px"><input type="text" id="score-g${g}-r${i}-c${j}" class="w-full min-w-[36px] h-full px-1 py-1 text-center bg-transparent outline-none font-medium text-slate-600 focus:bg-yellow-50 drop-shadow-none" placeholder="" oninput="syncText(this)"><span class="capture-text font-medium text-slate-600 px-1 py-1 bg-sky-50 drop-shadow-none"></span></td>`;
+                        else html += `<td class="border-r border-sky-100 p-0 w-px"><input type="text" id="score-${league.id}-g${g}-r${i}-c${j}" class="w-full min-w-[36px] h-full px-1 py-1 text-center bg-transparent outline-none font-medium text-slate-600 focus:bg-yellow-50 drop-shadow-none" placeholder="" oninput="syncText(this)"><span class="capture-text font-medium text-slate-600 px-1 py-1 bg-sky-50 drop-shadow-none"></span></td>`;
                     }
-                    html += `<td class="border-r border-sky-100 p-0 w-px"><input type="text" id="wl-g${g}-p${i}" class="w-full min-w-[40px] h-full px-1.5 py-1 text-center outline-none font-bold text-slate-700 bg-transparent drop-shadow-none" placeholder="/" oninput="syncText(this)"><span class="capture-text font-bold text-slate-700 px-1.5 py-1 bg-sky-50 drop-shadow-none">/</span></td>
-                    <td class="border-r border-sky-100 p-0 w-px"><input type="text" id="diff-g${g}-p${i}" class="w-full min-w-[36px] h-full px-1.5 py-1 text-center outline-none font-bold text-slate-700 bg-transparent drop-shadow-none" placeholder="/" oninput="syncText(this)"><span class="capture-text font-bold text-slate-700 px-1.5 py-1 bg-sky-50 drop-shadow-none">/</span></td>
-                    <td class="bg-sky-100/50 p-0 w-px"><input type="text" id="rank-g${g}-p${i}" class="w-full min-w-[36px] h-full px-1.5 py-1 text-center outline-none font-black text-sky-600 text-sm bg-transparent border-0 drop-shadow-none" placeholder="" oninput="syncText(this)"><span class="capture-text font-black text-sky-600 px-1.5 py-1 bg-sky-100 drop-shadow-none"></span></td></tr>`;
+                    html += `<td class="border-r border-sky-100 p-0 w-px"><input type="text" id="wl-${league.id}-g${g}-p${i}" class="w-full min-w-[40px] h-full px-1.5 py-1 text-center outline-none font-bold text-slate-700 bg-transparent drop-shadow-none" placeholder="/" oninput="syncText(this)"><span class="capture-text font-bold text-slate-700 px-1.5 py-1 bg-sky-50 drop-shadow-none">/</span></td>
+                    <td class="border-r border-sky-100 p-0 w-px"><input type="text" id="diff-${league.id}-g${g}-p${i}" class="w-full min-w-[36px] h-full px-1.5 py-1 text-center outline-none font-bold text-slate-700 bg-transparent drop-shadow-none" placeholder="/" oninput="syncText(this)"><span class="capture-text font-bold text-slate-700 px-1.5 py-1 bg-sky-50 drop-shadow-none">/</span></td>
+                    <td class="bg-sky-100/50 p-0 w-px"><input type="text" id="rank-${league.id}-g${g}-p${i}" class="w-full min-w-[36px] h-full px-1.5 py-1 text-center outline-none font-black text-sky-600 text-sm bg-transparent border-0 drop-shadow-none" placeholder="" oninput="syncText(this)"><span class="capture-text font-black text-sky-600 px-1.5 py-1 bg-sky-100 drop-shadow-none"></span></td></tr>`;
                 }
-                html += `</tbody></table></div></div><div class="bg-slate-50 border-t border-slate-200 text-[11px] text-left no-print"><div class="p-2.5 flex justify-between items-center cursor-pointer font-extrabold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors" onclick="toggleOrder(${g})"><span>🔄 게임 순서 접기/펼치기</span><span id="order-icon-${g}" class="text-xs">▼</span></div><div id="order-content-${g}" class="hidden p-3 leading-loose break-keep bg-slate-50 shadow-inner"></div></div></div>`;
+                html += `</tbody></table></div></div><div class="bg-slate-50 border-t border-slate-200 text-[11px] text-left no-print"><div class="p-2.5 flex justify-between items-center cursor-pointer font-extrabold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors" onclick="toggleOrder(${league.id}, ${g})"><span>🔄 게임 순서 접기/펼치기</span><span id="order-icon-${league.id}-${g}" class="text-xs">▼</span></div><div id="order-content-${league.id}-${g}" class="hidden p-3 leading-loose break-keep bg-slate-50 shadow-inner"></div></div></div>`;
             }
-            html += `</div>`; document.getElementById('op-group-container').innerHTML = html;
+            html += `</div></div>`;
+            return html;
+        }
 
-            for (let g = 1; g <= count; g++) { const tableEl = document.getElementById(`table-g${g}`); if (tableEl) { updateMatchOrderDisplay(g, tableEl.querySelectorAll('tbody tr').length); } }
+        function updateLeagueTitle(leagueId, val) {
+            const league = getLeagueById(leagueId);
+            if(league) league.title = val;
+        }
+
+        function deleteLeague(leagueId) {
+            if(confirm("이 리그전표를 삭제하시겠습니까?")) {
+                window.multiLeagues = window.multiLeagues.filter(l => l.id != leagueId);
+                const container = document.getElementById(`league-container-${leagueId}`);
+                if(container) container.remove();
+
+                if(window.multiLeagues.length === 0) {
+                    const emptyContainer = document.getElementById('op-group-empty-msg');
+                    if (emptyContainer) {
+                        emptyContainer.style.display = 'block';
+                    }
+                }
+            }
         }
 
         function saveTempTable() {
-            const count = parseInt(document.getElementById('op-group-count').value) || 2;
-            let tableData = { groupCount: count, groupSizes: {}, leaguePlayers: window.leaguePlayers, scores: {} };
-            for (let g = 1; g <= count; g++) {
-                let sizeInput = document.getElementById(`op-group-size-${g}`);
-                let size = sizeInput ? parseInt(sizeInput.value) : 4;
-                tableData.groupSizes[g] = size;
-                tableData.scores[g] = {};
-                for (let i = 1; i <= size; i++) {
-                    tableData.scores[g][i] = {};
-                    for (let j = 1; j <= size; j++) {
-                        if (i === j) continue;
-                        let input = document.getElementById(`score-g${g}-r${i}-c${j}`);
-                        if (input) tableData.scores[g][i][j] = input.value;
+            // 모든 multiLeagues 데이터와 현재 화면의 input 값을 동기화 후 저장
+            window.multiLeagues.forEach(league => {
+                league.scores = {};
+                for (let g = 1; g <= league.groupCount; g++) {
+                    let size = league.groupSizes[g] || 4;
+                    league.scores[g] = {};
+                    for (let i = 1; i <= size; i++) {
+                        league.scores[g][i] = {};
+                        for (let j = 1; j <= size; j++) {
+                            if (i === j) continue;
+                            let input = document.getElementById(`score-${league.id}-g${g}-r${i}-c${j}`);
+                            if (input) league.scores[g][i][j] = input.value;
+                        }
+                        let wl = document.getElementById(`wl-${league.id}-g${g}-p${i}`);
+                        let diff = document.getElementById(`diff-${league.id}-g${g}-p${i}`);
+                        let rank = document.getElementById(`rank-${league.id}-g${g}-p${i}`);
+                        league.scores[g][i].wl = wl ? wl.value : '';
+                        league.scores[g][i].diff = diff ? diff.value : '';
+                        league.scores[g][i].rank = rank ? rank.value : '';
                     }
-                    let wl = document.getElementById(`wl-g${g}-p${i}`);
-                    let diff = document.getElementById(`diff-g${g}-p${i}`);
-                    let rank = document.getElementById(`rank-g${g}-p${i}`);
-                    tableData.scores[g][i].wl = wl ? wl.value : '';
-                    tableData.scores[g][i].diff = diff ? diff.value : '';
-                    tableData.scores[g][i].rank = rank ? rank.value : '';
                 }
+            });
+            let saveData = { multiLeagues: window.multiLeagues };
+            try { 
+                localStorage.setItem('pingpongMultiTempTable', JSON.stringify(saveData)); 
+                alert('💾 작성중인 모든 대진표와 점수가 임시저장 되었습니다.'); 
+            } catch (e) { 
+                alert('저장 중 오류가 발생했습니다.'); 
             }
-            try { localStorage.setItem('pingpongTempTable', JSON.stringify(tableData)); alert('💾 작성중인 대진표와 점수가 임시저장 되었습니다.'); } catch (e) { alert('저장 중 오류가 발생했습니다.'); }
         }
 
         function loadTempTable() {
-            let dataStr = localStorage.getItem('pingpongTempTable');
-            if (!dataStr) { alert('임시저장된 데이터가 없습니다.'); return; }
-            let tableData = JSON.parse(dataStr);
-            document.getElementById('op-group-count').value = tableData.groupCount;
-            generateGroupSizeInputs();
-            for (let g = 1; g <= tableData.groupCount; g++) {
-                let sizeInput = document.getElementById(`op-group-size-${g}`);
-                if (sizeInput && tableData.groupSizes[g]) sizeInput.value = tableData.groupSizes[g];
-            }
-            window.leaguePlayers = tableData.leaguePlayers || {};
-            renderGroupTable(true);
-            for (let g = 1; g <= tableData.groupCount; g++) {
-                let size = tableData.groupSizes[g] || 4;
-                for (let i = 1; i <= size; i++) {
-                    for (let j = 1; j <= size; j++) {
-                        if (i === j) continue;
-                        let input = document.getElementById(`score-g${g}-r${i}-c${j}`);
-                        if (input && tableData.scores[g] && tableData.scores[g][i]) { input.value = tableData.scores[g][i][j] || ''; syncText(input); }
-                    }
-                    let wl = document.getElementById(`wl-g${g}-p${i}`); let diff = document.getElementById(`diff-g${g}-p${i}`); let rank = document.getElementById(`rank-g${g}-p${i}`);
-                    if (wl && tableData.scores[g][i]) { wl.value = tableData.scores[g][i].wl || ''; syncText(wl); }
-                    if (diff && tableData.scores[g][i]) { diff.value = tableData.scores[g][i].diff || ''; syncText(diff); }
-                    if (rank && tableData.scores[g][i]) { rank.value = tableData.scores[g][i].rank || ''; syncText(rank); }
+            let dataStr = localStorage.getItem('pingpongMultiTempTable');
+            if (!dataStr) { 
+                // 기존 호환성용 체크
+                let oldStr = localStorage.getItem('pingpongTempTable');
+                if(oldStr) {
+                    alert('새로운 형식의 임시저장 데이터가 없습니다. (단일 구조 구버전 데이터만 존재하므로 불러올 수 없습니다.)');
+                } else {
+                    alert('임시저장된 데이터가 없습니다.'); 
                 }
+                return; 
             }
-            alert('📂 임시저장된 데이터를 불러왔습니다.');
+            try {
+                let tableData = JSON.parse(dataStr);
+                window.multiLeagues = tableData.multiLeagues || [];
+                
+                // 화면 초기화
+                const container = document.getElementById('op-group-container');
+                const emptyMsg = document.getElementById('op-group-empty-msg');
+                if (emptyMsg) emptyMsg.style.display = window.multiLeagues.length ? 'none' : 'block';
+                
+                // 기존 표 모두 제거
+                Array.from(container.children).forEach(child => {
+                    if (child.id !== 'op-group-empty-msg') container.removeChild(child);
+                });
+
+                // 다시 렌더링
+                window.multiLeagues.forEach(league => {
+                    const html = buildLeagueHTML(league);
+                    container.insertAdjacentHTML('beforeend', html);
+
+                    // 점수 복원 로직
+                    for (let g = 1; g <= league.groupCount; g++) {
+                        let size = league.groupSizes[g] || 4;
+                        for (let i = 1; i <= size; i++) {
+                            for (let j = 1; j <= size; j++) {
+                                if (i === j) continue;
+                                let input = document.getElementById(`score-${league.id}-g${g}-r${i}-c${j}`);
+                                if (input && league.scores && league.scores[g] && league.scores[g][i]) { 
+                                    input.value = league.scores[g][i][j] || ''; syncText(input); 
+                                }
+                            }
+                            let wl = document.getElementById(`wl-${league.id}-g${g}-p${i}`); 
+                            let diff = document.getElementById(`diff-${league.id}-g${g}-p${i}`); 
+                            let rank = document.getElementById(`rank-${league.id}-g${g}-p${i}`);
+                            if (wl && league.scores && league.scores[g] && league.scores[g][i]) { wl.value = league.scores[g][i].wl || ''; syncText(wl); }
+                            if (diff && league.scores && league.scores[g] && league.scores[g][i]) { diff.value = league.scores[g][i].diff || ''; syncText(diff); }
+                            if (rank && league.scores && league.scores[g] && league.scores[g][i]) { rank.value = league.scores[g][i].rank || ''; syncText(rank); }
+                        }
+                        const tableEl = document.getElementById(`table-${league.id}-g${g}`);
+                        if (tableEl) updateMatchOrderDisplay(league.id, g, tableEl.querySelectorAll('tbody tr').length);
+                    }
+                });
+                alert('📂 임시저장된 전체 리그 데이터를 불러왔습니다.');
+            } catch (e) {
+                alert('불러오기 중 오류가 발생했습니다.');
+            }
         }
 
-        function calculateGroupRankings() {
-            const count = parseInt(document.getElementById('op-group-count').value) || 2;
-            for (let g = 1; g <= count; g++) {
-                let sizeInput = document.getElementById(`op-group-size-${g}`);
-                let size = sizeInput ? parseInt(sizeInput.value) : 4;
-                let players = [];
-                for (let i = 1; i <= size; i++) players.push({ id: i, matchWins: 0, matchLosses: 0, setsWon: 0, setsLost: 0, matches: {} });
+        function calculateGroupRankings(leagueId = null) {
+            const targetLeagues = leagueId ? [getLeagueById(leagueId)] : window.multiLeagues;
+            if(!targetLeagues.length || !targetLeagues[0]) return alert("진행할 리그전표가 없습니다.");
 
-                for (let i = 1; i <= size; i++) {
-                    for (let j = i + 1; j <= size; j++) {
-                        let inputIJ = document.getElementById(`score-g${g}-r${i}-c${j}`);
-                        let inputJI = document.getElementById(`score-g${g}-r${j}-c${i}`);
-                        let valIJ = inputIJ ? inputIJ.value.trim() : "";
-                        let valJI = inputJI ? inputJI.value.trim() : "";
+            targetLeagues.forEach(league => {
+                for (let g = 1; g <= league.groupCount; g++) {
+                    let size = league.groupSizes[g] || 4;
+                    let players = [];
+                    for (let i = 1; i <= size; i++) players.push({ id: i, matchWins: 0, matchLosses: 0, setsWon: 0, setsLost: 0, matches: {} });
 
-                        if (valIJ !== "" || valJI !== "") {
-                            let w = parseInt(valIJ) || 0; let l = parseInt(valJI) || 0;
-                            players[i - 1].setsWon += w; players[i - 1].setsLost += l; players[i - 1].matches[j] = { w: w, l: l };
-                            players[j - 1].setsWon += l; players[j - 1].setsLost += w; players[j - 1].matches[i] = { w: l, l: w };
-                            if (w > l) { players[i - 1].matchWins++; players[j - 1].matchLosses++; }
-                            else if (l > w) { players[j - 1].matchWins++; players[i - 1].matchLosses++; }
+                    for (let i = 1; i <= size; i++) {
+                        for (let j = i + 1; j <= size; j++) {
+                            let inputIJ = document.getElementById(`score-${league.id}-g${g}-r${i}-c${j}`);
+                            let inputJI = document.getElementById(`score-${league.id}-g${g}-r${j}-c${i}`);
+                            let valIJ = inputIJ ? inputIJ.value.trim() : "";
+                            let valJI = inputJI ? inputJI.value.trim() : "";
+
+                            if (valIJ !== "" || valJI !== "") {
+                                let w = parseInt(valIJ) || 0; let l = parseInt(valJI) || 0;
+                                players[i - 1].setsWon += w; players[i - 1].setsLost += l; players[i - 1].matches[j] = { w: w, l: l };
+                                players[j - 1].setsWon += l; players[j - 1].setsLost += w; players[j - 1].matches[i] = { w: l, l: w };
+                                if (w > l) { players[i - 1].matchWins++; players[j - 1].matchLosses++; }
+                                else if (l > w) { players[j - 1].matchWins++; players[i - 1].matchLosses++; }
+                            }
                         }
                     }
-                }
 
-                players.forEach(p => {
-                    let wlInput = document.getElementById(`wl-g${g}-p${p.id}`); let diffInput = document.getElementById(`diff-g${g}-p${p.id}`);
-                    if (wlInput) { wlInput.value = `${p.matchWins}/${p.matchLosses}`; syncText(wlInput); }
-                    if (diffInput) { diffInput.value = `${p.setsWon}/${p.setsLost}`; syncText(diffInput); }
-                });
+                    players.forEach(p => {
+                        let wlInput = document.getElementById(`wl-${league.id}-g${g}-p${p.id}`); let diffInput = document.getElementById(`diff-${league.id}-g${g}-p${p.id}`);
+                        if (wlInput) { wlInput.value = `${p.matchWins}/${p.matchLosses}`; syncText(wlInput); }
+                        if (diffInput) { diffInput.value = `${p.setsWon}/${p.setsLost}`; syncText(diffInput); }
+                    });
 
-                let sortedPlayers = [...players].sort((a, b) => b.matchWins - a.matchWins);
-                let rank = 1; let idx = 0;
-                while (idx < sortedPlayers.length) {
-                    let tied = [sortedPlayers[idx]]; let next = idx + 1;
-                    while (next < sortedPlayers.length && sortedPlayers[next].matchWins === sortedPlayers[idx].matchWins) { tied.push(sortedPlayers[next]); next++; }
-                    if (tied.length === 1) { tied[0].finalRank = rank; }
-                    else if (tied.length === 2) {
-                        let p1 = tied[0], p2 = tied[1]; let match = p1.matches[p2.id];
-                        if (match && match.w > match.l) { p1.finalRank = rank; p2.finalRank = rank + 1; }
-                        else if (match && match.l > match.w) { p2.finalRank = rank; p1.finalRank = rank + 1; }
-                        else {
-                            let p1Diff = p1.setsWon - p1.setsLost; let p2Diff = p2.setsWon - p2.setsLost;
-                            if (p1Diff > p2Diff) { p1.finalRank = rank; p2.finalRank = rank + 1; }
-                            else if (p2Diff > p1Diff) { p2.finalRank = rank; p1.finalRank = rank + 1; }
-                            else { p1.finalRank = rank; p2.finalRank = rank; }
+                    let sortedPlayers = [...players].sort((a, b) => b.matchWins - a.matchWins);
+                    let rank = 1; let idx = 0;
+                    while (idx < sortedPlayers.length) {
+                        let tied = [sortedPlayers[idx]]; let next = idx + 1;
+                        while (next < sortedPlayers.length && sortedPlayers[next].matchWins === sortedPlayers[idx].matchWins) { tied.push(sortedPlayers[next]); next++; }
+                        if (tied.length === 1) { tied[0].finalRank = rank; }
+                        else if (tied.length === 2) {
+                            let p1 = tied[0], p2 = tied[1]; let match = p1.matches[p2.id];
+                            if (match && match.w > match.l) { p1.finalRank = rank; p2.finalRank = rank + 1; }
+                            else if (match && match.l > match.w) { p2.finalRank = rank; p1.finalRank = rank + 1; }
+                            else {
+                                let p1Diff = p1.setsWon - p1.setsLost; let p2Diff = p2.setsWon - p2.setsLost;
+                                if (p1Diff > p2Diff) { p1.finalRank = rank; p2.finalRank = rank + 1; }
+                                else if (p2Diff > p1Diff) { p2.finalRank = rank; p1.finalRank = rank + 1; }
+                                else { p1.finalRank = rank; p2.finalRank = rank; }
+                            }
+                        } else {
+                            tied.forEach(p => {
+                                p.tieSetsWon = 0; p.tieSetsLost = 0;
+                                tied.forEach(op => { if (p.id !== op.id && p.matches[op.id]) { p.tieSetsWon += p.matches[op.id].w; p.tieSetsLost += p.matches[op.id].l; } });
+                                p.tieDiff = p.tieSetsWon - p.tieSetsLost;
+                            });
+                            tied.sort((a, b) => {
+                                if (b.tieDiff !== a.tieDiff) return b.tieDiff - a.tieDiff;
+                                return (b.setsWon - b.setsLost) - (a.setsWon - a.setsLost);
+                            });
+                            tied.forEach((p, tIdx) => {
+                                if (tIdx > 0) {
+                                    let prev = tied[tIdx - 1];
+                                    if (prev.tieDiff === p.tieDiff && (prev.setsWon - prev.setsLost) === (p.setsWon - p.setsLost)) p.finalRank = prev.finalRank;
+                                    else p.finalRank = rank + tIdx;
+                                } else { p.finalRank = rank; }
+                            });
                         }
-                    } else {
-                        tied.forEach(p => {
-                            p.tieSetsWon = 0; p.tieSetsLost = 0;
-                            tied.forEach(op => { if (p.id !== op.id && p.matches[op.id]) { p.tieSetsWon += p.matches[op.id].w; p.tieSetsLost += p.matches[op.id].l; } });
-                            p.tieDiff = p.tieSetsWon - p.tieSetsLost;
-                        });
-                        tied.sort((a, b) => {
-                            if (b.tieDiff !== a.tieDiff) return b.tieDiff - a.tieDiff;
-                            return (b.setsWon - b.setsLost) - (a.setsWon - a.setsLost);
-                        });
-                        tied.forEach((p, tIdx) => {
-                            if (tIdx > 0) {
-                                let prev = tied[tIdx - 1];
-                                if (prev.tieDiff === p.tieDiff && (prev.setsWon - prev.setsLost) === (p.setsWon - p.setsLost)) p.finalRank = prev.finalRank;
-                                else p.finalRank = rank + tIdx;
-                            } else { p.finalRank = rank; }
-                        });
+                        rank += tied.length; idx += tied.length;
                     }
-                    rank += tied.length; idx += tied.length;
+                    players.forEach(p => {
+                        let rankInput = document.getElementById(`rank-${league.id}-g${g}-p${p.id}`);
+                        if (rankInput) { rankInput.value = p.finalRank; syncText(rankInput); }
+
+                        let th = document.getElementById(`th-${league.id}-g${g}-p${p.id}`);
+                        if (th) {
+                            let playerObj = league.players[`g${g}_p${p.id}`];
+                            let name = playerObj ? escapeHTML(playerObj.name) : `${p.id}번`;
+                            th.innerText = name; 
+                        }
+
+                        let tdInput = document.querySelector(`#td-${league.id}-g${g}-p${p.id} input`);
+                        let tdSpan = document.querySelector(`#td-${league.id}-g${g}-p${p.id} span.capture-text`);
+                        if (tdInput && tdSpan) {
+                            let playerObj = league.players[`g${g}_p${p.id}`];
+                            let display = playerObj ? escapeHTML(playerObj.display) : `${p.id}번`;
+                            let medal = p.finalRank === 1 ? '🥇' : (p.finalRank === 2 ? '🥈' : (p.finalRank === 3 ? '🥉' : ''));
+                            let finalDisplay = medal ? `${medal} ${display}` : display;
+                            tdInput.value = finalDisplay;
+                            tdSpan.innerText = finalDisplay;
+                        }
+                    });
                 }
-                players.forEach(p => {
-                    let rankInput = document.getElementById(`rank-g${g}-p${p.id}`);
-                    if (rankInput) { rankInput.value = p.finalRank; syncText(rankInput); }
+            });
+            alert("🧮 선택한/전체 리그 표의 자동 계산이 완료되었습니다.");
 
-                    let th = document.getElementById(`th-g${g}-p${p.id}`);
-                    if (th) {
-                        let playerObj = window.leaguePlayers[`g${g}_p${p.id}`];
-                        let name = playerObj ? escapeHTML(playerObj.name) : `${p.id}번`;
-                        th.innerText = name; // 헤더에는 이름만 (메달 제거)
-                    }
+            // 매번 전체 결과를 취합하여 저장 (전체 버튼이든 개별 버튼이든)
+            saveAllPreliminaryResults();
+        }
 
-                    // 1열(선수명) 쪽에 메달 표시
-                    let tdInput = document.querySelector(`#td-g${g}-p${p.id} input`);
-                    let tdSpan = document.querySelector(`#td-g${g}-p${p.id} span.capture-text`);
-                    if (tdInput && tdSpan) {
-                        let playerObj = window.leaguePlayers[`g${g}_p${p.id}`];
-                        let display = playerObj ? escapeHTML(playerObj.display) : `${p.id}번`;
-                        let medal = p.finalRank === 1 ? '🥇' : (p.finalRank === 2 ? '🥈' : (p.finalRank === 3 ? '🥉' : ''));
-                        let finalDisplay = medal ? `${medal} ${display}` : display;
-                        tdInput.value = finalDisplay;
-                        tdSpan.innerText = finalDisplay;
-                    }
-                });
-            }
-            alert("🧮 1칸 1숫자 방식이 반영된 탁구 공식 룰 자동 계산이 완료되었습니다.");
-
-            // 예선 결과 저장 (입력 탭 연계용)
-            const matchType = document.getElementById('op-match-type').value;
+        function saveAllPreliminaryResults() {
             const results = {
-                matchType: matchType,
-                groups: []
+                matchType: document.getElementById('op-match-type') ? document.getElementById('op-match-type').value : 'individual',
+                leagues: []
             };
 
-            for (let g = 1; g <= count; g++) {
-                let groupResults = { g: g, ranks: { 1: [], 2: [], 3: [] } };
-                let sizeInput = document.getElementById(`op-group-size-${g}`);
-                let size = sizeInput ? parseInt(sizeInput.value) : 0;
-                for (let p = 1; p <= size; p++) {
-                    let player = window.leaguePlayers && window.leaguePlayers[`g${g}_p${p}`];
-                    let name = player ? player.name : null;
-                    let rankInput = document.getElementById(`rank-g${g}-p${p}`);
-                    let rank = rankInput ? parseInt(rankInput.value) : 0;
-                    if (name && rank >= 1 && rank <= 3) {
-                        groupResults.ranks[rank].push(name);
+            window.multiLeagues.forEach(league => {
+                let leagueResult = { 
+                    id: league.id, title: league.title || '일반 리그', groups: [] 
+                };
+                for (let g = 1; g <= league.groupCount; g++) {
+                    let groupResults = { g: g, ranks: { 1: [], 2: [], 3: [] } };
+                    let size = league.groupSizes[g] || 4;
+                    for (let p = 1; p <= size; p++) {
+                        let player = league.players[`g${g}_p${p}`];
+                        let name = player ? player.name : null;
+                        let rankInput = document.getElementById(`rank-${league.id}-g${g}-p${p}`);
+                        let rank = rankInput ? parseInt(rankInput.value) : 0;
+                        if (name && rank >= 1 && rank <= 3) {
+                            groupResults.ranks[rank].push(name);
+                        }
                     }
+                    leagueResult.groups.push(groupResults);
                 }
-                results.groups.push(groupResults);
-            }
+                results.leagues.push(leagueResult);
+            });
             localStorage.setItem('preliminaryResults', JSON.stringify(results));
-            alert("✅ 결과 데이터 저장이 완료되었습니다. [입력] 탭에서 '예선 결과 불러오기'를 클릭하세요.");
         }
 
-        function sortGroupPlayers() {
-            const count = parseInt(document.getElementById('op-group-count').value);
-            for (let g = 1; g <= count; g++) {
-                let sizeInput = document.getElementById(`op-group-size-${g}`); let currentSize = sizeInput ? parseInt(sizeInput.value) : 4;
-                if (isNaN(currentSize) || currentSize < 2) currentSize = 2;
-                let groupPlayers = [];
-                for (let p = 1; p <= currentSize; p++) { let player = window.leaguePlayers[`g${g}_p${p}`]; if (player) groupPlayers.push(player); }
-                groupPlayers.sort((a, b) => { if (a.handicap !== b.handicap) return a.handicap - b.handicap; return a.name.localeCompare(b.name); });
-                for (let p = 1; p <= currentSize; p++) { window.leaguePlayers[`g${g}_p${p}`] = groupPlayers[p - 1] || null; }
-            }
-            renderGroupTable(true);
+        function sortGroupPlayers(leagueId = null) {
+            const targetLeagues = leagueId ? [getLeagueById(leagueId)] : window.multiLeagues;
+            if(!targetLeagues.length || !targetLeagues[0]) return;
+
+            targetLeagues.forEach(league => {
+                for (let g = 1; g <= league.groupCount; g++) {
+                    let currentSize = league.groupSizes[g] || 4;
+                    let groupPlayers = [];
+                    for (let p = 1; p <= currentSize; p++) { 
+                        let player = league.players[`g${g}_p${p}`]; 
+                        if (player) groupPlayers.push(player); 
+                    }
+                    groupPlayers.sort((a, b) => { 
+                        if (a.handicap !== b.handicap) return a.handicap - b.handicap; 
+                        return a.name.localeCompare(b.name); 
+                    });
+                    for (let p = 1; p <= currentSize; p++) { 
+                        league.players[`g${g}_p${p}`] = groupPlayers[p - 1] || null; 
+                    }
+                }
+                // 특정 리그만 다시 그려주기
+                const oldContainer = document.getElementById(`league-container-${league.id}`);
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = buildLeagueHTML(league);
+                const newContainer = tempDiv.firstElementChild;
+                if(oldContainer) {
+                    oldContainer.parentNode.replaceChild(newContainer, oldContainer);
+                    for (let g = 1; g <= league.groupCount; g++) { 
+                        const tableEl = document.getElementById(`table-${league.id}-g${g}`); 
+                        if (tableEl) { updateMatchOrderDisplay(league.id, g, tableEl.querySelectorAll('tbody tr').length); } 
+                    }
+                }
+            });
         }
 
         function syncText(inputElem) { inputElem.nextElementSibling.innerText = inputElem.value || inputElem.placeholder; }
 
-        async function copyGroupTableImage(g) {
-            const btn = document.getElementById(`btn-copy-g${g}`);
+        async function copyGroupTableImage(leagueId, g) {
+            const btn = document.getElementById(`btn-copy-${leagueId}-g${g}`);
             const originalText = btn.innerText;
             btn.innerText = "⏳ 복사중...";
 
             try {
-                let sizeInput = document.getElementById(`op-group-size-${g}`);
-                let size = sizeInput ? parseInt(sizeInput.value) : 4;
+                const league = getLeagueById(leagueId);
+                let size = league ? (league.groupSizes[g] || 4) : 4;
 
                 let headers = ['선수명'];
                 for (let i = 1; i <= size; i++) headers.push(`${i}`);
@@ -1817,8 +1942,8 @@
 
                 let rows = [];
                 for (let i = 1; i <= size; i++) {
-                    let tdInput = document.querySelector(`#td-g${g}-p${i} input`);
-                    let tdSpan = document.querySelector(`#td-g${g}-p${i} span.capture-text`);
+                    let tdInput = document.querySelector(`#td-${leagueId}-g${g}-p${i} input`);
+                    let tdSpan = document.querySelector(`#td-${leagueId}-g${g}-p${i} span.capture-text`);
                     let nameField = tdInput && tdInput.value.trim() !== '' && tdInput.value.trim() !== '터치👉' ? tdInput.value : `${i}번`;
                     if (tdSpan && tdSpan.innerText && tdSpan.innerText.trim() !== '터치👉' && tdSpan.innerText.trim() !== '') {
                         nameField = tdSpan.innerText.trim();
@@ -1829,14 +1954,14 @@
                         if (i === j) {
                             row.push('-'); 
                         } else {
-                            let scoreInput = document.getElementById(`score-g${g}-r${i}-c${j}`);
+                            let scoreInput = document.getElementById(`score-${leagueId}-g${g}-r${i}-c${j}`);
                             row.push(scoreInput ? scoreInput.value : '');
                         }
                     }
                     
-                    let wlInput = document.getElementById(`wl-g${g}-p${i}`);
-                    let diffInput = document.getElementById(`diff-g${g}-p${i}`);
-                    let rankInput = document.getElementById(`rank-g${g}-p${i}`);
+                    let wlInput = document.getElementById(`wl-${leagueId}-g${g}-p${i}`);
+                    let diffInput = document.getElementById(`diff-${leagueId}-g${g}-p${i}`);
+                    let rankInput = document.getElementById(`rank-${leagueId}-g${g}-p${i}`);
                     
                     row.push(wlInput && wlInput.value && wlInput.value !== '/' ? wlInput.value : '');
                     row.push(diffInput && diffInput.value && diffInput.value !== '/' ? diffInput.value : '');
@@ -1875,7 +2000,8 @@
                     return maxW;
                 });
 
-                let resultText = `[ ${g}조 예선 리그 결과 ]\n`;
+                let titlePart = league && league.title ? `${league.title} ` : '';
+                let resultText = `[ ${titlePart}${g}조 리그 결과 ]\n`;
                 resultText += '| ' + headers.map((h, i) => padCenter(h, colWidths[i])).join(' | ') + ' |\n';
                 resultText += '|-' + colWidths.map(w => '-'.repeat(w)).join('-|-') + '-|\n';
                 rows.forEach(r => {
@@ -1893,42 +2019,42 @@
         }
 
         function openHistoryDateModal() {
-            const count = parseInt(document.getElementById('op-group-count').value) || 0;
-            
-            let leagueData = null;
-            if (count > 0 && window.leaguePlayers && Object.keys(window.leaguePlayers).length > 0) {
-                leagueData = { groups: [] };
-                for (let g = 1; g <= count; g++) {
-                    let sizeInput = document.getElementById(`op-group-size-${g}`);
-                    let size = sizeInput ? parseInt(sizeInput.value) : 4;
-                    
-                    let groupInfo = { id: g, size: size, players: [] };
-                    for(let i = 1; i <= size; i++) {
-                        let playerObj = window.leaguePlayers[`g${g}_p${i}`];
-                        let tdSpan = document.querySelector(`#td-g${g}-p${i} span.capture-text`);
-                        let name = tdSpan && tdSpan.innerText && tdSpan.innerText.trim() !== '터치👉' && tdSpan.innerText.trim() !== '' ? tdSpan.innerText.trim() : (playerObj ? playerObj.name : `${i}번`);
-                        let wlInput = document.getElementById(`wl-g${g}-p${i}`);
-                        let rankInput = document.getElementById(`rank-g${g}-p${i}`);
-                        let diffInput = document.getElementById(`diff-g${g}-p${i}`);
-                        
-                        let scores = {};
-                        for (let j = 1; j <= size; j++) {
-                            if (i === j) continue;
-                            let scoreInput = document.getElementById(`score-g${g}-r${i}-c${j}`);
-                            if (scoreInput) scores[j] = scoreInput.value;
-                        }
+            let combinedLeagueData = null;
+            if (window.multiLeagues && window.multiLeagues.length > 0) {
+                combinedLeagueData = { leagues: [] };
+                window.multiLeagues.forEach(league => {
+                    let lgObj = { id: league.id, title: league.title || '일반 리그', groupCount: league.groupCount, groups: [] };
+                    for (let g = 1; g <= league.groupCount; g++) {
+                        let size = league.groupSizes[g] || 4;
+                        let groupInfo = { id: g, size: size, players: [] };
+                        for(let i = 1; i <= size; i++) {
+                            let playerObj = league.players[`g${g}_p${i}`];
+                            let tdSpan = document.querySelector(`#td-${league.id}-g${g}-p${i} span.capture-text`);
+                            let name = tdSpan && tdSpan.innerText && tdSpan.innerText.trim() !== '터치👉' && tdSpan.innerText.trim() !== '' ? tdSpan.innerText.trim() : (playerObj ? playerObj.name : `${i}번`);
+                            let wlInput = document.getElementById(`wl-${league.id}-g${g}-p${i}`);
+                            let rankInput = document.getElementById(`rank-${league.id}-g${g}-p${i}`);
+                            let diffInput = document.getElementById(`diff-${league.id}-g${g}-p${i}`);
+                            
+                            let scores = {};
+                            for (let j = 1; j <= size; j++) {
+                                if (i === j) continue;
+                                let scoreInput = document.getElementById(`score-${league.id}-g${g}-r${i}-c${j}`);
+                                if (scoreInput) scores[j] = scoreInput.value;
+                            }
 
-                        groupInfo.players.push({
-                            idx: i,
-                            name: name.replace(/🥇 |🥈 |🥉 /g, ''),
-                            wl: wlInput && wlInput.value && wlInput.value !== '/' ? wlInput.value : '',
-                            diff: diffInput && diffInput.value && diffInput.value !== '/' ? diffInput.value : '',
-                            rank: rankInput && !isNaN(parseInt(rankInput.value)) ? parseInt(rankInput.value) : 999,
-                            scores: scores
-                        });
+                            groupInfo.players.push({
+                                idx: i,
+                                name: name.replace(/🥇 |🥈 |🥉 /g, ''),
+                                wl: wlInput && wlInput.value && wlInput.value !== '/' ? wlInput.value : '',
+                                diff: diffInput && diffInput.value && diffInput.value !== '/' ? diffInput.value : '',
+                                rank: rankInput && !isNaN(parseInt(rankInput.value)) ? parseInt(rankInput.value) : 999,
+                                scores: scores
+                            });
+                        }
+                        lgObj.groups.push(groupInfo);
                     }
-                    leagueData.groups.push(groupInfo);
-                }
+                    combinedLeagueData.leagues.push(lgObj);
+                });
             }
 
             let tournData = null;
@@ -1936,12 +2062,12 @@
                 tournData = JSON.parse(JSON.stringify(tournamentState));
             }
 
-            if (!leagueData && !tournData) {
-                alert("저장할 조별 리그전 표나 예선 토너먼트 대진표가 없습니다.");
+            if (!combinedLeagueData && !tournData) {
+                alert("저장할 리그전 표나 토너먼트 대진표가 없습니다.");
                 return;
             }
 
-            window.pendingSaveData = { qualifierResults: leagueData, tournamentResults: tournData };
+            window.pendingSaveData = { qualifierResults: combinedLeagueData, tournamentResults: tournData };
 
             let dates = [...new Set(matchHistory.map(m => m.date))].sort().reverse();
             let html = '';
@@ -1996,7 +2122,7 @@
         function deleteHistoryLeague(matchId) {
             if (!isAdmin) return;
             event.stopPropagation();
-            if (confirm("정말 이 조별 리그전 기록을 삭제하시겠습니까?")) {
+            if (confirm("정말 이 전체 다중 리그전 기록을 삭제하시겠습니까?")) {
                 let match = matchHistory.find(m => m.id === matchId);
                 if (match) {
                     match.qualifierResults = null;
@@ -2021,9 +2147,11 @@
             }
         }
 
-        function selectLeaguePlayer(inputElem, g, p) {
-            const matchTypeEl = document.getElementById('op-match-type');
-            const matchType = matchTypeEl ? matchTypeEl.value : 'individual';
+        function selectLeaguePlayer(inputElem, leagueId, g, p) {
+            const league = getLeagueById(leagueId);
+            if(!league) return;
+
+            const matchType = league.matchType;
             const limit = matchType === 'doubles' ? 2 : (matchType === 'team' ? 999 : 1);
 
             isSinglePickMode = (limit === 1);
@@ -2041,16 +2169,16 @@
 
             document.getElementById('selector-search').value = "";
             let excludedNames = [];
-            for (let key in window.leaguePlayers) {
-                if (key !== `g${g}_p${p}` && window.leaguePlayers[key]) {
-                    const names = String(window.leaguePlayers[key].name).split(',').map(n => n.trim());
+            for (let key in league.players) {
+                if (key !== `g${g}_p${p}` && league.players[key]) {
+                    const names = String(league.players[key].name).split(',').map(n => n.trim());
                     excludedNames.push(...names);
                 }
             }
 
             tempSelectorList = [];
-            if (window.leaguePlayers[`g${g}_p${p}`]) {
-                tempSelectorList = String(window.leaguePlayers[`g${g}_p${p}`].name).split(',').map(n => n.trim());
+            if (league.players[`g${g}_p${p}`]) {
+                tempSelectorList = String(league.players[`g${g}_p${p}`].name).split(',').map(n => n.trim());
             }
 
             currentSelectorTarget = 'league';
@@ -2063,21 +2191,21 @@
                 const m = members.find(x => x.id == memberId);
                 if (m) {
                     const displayName = `${m.name}(${m.handicap})`;
-                    window.leaguePlayers[`g${g}_p${p}`] = { id: m.id, name: m.name, display: displayName, handicap: m.handicap };
+                    league.players[`g${g}_p${p}`] = { id: m.id, name: m.name, display: displayName, handicap: m.handicap };
                     inputElem.value = displayName;
                     if (inputElem.nextElementSibling) inputElem.nextElementSibling.innerText = displayName;
-                    const th = document.getElementById(`th-g${g}-p${p}`);
+                    const th = document.getElementById(`th-${leagueId}-g${g}-p${p}`);
                     if (th) th.innerText = m.name;
-                    updateMatchOrderDisplay(g, document.getElementById(`table-g${g}`).querySelectorAll('tbody tr').length);
+                    updateMatchOrderDisplay(leagueId, g, document.getElementById(`table-${leagueId}-g${g}`).querySelectorAll('tbody tr').length);
                 }
             };
 
             window.leaguePickCallback = function () {
                 if (tempSelectorList.length === 0) {
-                    window.leaguePlayers[`g${g}_p${p}`] = null;
+                    league.players[`g${g}_p${p}`] = null;
                     inputElem.value = "";
                     if (inputElem.nextElementSibling) inputElem.nextElementSibling.innerText = "";
-                    const th = document.getElementById(`th-g${g}-p${p}`);
+                    const th = document.getElementById(`th-${leagueId}-g${g}-p${p}`);
                     if (th) th.innerText = `${p}번`;
                 } else {
                     if (matchType === 'doubles' && tempSelectorList.length > 2) {
@@ -2089,7 +2217,7 @@
                     const teamDisplay = selectedMembers.map(m => `${m.name}(${m.handicap})`).join(', ');
                     const avgHandicap = selectedMembers.length > 0 ? Math.round(selectedMembers.reduce((sum, m) => sum + m.handicap, 0) / selectedMembers.length) : 0;
 
-                    window.leaguePlayers[`g${g}_p${p}`] = {
+                    league.players[`g${g}_p${p}`] = {
                         id: 'team_' + Date.now(),
                         name: teamName,
                         display: teamDisplay,
@@ -2097,32 +2225,80 @@
                     };
                     inputElem.value = teamDisplay;
                     if (inputElem.nextElementSibling) inputElem.nextElementSibling.innerText = teamDisplay;
-                    const th = document.getElementById(`th-g${g}-p${p}`);
+                    const th = document.getElementById(`th-${leagueId}-g${g}-p${p}`);
                     if (th) th.innerText = teamName;
                 }
-                updateMatchOrderDisplay(g, document.getElementById(`table-g${g}`).querySelectorAll('tbody tr').length);
+                updateMatchOrderDisplay(leagueId, g, document.getElementById(`table-${leagueId}-g${g}`).querySelectorAll('tbody tr').length);
                 return true;
             };
         }
 
-        function toggleOrder(g) { const content = document.getElementById(`order-content-${g}`); const icon = document.getElementById(`order-icon-${g}`); if (content.classList.contains('hidden')) { content.classList.remove('hidden'); icon.innerText = '▲'; } else { content.classList.add('hidden'); icon.innerText = '▼'; } }
-        function updateMatchOrderDisplay(g, size) {
-            let pairs = getRoundRobinPairs(size);
-            let blocks = pairs.map((pair, idx) => { let p1Obj = window.leaguePlayers[`g${g}_p${pair[0]}`]; let p2Obj = window.leaguePlayers[`g${g}_p${pair[1]}`]; let n1 = p1Obj ? escapeHTML(p1Obj.name) : `${pair[0]}번`; let n2 = p2Obj ? escapeHTML(p2Obj.name) : `${pair[1]}번`; return `<span class="inline-flex items-center bg-white border border-slate-200 px-2 py-1 rounded shadow-sm mr-1.5 mb-1.5 font-bold text-slate-700 text-[11px]"><span class="text-indigo-600 bg-indigo-50 px-1 rounded mr-1.5">${idx + 1}경기</span> ${n1} <span class="text-slate-300 font-normal mx-1 text-[9px]">vs</span> ${n2}</span>`; });
-            document.getElementById(`order-content-${g}`).innerHTML = blocks.join('');
+        function toggleOrder(leagueId, g) { 
+            const content = document.getElementById(`order-content-${leagueId}-${g}`); 
+            const icon = document.getElementById(`order-icon-${leagueId}-${g}`); 
+            if (content.classList.contains('hidden')) { 
+                content.classList.remove('hidden'); 
+                icon.innerText = '▲'; 
+            } else { 
+                content.classList.add('hidden'); 
+                icon.innerText = '▼'; 
+            } 
         }
 
+        function updateMatchOrderDisplay(leagueId, g, size) {
+            const league = getLeagueById(leagueId);
+            if(!league) return;
+            let pairs = getRoundRobinPairs(size);
+            let blocks = pairs.map((pair, idx) => { 
+                let p1Obj = league.players[`g${g}_p${pair[0]}`]; 
+                let p2Obj = league.players[`g${g}_p${pair[1]}`]; 
+                let n1 = p1Obj ? escapeHTML(p1Obj.name) : `${pair[0]}번`; 
+                let n2 = p2Obj ? escapeHTML(p2Obj.name) : `${pair[1]}번`; 
+                return `<span class="inline-flex items-center bg-white border border-slate-200 px-2 py-1 rounded shadow-sm mr-1.5 mb-1.5 font-bold text-slate-700 text-[11px]"><span class="text-indigo-600 bg-indigo-50 px-1 rounded mr-1.5">${idx + 1}경기</span> ${n1} <span class="text-slate-300 font-normal mx-1 text-[9px]">vs</span> ${n2}</span>`; 
+            });
+            document.getElementById(`order-content-${leagueId}-${g}`).innerHTML = blocks.join('');
+        }
+
+        let currentPrintLeague = null;
         let currentPrintGroup = null;
-        function openPrintModal(g) { currentPrintGroup = g; document.getElementById('print-modal-title').innerText = `🖨️ ${g}조 인쇄 옵션`; document.getElementById('print-option-modal').classList.remove('hidden'); }
-        function closePrintModal() { document.getElementById('print-option-modal').classList.add('hidden'); }
+        function openPrintModal(leagueId, g) { 
+            currentPrintLeague = leagueId; 
+            currentPrintGroup = g; 
+            document.getElementById('print-modal-title').innerText = `🖨️ ${g}조 인쇄 옵션`; 
+            document.getElementById('print-option-modal').classList.remove('hidden'); 
+        }
+        function closePrintModal() { 
+            document.getElementById('print-option-modal').classList.add('hidden'); 
+        }
         function executePrint(mode) {
-            closePrintModal(); const g = currentPrintGroup; let printHtml = '';
-            const target = document.getElementById(`table-container-g${g}`); target.querySelectorAll('input').forEach(input => { syncText(input); }); target.classList.add('capture-mode'); const tableHtml = target.outerHTML; target.classList.remove('capture-mode');
-            const size = document.getElementById(`table-g${g}`).querySelectorAll('tbody tr').length; let pairs = getRoundRobinPairs(size);
+            closePrintModal(); 
+            const leagueId = currentPrintLeague;
+            const g = currentPrintGroup; 
+            const league = getLeagueById(leagueId);
+            if(!league) return;
+
+            let printHtml = '';
+            const target = document.getElementById(`table-container-${leagueId}-g${g}`); 
+            target.querySelectorAll('input').forEach(input => { syncText(input); }); 
+            target.classList.add('capture-mode'); 
+            const tableHtml = target.outerHTML; 
+            target.classList.remove('capture-mode');
+            const size = document.getElementById(`table-${leagueId}-g${g}`).querySelectorAll('tbody tr').length; 
+            let pairs = getRoundRobinPairs(size);
             let orderHtml = `<div style="margin-top: 20px; page-break-inside: avoid;"><h3 style="font-size:18px; margin-bottom:12px; font-weight:bold; color:#1e293b;">🔄 ${g}조 게임 순서</h3><div style="line-height: 2.5;">`;
-            let blocks = pairs.map((pair, idx) => { let p1Obj = window.leaguePlayers[`g${g}_p${pair[0]}`]; let p2Obj = window.leaguePlayers[`g${g}_p${pair[1]}`]; let n1 = p1Obj ? escapeHTML(p1Obj.name) : `${pair[0]}번`; let n2 = p2Obj ? escapeHTML(p2Obj.name) : `${pair[1]}번`; return `<span style="display:inline-block; border:1px solid #94a3b8; padding:6px 10px; border-radius:6px; margin-right:10px; margin-bottom:10px; font-weight:bold; font-size:14px; background:#f8fafc;"><span style="color:#4f46e5; font-size:12px; margin-right:6px;">${idx + 1}경기</span> ${n1} <span style="font-weight:normal; color:#94a3b8; margin:0 6px;">vs</span> ${n2}</span>`; }); orderHtml += blocks.join('') + `</div></div>`;
+            let blocks = pairs.map((pair, idx) => { 
+                let p1Obj = league.players[`g${g}_p${pair[0]}`]; 
+                let p2Obj = league.players[`g${g}_p${pair[1]}`]; 
+                let n1 = p1Obj ? escapeHTML(p1Obj.name) : `${pair[0]}번`; 
+                let n2 = p2Obj ? escapeHTML(p2Obj.name) : `${pair[1]}번`; 
+                return `<span style="display:inline-block; border:1px solid #94a3b8; padding:6px 10px; border-radius:6px; margin-right:10px; margin-bottom:10px; font-weight:bold; font-size:14px; background:#f8fafc;"><span style="color:#4f46e5; font-size:12px; margin-right:6px;">${idx + 1}경기</span> ${n1} <span style="font-weight:normal; color:#94a3b8; margin:0 6px;">vs</span> ${n2}</span>`; 
+            }); 
+            orderHtml += blocks.join('') + `</div></div>`;
             if (mode === 'table') printHtml = tableHtml; else if (mode === 'order') printHtml = orderHtml; else if (mode === 'both') printHtml = tableHtml + orderHtml;
-            const printWindow = window.open('', '', 'width=900,height=700'); printWindow.document.write(`<html><head><title>${g}조 인쇄</title><style>body { font-family: 'Malgun Gothic', sans-serif; padding: 20px; color: #333; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;} h1 { text-align: center; font-size: 26px; margin-bottom: 20px; color: #1e293b;} table { width: 100%; border-collapse: collapse; margin-bottom: 5px; font-size: 14px; text-align: center; } th, td { border: 1px solid #94a3b8; padding: 12px; } th { background-color: #f1f5f9; font-weight: bold; } .capture-mode input { display: none !important; } .capture-text { display: block !important; width: 100%; text-align: center; font-size: 14px; font-weight: bold; color: black;} .diagonal-strike { background: linear-gradient(to top right, transparent calc(50% - 1px), #cbd5e1, transparent calc(50% + 1px)); background-color: #e2e8f0 !important; } @media print { @page { size: landscape; margin: 10mm; } }</style></head><body><h1>🏓 ${g}조 예선 리그</h1>${printHtml}</body></html>`); printWindow.document.close(); printWindow.focus(); setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
+            const leagueTitle = league.title ? league.title : '일반 리그';
+            const printWindow = window.open('', '', 'width=900,height=700'); 
+            printWindow.document.write(`<html><head><title>${g}조 인쇄</title><style>body { font-family: 'Malgun Gothic', sans-serif; padding: 20px; color: #333; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;} h1 { text-align: center; font-size: 26px; margin-bottom: 5px; color: #1e293b;} h2 { text-align: center; font-size: 18px; color: #64748b; margin-top:0; margin-bottom: 20px;} table { width: 100%; border-collapse: collapse; margin-bottom: 5px; font-size: 14px; text-align: center; } th, td { border: 1px solid #94a3b8; padding: 12px; } th { background-color: #f1f5f9; font-weight: bold; } .capture-mode input { display: none !important; } .capture-text { display: block !important; width: 100%; text-align: center; font-size: 14px; font-weight: bold; color: black;} .diagonal-strike { background: linear-gradient(to top right, transparent calc(50% - 1px), #cbd5e1, transparent calc(50% + 1px)); background-color: #e2e8f0 !important; } @media print { @page { size: landscape; margin: 10mm; } }</style></head><body><h1>🏓 ${leagueTitle}</h1><h2>${g}조 예선 리그</h2>${printHtml}</body></html>`); 
+            printWindow.document.close(); printWindow.focus(); setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
         }
 
         // ==============================================================================
@@ -2212,20 +2388,22 @@
                 alert("먼저 [대진표 생성] 버튼을 눌러 트리를 초기화해 주세요."); return;
             }
 
-            const groups = parseInt(document.getElementById('op-group-count').value) || 0;
             let rankMap = {};
 
-            for (let g = 1; g <= groups; g++) {
-                let sizeInput = document.getElementById(`op-group-size-${g}`);
-                let currentSize = sizeInput ? parseInt(sizeInput.value) : 4;
-                for (let p = 1; p <= currentSize; p++) {
-                    let playerObj = window.leaguePlayers[`g${g}_p${p}`];
-                    let rankInput = document.getElementById(`rank-g${g}-p${p}`);
-                    if (playerObj && rankInput && rankInput.value.trim() !== "") {
-                        let rankVal = rankInput.value.trim();
-                        rankMap[`${g}조${rankVal}위`] = playerObj.display;
+            if (window.multiLeagues && window.multiLeagues.length > 0) {
+                window.multiLeagues.forEach(league => {
+                    for (let g = 1; g <= league.groupCount; g++) {
+                        let size = league.groupSizes[g] || 4;
+                        for (let p = 1; p <= size; p++) {
+                            let playerObj = league.players[`g${g}_p${p}`];
+                            let rankInput = document.getElementById(`rank-${league.id}-g${g}-p${p}`);
+                            if (playerObj && rankInput && rankInput.value.trim() !== "") {
+                                let rankVal = rankInput.value.trim();
+                                rankMap[`${g}조${rankVal}위`] = playerObj.display;
+                            }
+                        }
                     }
-                }
+                });
             }
 
             let mappedCount = 0;
