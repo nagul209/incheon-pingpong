@@ -102,7 +102,8 @@
         /* 대진표용 스타일 */
         .diagonal-strike {
             background: linear-gradient(to top right, transparent calc(50% - 1px), #9ca3af, transparent calc(50% + 1px));
-            background-color: #f3f4f6; /* bg-gray-100 */
+            background-color: #f3f4f6;
+            /* bg-gray-100 */
         }
 
         /* 토너먼트 트리 CSS (양방향 대칭 및 승패 컬러링) */
@@ -325,6 +326,14 @@
                         <h3 class="font-extrabold text-slate-800 text-base">📝 예선 조별 리그전표</h3>
                         <p class="text-[10px] text-slate-400 font-medium mt-0.5">선수 칸을 터치하여 명단을 배치하세요.</p>
                     </div>
+                    <!-- Gemini 연결 업로드 버튼 -->
+                    <div>
+                        <button onclick="document.getElementById('gemini-upload-input').click()"
+                            class="text-[11px] bg-gradient-to-r from-purple-600 to-pink-600 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm btn-press flex items-center gap-1">📷
+                            사진으로 자동 입력</button>
+                        <input type="file" id="gemini-upload-input" accept="image/*" capture="environment"
+                            class="hidden" onchange="handleGeminiUpload(event)">
+                    </div>
                 </div>
 
                 <div class="flex flex-col gap-2 mb-4 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
@@ -374,9 +383,11 @@
                                 class="text-[11px] bg-emerald-600 text-white px-2.5 py-1.5 rounded-lg font-bold shadow-sm btn-press">🔀
                                 전체 정렬</button>
                             <button onclick="openHistoryDateModal()"
-                                class="text-[11px] bg-rose-500 hover:bg-rose-400 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm btn-press transition-colors">🗓️ 전체 기록탭 저장</button>
+                                class="text-[11px] bg-rose-500 hover:bg-rose-400 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm btn-press transition-colors">🗓️
+                                전체 기록탭 저장</button>
                             <button onclick="createLeague()"
-                                class="text-[11px] bg-indigo-600 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm btn-press mt-2 sm:mt-0">➕ 새 리그전 추가</button>
+                                class="text-[11px] bg-indigo-600 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm btn-press mt-2 sm:mt-0">➕
+                                새 리그전 추가</button>
                         </div>
                     </div>
                 </div>
@@ -1233,11 +1244,13 @@
                     class="text-slate-400 hover:text-slate-600 text-2xl font-bold btn-press">&times;</button>
             </div>
             <div class="p-5 flex-1 overflow-y-auto bg-slate-50/50">
-                <p class="text-[11px] text-slate-500 font-bold text-center mb-4 leading-relaxed">어느 날짜의 기록 가장 아래에<br>현재 만들어진 <b>표와 대진표</b>를 첨부하시겠습니까?</p>
+                <p class="text-[11px] text-slate-500 font-bold text-center mb-4 leading-relaxed">어느 날짜의 기록 가장 아래에<br>현재
+                    만들어진 <b>표와 대진표</b>를 첨부하시겠습니까?</p>
                 <div id="history-date-list" class="space-y-2"></div>
             </div>
             <div class="p-4 bg-white border-t border-slate-100 shrink-0">
-                <button onclick="closeHistoryDateModal()" class="w-full bg-slate-100 text-slate-600 py-3.5 rounded-xl font-bold btn-press">취소</button>
+                <button onclick="closeHistoryDateModal()"
+                    class="w-full bg-slate-100 text-slate-600 py-3.5 rounded-xl font-bold btn-press">취소</button>
             </div>
         </div>
     </div>
@@ -1292,6 +1305,13 @@
         </div>
     </div>
 
+    <div id="gemini-loading-overlay"
+        class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[200] flex flex-col justify-center items-center p-4">
+        <div class="text-6xl animate-bounce mb-4 text-white">📷</div>
+        <p class="text-white font-extrabold text-lg animate-pulse" id="gemini-loading-text">제미나이 AI가 표를 분석하고 있습니다...</p>
+        <p class="text-white/70 text-sm mt-2 font-medium">잠시만 기다려주세요 (최대 10~15초 소요)</p>
+    </div>
+
     <div class="fixed bottom-0 w-full border-t border-slate-200/50 rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.08)] glass-panel z-50 px-3 py-2 pb-5 flex justify-between items-center text-[10px] text-slate-400 font-medium no-print transition-all duration-300 max-w-md mx-auto left-0 right-0"
         id="bottom-tab-bar">
         <button onclick="switchTab('ranking')" id="btn-ranking"
@@ -1318,6 +1338,11 @@
     </div>
 
     <script>
+        // -------------------------------------------------------------
+        // 🤖 Gemini API 연동 설정
+        // -------------------------------------------------------------
+        const GEMINI_API_KEY = "AIzaSyDkOLdrwovhEoXAUnqmAlQ6AFNnANWhdtw";
+
         // -------------------------------------------------------------
         // 🔴 Firebase Realtime Database 연결 설정
         // -------------------------------------------------------------
@@ -1645,24 +1670,73 @@
                     <td class="border-r border-sky-100 p-0 w-px"><input type="text" id="diff-${league.id}-g${g}-p${i}" class="w-full min-w-[36px] h-full px-1.5 py-1 text-center outline-none font-bold text-slate-700 bg-transparent drop-shadow-none" placeholder="/" oninput="syncText(this)"><span class="capture-text font-bold text-slate-700 px-1.5 py-1 bg-sky-50 drop-shadow-none">/</span></td>
                     <td class="bg-sky-100/50 p-0 w-px"><input type="text" id="rank-${league.id}-g${g}-p${i}" class="w-full min-w-[36px] h-full px-1.5 py-1 text-center outline-none font-black text-sky-600 text-sm bg-transparent border-0 drop-shadow-none" placeholder="" oninput="syncText(this)"><span class="capture-text font-black text-sky-600 px-1.5 py-1 bg-sky-100 drop-shadow-none"></span></td></tr>`;
                 }
-                html += `</tbody></table></div></div><div class="bg-slate-50 border-t border-slate-200 text-[11px] text-left no-print"><div class="p-2.5 flex justify-between items-center cursor-pointer font-extrabold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors" onclick="toggleOrder(${league.id}, ${g})"><span>🔄 게임 순서 접기/펼치기</span><span id="order-icon-${league.id}-${g}" class="text-xs">▼</span></div><div id="order-content-${league.id}-${g}" class="hidden p-3 leading-loose break-keep bg-slate-50 shadow-inner"></div></div></div>`;
+                html += `</tbody></table></div>`;
+
+                html += `<div class="bg-white border-t border-sky-100 p-2.5 flex gap-1.5 items-center no-print">
+                            <input type="text" id="bulk-score-${league.id}-g${g}" class="flex-1 text-[11px] font-bold text-slate-700 border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 transition-all placeholder-slate-400 text-center" placeholder="연속된 세트 스코어 입력 (예: 3111...)" autocomplete="off">
+                            <button onclick="fillScoresFromString(${league.id}, ${g})" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg font-bold transition-colors btn-press shadow-sm whitespace-nowrap">일괄 적용</button>
+                        </div>`;
+
+                html += `</div><div class="bg-slate-50 border-t border-slate-200 text-[11px] text-left no-print"><div class="p-2.5 flex justify-between items-center cursor-pointer font-extrabold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors" onclick="toggleOrder(${league.id}, ${g})"><span>🔄 게임 순서 접기/펼치기</span><span id="order-icon-${league.id}-${g}" class="text-xs">▼</span></div><div id="order-content-${league.id}-${g}" class="hidden p-3 leading-loose break-keep bg-slate-50 shadow-inner"></div></div></div>`;
             }
             html += `</div></div>`;
             return html;
         }
 
+        function fillScoresFromString(leagueId, g) {
+            const league = getLeagueById(leagueId);
+            if (!league) return;
+            const inputEl = document.getElementById(`bulk-score-${leagueId}-g${g}`);
+            if (!inputEl) return;
+            
+            const scoreString = inputEl.value.trim();
+            if (!scoreString) {
+                alert("적용할 스코어 문자열을 입력해주세요.");
+                return;
+            }
+
+            const currentSize = league.groupSizes[g] || 4;
+            const totalRequired = currentSize * (currentSize - 1); // 대각선 자기 자신 제외
+
+            let idx = 0;
+            for (let i = 1; i <= currentSize; i++) {
+                for (let j = 1; j <= currentSize; j++) {
+                    if (i === j) continue; // 대각선 건너뜀
+
+                    if (idx < scoreString.length) {
+                        const targetScore = scoreString[idx];
+                        const inputCell = document.getElementById(`score-${leagueId}-g${g}-r${i}-c${j}`);
+                        if (inputCell) {
+                            inputCell.value = targetScore;
+                            syncText(inputCell);
+                        }
+                        idx++;
+                    }
+                }
+            }
+
+            inputEl.value = ''; // 완료 후 초기화
+
+            if (idx < totalRequired || idx < scoreString.length) {
+                alert("입력된 숫자의 길이와 빈칸의 총 개수가 다릅니다. 채울 수 있는 부분까지만 적용되었습니다.\n입력숫자 길이: " + scoreString.length + "개, 필요 부분: " + totalRequired + "개");
+            }
+
+            // 실시간 순위 산출 즉시 호출 (자동순위 업데이트)
+            calculateGroupRankings(leagueId);
+        }
+
         function updateLeagueTitle(leagueId, val) {
             const league = getLeagueById(leagueId);
-            if(league) league.title = val;
+            if (league) league.title = val;
         }
 
         function deleteLeague(leagueId) {
-            if(confirm("이 리그전표를 삭제하시겠습니까?")) {
+            if (confirm("이 리그전표를 삭제하시겠습니까?")) {
                 window.multiLeagues = window.multiLeagues.filter(l => l.id != leagueId);
                 const container = document.getElementById(`league-container-${leagueId}`);
-                if(container) container.remove();
+                if (container) container.remove();
 
-                if(window.multiLeagues.length === 0) {
+                if (window.multiLeagues.length === 0) {
                     const emptyContainer = document.getElementById('op-group-empty-msg');
                     if (emptyContainer) {
                         emptyContainer.style.display = 'block';
@@ -1695,35 +1769,35 @@
                 }
             });
             let saveData = { multiLeagues: window.multiLeagues };
-            try { 
-                localStorage.setItem('pingpongMultiTempTable', JSON.stringify(saveData)); 
-                alert('💾 작성중인 모든 대진표와 점수가 임시저장 되었습니다.'); 
-            } catch (e) { 
-                alert('저장 중 오류가 발생했습니다.'); 
+            try {
+                localStorage.setItem('pingpongMultiTempTable', JSON.stringify(saveData));
+                alert('💾 작성중인 모든 대진표와 점수가 임시저장 되었습니다.');
+            } catch (e) {
+                alert('저장 중 오류가 발생했습니다.');
             }
         }
 
         function loadTempTable() {
             let dataStr = localStorage.getItem('pingpongMultiTempTable');
-            if (!dataStr) { 
+            if (!dataStr) {
                 // 기존 호환성용 체크
                 let oldStr = localStorage.getItem('pingpongTempTable');
-                if(oldStr) {
+                if (oldStr) {
                     alert('새로운 형식의 임시저장 데이터가 없습니다. (단일 구조 구버전 데이터만 존재하므로 불러올 수 없습니다.)');
                 } else {
-                    alert('임시저장된 데이터가 없습니다.'); 
+                    alert('임시저장된 데이터가 없습니다.');
                 }
-                return; 
+                return;
             }
             try {
                 let tableData = JSON.parse(dataStr);
                 window.multiLeagues = tableData.multiLeagues || [];
-                
+
                 // 화면 초기화
                 const container = document.getElementById('op-group-container');
                 const emptyMsg = document.getElementById('op-group-empty-msg');
                 if (emptyMsg) emptyMsg.style.display = window.multiLeagues.length ? 'none' : 'block';
-                
+
                 // 기존 표 모두 제거
                 Array.from(container.children).forEach(child => {
                     if (child.id !== 'op-group-empty-msg') container.removeChild(child);
@@ -1741,12 +1815,12 @@
                             for (let j = 1; j <= size; j++) {
                                 if (i === j) continue;
                                 let input = document.getElementById(`score-${league.id}-g${g}-r${i}-c${j}`);
-                                if (input && league.scores && league.scores[g] && league.scores[g][i]) { 
-                                    input.value = league.scores[g][i][j] || ''; syncText(input); 
+                                if (input && league.scores && league.scores[g] && league.scores[g][i]) {
+                                    input.value = league.scores[g][i][j] || ''; syncText(input);
                                 }
                             }
-                            let wl = document.getElementById(`wl-${league.id}-g${g}-p${i}`); 
-                            let diff = document.getElementById(`diff-${league.id}-g${g}-p${i}`); 
+                            let wl = document.getElementById(`wl-${league.id}-g${g}-p${i}`);
+                            let diff = document.getElementById(`diff-${league.id}-g${g}-p${i}`);
                             let rank = document.getElementById(`rank-${league.id}-g${g}-p${i}`);
                             if (wl && league.scores && league.scores[g] && league.scores[g][i]) { wl.value = league.scores[g][i].wl || ''; syncText(wl); }
                             if (diff && league.scores && league.scores[g] && league.scores[g][i]) { diff.value = league.scores[g][i].diff || ''; syncText(diff); }
@@ -1764,7 +1838,7 @@
 
         function calculateGroupRankings(leagueId = null) {
             const targetLeagues = leagueId ? [getLeagueById(leagueId)] : window.multiLeagues;
-            if(!targetLeagues.length || !targetLeagues[0]) return alert("진행할 리그전표가 없습니다.");
+            if (!targetLeagues.length || !targetLeagues[0]) return alert("진행할 리그전표가 없습니다.");
 
             targetLeagues.forEach(league => {
                 for (let g = 1; g <= league.groupCount; g++) {
@@ -1839,7 +1913,7 @@
                         if (th) {
                             let playerObj = league.players[`g${g}_p${p.id}`];
                             let name = playerObj ? escapeHTML(playerObj.name) : `${p.id}번`;
-                            th.innerText = name; 
+                            th.innerText = name;
                         }
 
                         let tdInput = document.querySelector(`#td-${league.id}-g${g}-p${p.id} input`);
@@ -1868,8 +1942,8 @@
             };
 
             window.multiLeagues.forEach(league => {
-                let leagueResult = { 
-                    id: league.id, title: league.title || '일반 리그', groups: [] 
+                let leagueResult = {
+                    id: league.id, title: league.title || '일반 리그', groups: []
                 };
                 for (let g = 1; g <= league.groupCount; g++) {
                     let groupResults = { g: g, ranks: { 1: [], 2: [], 3: [] } };
@@ -1892,22 +1966,22 @@
 
         function sortGroupPlayers(leagueId = null) {
             const targetLeagues = leagueId ? [getLeagueById(leagueId)] : window.multiLeagues;
-            if(!targetLeagues.length || !targetLeagues[0]) return;
+            if (!targetLeagues.length || !targetLeagues[0]) return;
 
             targetLeagues.forEach(league => {
                 for (let g = 1; g <= league.groupCount; g++) {
                     let currentSize = league.groupSizes[g] || 4;
                     let groupPlayers = [];
-                    for (let p = 1; p <= currentSize; p++) { 
-                        let player = league.players[`g${g}_p${p}`]; 
-                        if (player) groupPlayers.push(player); 
+                    for (let p = 1; p <= currentSize; p++) {
+                        let player = league.players[`g${g}_p${p}`];
+                        if (player) groupPlayers.push(player);
                     }
-                    groupPlayers.sort((a, b) => { 
-                        if (a.handicap !== b.handicap) return a.handicap - b.handicap; 
-                        return a.name.localeCompare(b.name); 
+                    groupPlayers.sort((a, b) => {
+                        if (a.handicap !== b.handicap) return a.handicap - b.handicap;
+                        return a.name.localeCompare(b.name);
                     });
-                    for (let p = 1; p <= currentSize; p++) { 
-                        league.players[`g${g}_p${p}`] = groupPlayers[p - 1] || null; 
+                    for (let p = 1; p <= currentSize; p++) {
+                        league.players[`g${g}_p${p}`] = groupPlayers[p - 1] || null;
                     }
                 }
                 // 특정 리그만 다시 그려주기
@@ -1915,11 +1989,11 @@
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = buildLeagueHTML(league);
                 const newContainer = tempDiv.firstElementChild;
-                if(oldContainer) {
+                if (oldContainer) {
                     oldContainer.parentNode.replaceChild(newContainer, oldContainer);
-                    for (let g = 1; g <= league.groupCount; g++) { 
-                        const tableEl = document.getElementById(`table-${league.id}-g${g}`); 
-                        if (tableEl) { updateMatchOrderDisplay(league.id, g, tableEl.querySelectorAll('tbody tr').length); } 
+                    for (let g = 1; g <= league.groupCount; g++) {
+                        const tableEl = document.getElementById(`table-${league.id}-g${g}`);
+                        if (tableEl) { updateMatchOrderDisplay(league.id, g, tableEl.querySelectorAll('tbody tr').length); }
                     }
                 }
             });
@@ -1948,21 +2022,21 @@
                     if (tdSpan && tdSpan.innerText && tdSpan.innerText.trim() !== '터치👉' && tdSpan.innerText.trim() !== '') {
                         nameField = tdSpan.innerText.trim();
                     }
-                    
+
                     let row = [nameField];
                     for (let j = 1; j <= size; j++) {
                         if (i === j) {
-                            row.push('-'); 
+                            row.push('-');
                         } else {
                             let scoreInput = document.getElementById(`score-${leagueId}-g${g}-r${i}-c${j}`);
                             row.push(scoreInput ? scoreInput.value : '');
                         }
                     }
-                    
+
                     let wlInput = document.getElementById(`wl-${leagueId}-g${g}-p${i}`);
                     let diffInput = document.getElementById(`diff-${leagueId}-g${g}-p${i}`);
                     let rankInput = document.getElementById(`rank-${leagueId}-g${g}-p${i}`);
-                    
+
                     row.push(wlInput && wlInput.value && wlInput.value !== '/' ? wlInput.value : '');
                     row.push(diffInput && diffInput.value && diffInput.value !== '/' ? diffInput.value : '');
                     row.push(rankInput ? rankInput.value : '');
@@ -2027,14 +2101,14 @@
                     for (let g = 1; g <= league.groupCount; g++) {
                         let size = league.groupSizes[g] || 4;
                         let groupInfo = { id: g, size: size, players: [] };
-                        for(let i = 1; i <= size; i++) {
+                        for (let i = 1; i <= size; i++) {
                             let playerObj = league.players[`g${g}_p${i}`];
                             let tdSpan = document.querySelector(`#td-${league.id}-g${g}-p${i} span.capture-text`);
                             let name = tdSpan && tdSpan.innerText && tdSpan.innerText.trim() !== '터치👉' && tdSpan.innerText.trim() !== '' ? tdSpan.innerText.trim() : (playerObj ? playerObj.name : `${i}번`);
                             let wlInput = document.getElementById(`wl-${league.id}-g${g}-p${i}`);
                             let rankInput = document.getElementById(`rank-${league.id}-g${g}-p${i}`);
                             let diffInput = document.getElementById(`diff-${league.id}-g${g}-p${i}`);
-                            
+
                             let scores = {};
                             for (let j = 1; j <= size; j++) {
                                 if (i === j) continue;
@@ -2058,8 +2132,26 @@
             }
 
             let tournData = null;
-            if (typeof tournamentState !== 'undefined' && tournamentState && tournamentState.tree && tournamentState.tree.length > 0 && tournamentState.tree[0].length > 0) {
-                tournData = JSON.parse(JSON.stringify(tournamentState));
+            // 🚨 확실한 검증 조건 추가: 화면의 토너먼트 필터 컨테이너가 'hidden' 상태가 아닐 때만 진짜 활성화(생성)된 것으로 판단.
+            const tournFilterContainer = document.getElementById('tourn-filter-container');
+            const isTournActive = tournFilterContainer && !tournFilterContainer.classList.contains('hidden');
+
+            if (isTournActive && typeof tournamentState !== 'undefined' && tournamentState && tournamentState.tree && tournamentState.tree.length > 0 && tournamentState.tree[0].length > 0) {
+                let hasActualPlayers = false;
+                for (let r = 0; r < tournamentState.tree.length; r++) {
+                    if (!tournamentState.tree[r]) continue;
+                    for (let n = 0; n < tournamentState.tree[r].length; n++) {
+                         let player = tournamentState.tree[r][n];
+                         if (player && player !== "부전승(BYE)" && !/^\d+조\d+위$/.test(player)) {
+                             hasActualPlayers = true;
+                             break;
+                         }
+                    }
+                    if (hasActualPlayers) break;
+                }
+                if (hasActualPlayers) {
+                    tournData = JSON.parse(JSON.stringify(tournamentState));
+                }
             }
 
             if (!combinedLeagueData && !tournData) {
@@ -2084,7 +2176,7 @@
                 });
             }
             const listEl = document.getElementById('history-date-list');
-            if(listEl) {
+            if (listEl) {
                 listEl.innerHTML = html;
                 document.getElementById('history-date-modal').classList.remove('hidden');
             }
@@ -2105,14 +2197,16 @@
                 };
                 matchHistory.push(targetMatch);
             }
-            
+
             if (window.pendingSaveData.qualifierResults) {
                 targetMatch.qualifierResults = window.pendingSaveData.qualifierResults;
             }
             if (window.pendingSaveData.tournamentResults) {
                 targetMatch.tournamentResults = window.pendingSaveData.tournamentResults;
+            } else {
+                delete targetMatch.tournamentResults;
             }
-            
+
             saveDataToStorage();
             closeHistoryDateModal();
             alert(`✅ ${selDate} 기록에 완성된 표/대진표가 저장되었습니다.\\n기록 탭에서 확인하세요.`);
@@ -2149,7 +2243,7 @@
 
         function selectLeaguePlayer(inputElem, leagueId, g, p) {
             const league = getLeagueById(leagueId);
-            if(!league) return;
+            if (!league) return;
 
             const matchType = league.matchType;
             const limit = matchType === 'doubles' ? 2 : (matchType === 'team' ? 999 : 1);
@@ -2233,71 +2327,71 @@
             };
         }
 
-        function toggleOrder(leagueId, g) { 
-            const content = document.getElementById(`order-content-${leagueId}-${g}`); 
-            const icon = document.getElementById(`order-icon-${leagueId}-${g}`); 
-            if (content.classList.contains('hidden')) { 
-                content.classList.remove('hidden'); 
-                icon.innerText = '▲'; 
-            } else { 
-                content.classList.add('hidden'); 
-                icon.innerText = '▼'; 
-            } 
+        function toggleOrder(leagueId, g) {
+            const content = document.getElementById(`order-content-${leagueId}-${g}`);
+            const icon = document.getElementById(`order-icon-${leagueId}-${g}`);
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                icon.innerText = '▲';
+            } else {
+                content.classList.add('hidden');
+                icon.innerText = '▼';
+            }
         }
 
         function updateMatchOrderDisplay(leagueId, g, size) {
             const league = getLeagueById(leagueId);
-            if(!league) return;
+            if (!league) return;
             let pairs = getRoundRobinPairs(size);
-            let blocks = pairs.map((pair, idx) => { 
-                let p1Obj = league.players[`g${g}_p${pair[0]}`]; 
-                let p2Obj = league.players[`g${g}_p${pair[1]}`]; 
-                let n1 = p1Obj ? escapeHTML(p1Obj.name) : `${pair[0]}번`; 
-                let n2 = p2Obj ? escapeHTML(p2Obj.name) : `${pair[1]}번`; 
-                return `<span class="inline-flex items-center bg-white border border-slate-200 px-2 py-1 rounded shadow-sm mr-1.5 mb-1.5 font-bold text-slate-700 text-[11px]"><span class="text-indigo-600 bg-indigo-50 px-1 rounded mr-1.5">${idx + 1}경기</span> ${n1} <span class="text-slate-300 font-normal mx-1 text-[9px]">vs</span> ${n2}</span>`; 
+            let blocks = pairs.map((pair, idx) => {
+                let p1Obj = league.players[`g${g}_p${pair[0]}`];
+                let p2Obj = league.players[`g${g}_p${pair[1]}`];
+                let n1 = p1Obj ? escapeHTML(p1Obj.name) : `${pair[0]}번`;
+                let n2 = p2Obj ? escapeHTML(p2Obj.name) : `${pair[1]}번`;
+                return `<span class="inline-flex items-center bg-white border border-slate-200 px-2 py-1 rounded shadow-sm mr-1.5 mb-1.5 font-bold text-slate-700 text-[11px]"><span class="text-indigo-600 bg-indigo-50 px-1 rounded mr-1.5">${idx + 1}경기</span> ${n1} <span class="text-slate-300 font-normal mx-1 text-[9px]">vs</span> ${n2}</span>`;
             });
             document.getElementById(`order-content-${leagueId}-${g}`).innerHTML = blocks.join('');
         }
 
         let currentPrintLeague = null;
         let currentPrintGroup = null;
-        function openPrintModal(leagueId, g) { 
-            currentPrintLeague = leagueId; 
-            currentPrintGroup = g; 
-            document.getElementById('print-modal-title').innerText = `🖨️ ${g}조 인쇄 옵션`; 
-            document.getElementById('print-option-modal').classList.remove('hidden'); 
+        function openPrintModal(leagueId, g) {
+            currentPrintLeague = leagueId;
+            currentPrintGroup = g;
+            document.getElementById('print-modal-title').innerText = `🖨️ ${g}조 인쇄 옵션`;
+            document.getElementById('print-option-modal').classList.remove('hidden');
         }
-        function closePrintModal() { 
-            document.getElementById('print-option-modal').classList.add('hidden'); 
+        function closePrintModal() {
+            document.getElementById('print-option-modal').classList.add('hidden');
         }
         function executePrint(mode) {
-            closePrintModal(); 
+            closePrintModal();
             const leagueId = currentPrintLeague;
-            const g = currentPrintGroup; 
+            const g = currentPrintGroup;
             const league = getLeagueById(leagueId);
-            if(!league) return;
+            if (!league) return;
 
             let printHtml = '';
-            const target = document.getElementById(`table-container-${leagueId}-g${g}`); 
-            target.querySelectorAll('input').forEach(input => { syncText(input); }); 
-            target.classList.add('capture-mode'); 
-            const tableHtml = target.outerHTML; 
+            const target = document.getElementById(`table-container-${leagueId}-g${g}`);
+            target.querySelectorAll('input').forEach(input => { syncText(input); });
+            target.classList.add('capture-mode');
+            const tableHtml = target.outerHTML;
             target.classList.remove('capture-mode');
-            const size = document.getElementById(`table-${leagueId}-g${g}`).querySelectorAll('tbody tr').length; 
+            const size = document.getElementById(`table-${leagueId}-g${g}`).querySelectorAll('tbody tr').length;
             let pairs = getRoundRobinPairs(size);
             let orderHtml = `<div style="margin-top: 20px; page-break-inside: avoid;"><h3 style="font-size:18px; margin-bottom:12px; font-weight:bold; color:#1e293b;">🔄 ${g}조 게임 순서</h3><div style="line-height: 2.5;">`;
-            let blocks = pairs.map((pair, idx) => { 
-                let p1Obj = league.players[`g${g}_p${pair[0]}`]; 
-                let p2Obj = league.players[`g${g}_p${pair[1]}`]; 
-                let n1 = p1Obj ? escapeHTML(p1Obj.name) : `${pair[0]}번`; 
-                let n2 = p2Obj ? escapeHTML(p2Obj.name) : `${pair[1]}번`; 
-                return `<span style="display:inline-block; border:1px solid #94a3b8; padding:6px 10px; border-radius:6px; margin-right:10px; margin-bottom:10px; font-weight:bold; font-size:14px; background:#f8fafc;"><span style="color:#4f46e5; font-size:12px; margin-right:6px;">${idx + 1}경기</span> ${n1} <span style="font-weight:normal; color:#94a3b8; margin:0 6px;">vs</span> ${n2}</span>`; 
-            }); 
+            let blocks = pairs.map((pair, idx) => {
+                let p1Obj = league.players[`g${g}_p${pair[0]}`];
+                let p2Obj = league.players[`g${g}_p${pair[1]}`];
+                let n1 = p1Obj ? escapeHTML(p1Obj.name) : `${pair[0]}번`;
+                let n2 = p2Obj ? escapeHTML(p2Obj.name) : `${pair[1]}번`;
+                return `<span style="display:inline-block; border:1px solid #94a3b8; padding:6px 10px; border-radius:6px; margin-right:10px; margin-bottom:10px; font-weight:bold; font-size:14px; background:#f8fafc;"><span style="color:#4f46e5; font-size:12px; margin-right:6px;">${idx + 1}경기</span> ${n1} <span style="font-weight:normal; color:#94a3b8; margin:0 6px;">vs</span> ${n2}</span>`;
+            });
             orderHtml += blocks.join('') + `</div></div>`;
             if (mode === 'table') printHtml = tableHtml; else if (mode === 'order') printHtml = orderHtml; else if (mode === 'both') printHtml = tableHtml + orderHtml;
             const leagueTitle = league.title ? league.title : '일반 리그';
-            const printWindow = window.open('', '', 'width=900,height=700'); 
-            printWindow.document.write(`<html><head><title>${g}조 인쇄</title><style>body { font-family: 'Malgun Gothic', sans-serif; padding: 20px; color: #333; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;} h1 { text-align: center; font-size: 26px; margin-bottom: 5px; color: #1e293b;} h2 { text-align: center; font-size: 18px; color: #64748b; margin-top:0; margin-bottom: 20px;} table { width: 100%; border-collapse: collapse; margin-bottom: 5px; font-size: 14px; text-align: center; } th, td { border: 1px solid #94a3b8; padding: 12px; } th { background-color: #f1f5f9; font-weight: bold; } .capture-mode input { display: none !important; } .capture-text { display: block !important; width: 100%; text-align: center; font-size: 14px; font-weight: bold; color: black;} .diagonal-strike { background: linear-gradient(to top right, transparent calc(50% - 1px), #cbd5e1, transparent calc(50% + 1px)); background-color: #e2e8f0 !important; } @media print { @page { size: landscape; margin: 10mm; } }</style></head><body><h1>🏓 ${leagueTitle}</h1><h2>${g}조 예선 리그</h2>${printHtml}</body></html>`); 
+            const printWindow = window.open('', '', 'width=900,height=700');
+            printWindow.document.write(`<html><head><title>${g}조 인쇄</title><style>body { font-family: 'Malgun Gothic', sans-serif; padding: 20px; color: #333; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;} h1 { text-align: center; font-size: 26px; margin-bottom: 5px; color: #1e293b;} h2 { text-align: center; font-size: 18px; color: #64748b; margin-top:0; margin-bottom: 20px;} table { width: 100%; border-collapse: collapse; margin-bottom: 5px; font-size: 14px; text-align: center; } th, td { border: 1px solid #94a3b8; padding: 12px; } th { background-color: #f1f5f9; font-weight: bold; } .capture-mode input { display: none !important; } .capture-text { display: block !important; width: 100%; text-align: center; font-size: 14px; font-weight: bold; color: black;} .diagonal-strike { background: linear-gradient(to top right, transparent calc(50% - 1px), #cbd5e1, transparent calc(50% + 1px)); background-color: #e2e8f0 !important; } @media print { @page { size: landscape; margin: 10mm; } }</style></head><body><h1>🏓 ${leagueTitle}</h1><h2>${g}조 예선 리그</h2>${printHtml}</body></html>`);
             printWindow.document.close(); printWindow.focus(); setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
         }
 
@@ -3659,120 +3753,182 @@
                     </div>
                 ` : "";
 
-            const renderQualifierResultsHistory = (data, matchId) => {
-                if (!data || !data.groups) return '';
-                
-                const deleteBtn = isAdmin ? `<button onclick="deleteHistoryLeague(${matchId})" class="text-[10px] bg-red-50 text-red-500 border border-red-100 hover:bg-red-100 px-2 py-1 rounded font-bold transition-all btn-press shadow-sm ml-auto flex items-center gap-1">🗑️ 리그 삭제</button>` : '';
+                const renderQualifierResultsHistory = (data, matchId) => {
+                    // 단일 리그(구버전)와 다중 리그(신버전) 구조 모두 호환되도록 처리
+                    let leaguesToRender = [];
+                    if (data && data.leagues) {
+                        leaguesToRender = data.leagues;
+                    } else if (data && data.groups) {
+                        leaguesToRender = [{ id: 'old', title: '예선 리그', groups: data.groups }];
+                    }
 
-                let html = `
+                    if (leaguesToRender.length === 0) return '';
+
+                    const deleteBtn = isAdmin ? `<button onclick="deleteHistoryLeague(${matchId})" class="text-[10px] bg-red-50 text-red-500 border border-red-100 hover:bg-red-100 px-2 py-1 rounded font-bold transition-all btn-press shadow-sm ml-auto flex items-center gap-1">🗑️ 리그 삭제</button>` : '';
+
+                    let html = `
                 <div class="mb-4 text-left">
                     <div class="text-base font-bold text-slate-800 mb-2 mt-4 flex items-center justify-between">
                         <span>📊 조별 리그전 결과</span>
                         ${deleteBtn}
                     </div>
-                    <div class="grid grid-cols-1 gap-4">
+                    <div class="flex flex-col gap-4 w-full">
                 `;
-                
-                data.groups.forEach(g => {
-                    const isMatrix = g.players && g.players.length > 0 && g.players.some(p => p.scores && Object.keys(p.scores).length > 0);
-                    
-                    html += `
-                    <div class="bg-indigo-50/50 border border-indigo-100 rounded-lg py-2 px-3 overflow-x-auto w-full shadow-sm">
-                        <div class="text-[11px] font-extrabold text-indigo-800 mb-1.5 ml-1 border-b border-indigo-100 pb-1">${g.id}조 예선 결과</div>
-                        <table class="table-auto text-center text-[10px] w-full min-w-max whitespace-nowrap mx-auto border-collapse">
+
+                    leaguesToRender.forEach(league => {
+                        let leagueTitle = league.title ? league.title : '조별 리그';
+                        html += `
+                        <div class="bg-indigo-50/10 border border-slate-200 rounded-xl p-3 shadow-sm mb-2">
+                            <div class="text-sm font-extrabold text-slate-700 mb-3 border-b border-slate-200 pb-1.5 flex items-center gap-1.5">
+                                🏆 ${escapeHTML(leagueTitle)}
+                            </div>
+                            <div class="flex flex-wrap gap-4 justify-center w-full">
+                        `;
+
+                        if (!league.groups) return;
+                        
+                        league.groups.forEach(g => {
+                        const isMatrix = g.players && g.players.length > 0 && g.players.some(p => p.scores && Object.keys(p.scores).length > 0);
+
+                        let currentSize = g.size || (g.players ? g.players.length : 4);
+                        if (isNaN(currentSize) || currentSize < 2) currentSize = 2;
+
+                        html += `
+                    <div class="border-2 border-slate-800/80 rounded-xl overflow-hidden bg-white w-fit max-w-full shadow-sm mx-auto mb-4">
+                        <div class="bg-slate-100 p-2 flex justify-start items-center gap-1.5 border-b border-slate-200">
+                            <span class="text-xs font-bold text-slate-500 mr-auto ml-1">${g.id}조 예선 결과</span>
+                        </div>
+                        <div class="bg-white relative">
+                        <div class="bg-slate-800 p-2.5 text-white flex items-center justify-between">
+                            <div class="flex items-center gap-1.5">
+                                <span class="font-extrabold text-sm tracking-wide">${g.id}조 리그</span>
+                                <span class="text-[10px] bg-white/20 px-2 py-0.5 rounded font-bold ml-1">${currentSize}명 풀리그</span>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto w-full max-w-full px-2 sm:px-0 pb-2 pt-2">
+                        <table class="table-auto text-center text-xs border-collapse whitespace-nowrap w-max mx-auto">
                             <thead>
-                                <tr class="bg-indigo-100 text-indigo-700 font-bold text-[10px]">
-                                    <th class="px-1.5 py-1 border-r border-indigo-50 w-px">선수명</th>
+                                <tr class="bg-blue-50 border-b-2 border-sky-200 text-sky-900 font-extrabold">
+                                    <th class="px-1.5 py-1 border-r border-sky-100 bg-blue-100/50 w-px whitespace-nowrap">선수명</th>
                     `;
-                    
-                    if (isMatrix) {
-                        const tablePlayers = [...g.players].sort((a, b) => (a.idx || 0) - (b.idx || 0));
-                        const size = g.size || tablePlayers.length;
-                        
-                        for (let i = 1; i <= size; i++) {
-                            html += `<th class="px-1.5 py-1 border-r border-indigo-50 w-px">${i}</th>`;
-                        }
-                        html += `<th class="px-1.5 py-1 border-r border-indigo-50 w-px">승/패</th><th class="px-1.5 py-1 border-r border-indigo-50 w-px">득/실</th><th class="px-1.5 py-1 text-indigo-800 w-px">순위</th></tr></thead><tbody class="bg-white">`;
-                        
-                        tablePlayers.forEach((p, i) => {
-                            let rankText = p.rank === 999 ? '-' : p.rank;
-                            let rowBg = i % 2 === 0 ? 'bg-white' : 'bg-slate-50';
-                            html += `<tr class="border-b border-indigo-50 last:border-0 ${rowBg}">
-                                <td class="px-1.5 py-1 border-r border-indigo-50 font-extrabold text-slate-800">${escapeHTML(p.name)}</td>`;
-                            
-                            for (let j = 1; j <= size; j++) {
-                                if (p.idx === j) {
-                                    html += `<td class="border-r border-indigo-50 diagonal-strike w-px"></td>`;
-                                } else {
-                                    let score = (p.scores && p.scores[j]) || '';
-                                    html += `<td class="px-1.5 py-1 border-r border-indigo-50 text-slate-600 font-medium">${escapeHTML(score)}</td>`;
-                                }
+
+                        if (isMatrix) {
+                            const tablePlayers = [...g.players].sort((a, b) => (a.idx || 0) - (b.idx || 0));
+                            const size = g.size || tablePlayers.length;
+
+                            for (let i = 1; i <= size; i++) {
+                                let targetP = tablePlayers.find(p => p.idx === i);
+                                let pName = targetP ? escapeHTML(targetP.name) : `${i}번`;
+                                html += `<th class="px-1 py-1 border-r border-sky-100 font-bold text-[11px] whitespace-nowrap w-px text-sky-900">${pName}</th>`;
                             }
-                            
-                            html += `
-                                <td class="px-1.5 py-1 border-r border-indigo-50 text-slate-600 font-medium">${escapeHTML(p.wl)}</td>
-                                <td class="px-1.5 py-1 border-r border-indigo-50 text-slate-500 text-[9px]">${escapeHTML(p.diff)}</td>
-                                <td class="px-1.5 py-1 text-indigo-600 font-black">${rankText}</td>
+                            html += `<th class="px-1.5 py-1 border-r border-sky-100 w-px whitespace-nowrap">승/패</th><th class="px-1.5 py-1 border-r border-sky-100 w-px whitespace-nowrap">득/실</th><th class="px-1.5 py-1 bg-sky-100 text-sky-700 w-px whitespace-nowrap drop-shadow-none">순위</th></tr></thead><tbody class="bg-sky-50 text-slate-800">`;
+
+                            tablePlayers.forEach((p, i) => {
+                                let rankText = p.rank === 999 ? '-' : p.rank;
+                                let medal = p.rank === 1 ? '🥇 ' : (p.rank === 2 ? '🥈 ' : (p.rank === 3 ? '🥉 ' : ''));
+                                let formattedName = medal + escapeHTML(p.name);
+
+                                html += `<tr class="border-b border-sky-100 hover:bg-sky-100/50">
+                                <td class="p-0 border-r border-sky-100 bg-sky-50 font-bold text-[11px] w-px whitespace-nowrap">
+                                    <span class="font-bold text-[11px] text-slate-800 px-1 py-1 block w-full whitespace-nowrap drop-shadow-none">${formattedName}</span>
+                                </td>`;
+
+                                for (let j = 1; j <= size; j++) {
+                                    if (p.idx === j) {
+                                        html += `<td class="border-r border-sky-100 diagonal-strike w-px"></td>`;
+                                    } else {
+                                        let score = (p.scores && p.scores[j]) || '';
+                                        html += `<td class="border-r border-sky-100 p-0 w-px"><span class="font-medium text-slate-600 px-1 py-1 block w-full drop-shadow-none">${escapeHTML(score)}</span></td>`;
+                                    }
+                                }
+
+                                html += `
+                                <td class="border-r border-sky-100 p-0 w-px"><span class="font-bold text-slate-700 px-1.5 py-1 block w-full drop-shadow-none">${escapeHTML(p.wl)}</span></td>
+                                <td class="border-r border-sky-100 p-0 w-px"><span class="font-bold text-slate-700 px-1.5 py-1 block w-full drop-shadow-none">${escapeHTML(p.diff)}</span></td>
+                                <td class="bg-sky-100/50 p-0 w-px"><span class="font-black text-sky-600 px-1.5 py-1 block w-full drop-shadow-none text-sm">${rankText}</span></td>
                             </tr>`;
-                        });
-                    } else {
-                        html += `<th class="px-1.5 py-1 border-r border-indigo-50 w-px">승/패</th><th class="px-1.5 py-1 border-r border-indigo-50 w-px">득/실</th><th class="px-1.5 py-1 text-indigo-800 w-px">순위</th></tr></thead><tbody class="bg-white">`;
-                        
-                        const sortedPlayers = [...g.players].sort((a, b) => a.rank - b.rank);
-                        sortedPlayers.forEach((p, idx) => {
-                            let rankText = p.rank === 999 ? '-' : p.rank;
-                            let rowBg = idx % 2 === 0 ? 'bg-white' : 'bg-slate-50';
-                            html += `<tr class="border-b border-indigo-50 last:border-0 ${rowBg}">
-                                <td class="px-1.5 py-1 border-r border-indigo-50 font-extrabold text-slate-800">${escapeHTML(p.name)}</td>
-                                <td class="px-1.5 py-1 border-r border-indigo-50 text-slate-600 font-medium">${escapeHTML(p.wl)}</td>
-                                <td class="px-1.5 py-1 border-r border-indigo-50 text-slate-500 text-[9px]">${escapeHTML(p.diff)}</td>
-                                <td class="px-1.5 py-1 text-indigo-600 font-black">${rankText}</td>
+                            });
+                        } else {
+                            html += `<th class="px-1.5 py-1 border-r border-sky-100 w-px whitespace-nowrap">승/패</th><th class="px-1.5 py-1 border-r border-sky-100 w-px whitespace-nowrap">득/실</th><th class="px-1.5 py-1 bg-sky-100 text-sky-700 w-px whitespace-nowrap drop-shadow-none">순위</th></tr></thead><tbody class="bg-sky-50 text-slate-800">`;
+
+                            const sortedPlayers = [...g.players].sort((a, b) => a.rank - b.rank);
+                            sortedPlayers.forEach((p, idx) => {
+                                let rankText = p.rank === 999 ? '-' : p.rank;
+                                let medal = p.rank === 1 ? '🥇 ' : (p.rank === 2 ? '🥈 ' : (p.rank === 3 ? '🥉 ' : ''));
+                                let formattedName = medal + escapeHTML(p.name);
+
+                                html += `<tr class="border-b border-sky-100 hover:bg-sky-100/50">
+                                <td class="p-0 border-r border-sky-100 bg-sky-50 font-bold text-[11px] w-px whitespace-nowrap">
+                                    <span class="font-bold text-[11px] text-slate-800 px-1 py-1 block w-full whitespace-nowrap drop-shadow-none">${formattedName}</span>
+                                </td>
+                                <td class="border-r border-sky-100 p-0 w-px"><span class="font-bold text-slate-700 px-1.5 py-1 block w-full drop-shadow-none">${escapeHTML(p.wl)}</span></td>
+                                <td class="border-r border-sky-100 p-0 w-px"><span class="font-bold text-slate-700 px-1.5 py-1 block w-full drop-shadow-none">${escapeHTML(p.diff)}</span></td>
+                                <td class="bg-sky-100/50 p-0 w-px"><span class="font-black text-sky-600 px-1.5 py-1 block w-full drop-shadow-none text-sm">${rankText}</span></td>
                             </tr>`;
+                            });
+                        }
+                        html += `</tbody></table></div></div></div>`;
                         });
+                        html += `</div></div>`;
+                    });
+                    
+                    html += `</div></div>`;
+                    return html;
+                };
+
+                const renderTournamentTreeHistory = (data, matchId) => {
+                    if (!data || !data.tree || data.tree.length === 0) return '';
+                    
+                    // 빈 껍데기 체크 로직 추가 (결과 랜더링 직전 다시한번 방어)
+                    let hasRealPlayers = false;
+                    for (let r = 0; r < data.tree.length; r++) {
+                        if (!data.tree[r]) continue;
+                        for (let n = 0; n < data.tree[r].length; n++) {
+                            let p = data.tree[r][n];
+                            if (p && p !== "부전승(BYE)" && !/^\d+조\d+위$/.test(p)) {
+                                hasRealPlayers = true;
+                                break;
+                            }
+                        }
+                        if (hasRealPlayers) break;
                     }
-                    html += `</tbody></table></div>`;
-                });
-                html += `</div></div>`;
-                return html;
-            };
+                    if (!hasRealPlayers) return '';
 
-            const renderTournamentTreeHistory = (data, matchId) => {
-                if (!data || !data.tree) return '';
-                const size = data.size;
-                const rounds = data.rounds;
+                    const size = data.size;
+                    const rounds = data.rounds;
 
-                const deleteBtn = isAdmin ? `<button onclick="deleteHistoryTournament(${matchId})" class="text-[10px] bg-red-50 text-red-500 border border-red-100 hover:bg-red-100 px-2 py-1 rounded font-bold transition-all btn-press shadow-sm ml-auto flex items-center gap-1">🗑️ 대진표 삭제</button>` : '';
+                    const deleteBtn = isAdmin ? `<button onclick="deleteHistoryTournament(${matchId})" class="text-[10px] bg-red-50 text-red-500 border border-red-100 hover:bg-red-100 px-2 py-1 rounded font-bold transition-all btn-press shadow-sm ml-auto flex items-center gap-1">🗑️ 대진표 삭제</button>` : '';
 
-                let html = `
+                    let html = `
                 <div class="mb-4 text-left">
                     <div class="text-base font-bold text-slate-800 mb-2 mt-4 flex items-center justify-between">
                         <span>⚔️ 미니 토너먼트 대진표</span>
                         ${deleteBtn}
                     </div>
                 `;
-                html += `<div class="bg-slate-50 border border-slate-200 rounded-xl overflow-x-auto p-3 shadow-inner"><div class="flex items-center min-w-max" style="zoom: 0.85;">`;
+                    html += `<div class="bg-slate-50 border border-slate-200 rounded-xl overflow-x-auto p-3 shadow-inner"><div class="flex items-center min-w-max" style="zoom: 0.85;">`;
 
-                for (let r = 0; r <= rounds; r++) {
-                    let numNodes = size / Math.pow(2, r);
-                    let colStyle = `width: 140px; min-height: ${Math.max(size * 32, 200)}px;`;
-                    html += `<div class="flex flex-col justify-around h-full relative" style="${colStyle}">`;
+                    for (let r = 0; r <= rounds; r++) {
+                        let numNodes = size / Math.pow(2, r);
+                        let colStyle = `width: 140px; min-height: ${Math.max(size * 32, 200)}px;`;
+                        html += `<div class="flex flex-col justify-around h-full relative" style="${colStyle}">`;
 
-                    for (let n = 0; n < numNodes; n++) {
-                        let player = data.tree[r][n] || "";
-                        let isBye = player === "부전승(BYE)";
-                        let isWinner = false;
+                        for (let n = 0; n < numNodes; n++) {
+                            let player = data.tree[r][n] || "";
+                            let isBye = player === "부전승(BYE)";
+                            let isWinner = false;
 
-                        if (r < rounds && player && !isBye) {
-                            if (data.tree[r + 1][Math.floor(n / 2)] === player) isWinner = true;
-                        }
+                            if (r < rounds && player && !isBye) {
+                                if (data.tree[r + 1][Math.floor(n / 2)] === player) isWinner = true;
+                            }
 
-                        let borderClass = "";
-                        if (r < rounds) {
-                            let isTop = n % 2 === 0;
-                            borderClass = isTop ? "border-r-2 border-b-2 rounded-br-md" : "border-r-2 border-t-2 rounded-tr-md";
-                        }
+                            let borderClass = "";
+                            if (r < rounds) {
+                                let isTop = n % 2 === 0;
+                                borderClass = isTop ? "border-r-2 border-b-2 rounded-br-md" : "border-r-2 border-t-2 rounded-tr-md";
+                            }
 
-                        html += `
+                            html += `
                             <div class="flex-1 flex items-center relative py-1.5">
                                 <div class="relative z-10 w-full border ${isWinner ? 'border-blue-400 bg-blue-50' : 'border-slate-300 bg-white'} rounded p-1 text-center shadow-sm mx-1">
                                     <span class="text-[10px] font-bold ${isWinner ? 'text-blue-700' : 'text-slate-700'} tracking-tight">${player || (isBye ? 'BYE' : '-')}</span>
@@ -3782,12 +3938,12 @@
                                 ` : ''}
                             </div>
                         `;
+                        }
+                        html += `</div>`;
                     }
-                    html += `</div>`;
-                }
-                html += `</div></div></div>`;
-                return html;
-            };
+                    html += `</div></div></div>`;
+                    return html;
+                };
 
                 const attend = match.attend || [];
                 const lazy = match.lazy || [];
@@ -4078,6 +4234,189 @@
                 }
             });
         }
+
+        async function handleGeminiUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            event.target.value = ''; // 초기화
+
+            if (GEMINI_API_KEY === "여기에_키_입력" || !GEMINI_API_KEY) {
+                alert("Gemini API 키가 설정되지 않았습니다. 소스 코드에서 키를 입력해주세요.");
+                return;
+            }
+
+            const loadingOverlay = document.getElementById('gemini-loading-overlay');
+            loadingOverlay.classList.remove('hidden');
+
+            try {
+                // 이미지를 base64로 변환
+                const reader = new FileReader();
+                const base64Promise = new Promise((resolve, reject) => {
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = error => reject(error);
+                });
+                reader.readAsDataURL(file);
+                const dataUrl = await base64Promise;
+                const base64Data = dataUrl.split(',')[1];
+                const mimeType = file.type;
+
+                // 1. 정확한 제미나이 1.5 플래시 API 주소 (오타 절대 주의)
+                const apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + GEMINI_API_KEY;
+
+                // 2. Fetch 요청 보내기
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                { text: "이 이미지는 탁구 리그전 결과표입니다. 이미지에서 참가자 이름 목록과 각 참가자 간의 경기 점수(승패) 결과를 추출하여 반드시 다음 JSON 형식으로만 반환해 주세요. 마크다운(```json 등) 없이 순수 JSON 객체만 반환해 주세요.\n형식: {\"players\":[\"홍길동\",\"김철수\"],\"results\":[{\"player1\":\"홍길동\",\"player2\":\"김철수\",\"score\":\"2:0\"}]}" },
+                                {
+                                    inline_data: {
+                                        mime_type: mimeType,
+                                        data: base64Data
+                                    }
+                                }
+                            ]
+                        }]
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API 요청 실패: ${response.status}`);
+                }
+
+                const data = await response.json();
+                let textResult = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                if (!textResult) {
+                    throw new Error("결과를 분석할 수 없습니다.");
+                }
+
+                // 마크다운 흔적 제거
+                textResult = textResult.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+                let parsedResult;
+                try {
+                    parsedResult = JSON.parse(textResult);
+                } catch (e) {
+                    throw new Error("반환된 텍스트가 올바른 JSON 형식이 아닙니다.");
+                }
+
+                applyGeminiResult(parsedResult);
+                alert("✅ AI 표 분석이 완료되었습니다! 내용이 맞는지 확인해주세요.");
+            } catch (error) {
+                console.error(error);
+                alert("사진 분석 중 오류가 발생했습니다:\n" + error.message);
+            } finally {
+                loadingOverlay.classList.add('hidden');
+            }
+        }
+
+        function applyGeminiResult(parsed) {
+            if (!parsed.players || !Array.isArray(parsed.players) || parsed.players.length === 0) {
+                alert("분석된 선수 목록이 없습니다.");
+                return;
+            }
+
+            // 표가 하나도 없다면 새로 생성
+            if (window.multiLeagues.length === 0) {
+                const playerCount = parsed.players.length;
+                const countSelect = document.getElementById('op-group-count');
+                if (countSelect) countSelect.value = "1";
+                generateGroupSizeInputs();
+                const sizeInput = document.getElementById('op-group-size-1');
+                if (sizeInput) sizeInput.value = playerCount;
+                createLeague();
+            }
+
+            // 마지막 다중 리그전 객체 선택
+            const targetLeague = window.multiLeagues[window.multiLeagues.length - 1];
+            const g = 1; // 기본적으로 1조에 매핑
+            const requiredSize = parsed.players.length;
+
+            targetLeague.groupSizes[g] = requiredSize;
+
+            // 선수 이름 적용
+            parsed.players.forEach((playerName, index) => {
+                const p = index + 1;
+                // 기존 회원 중에서 찾기
+                const m = members.find(x => x.name === playerName);
+                let displayName = m ? `${m.name}(${m.handicap})` : playerName;
+                let handicap = m ? m.handicap : 5;
+
+                targetLeague.players[`g${g}_p${p}`] = {
+                    id: m ? m.id : 'ai_' + Date.now() + p,
+                    name: playerName,
+                    display: displayName,
+                    handicap: handicap
+                };
+            });
+
+            // 점수 등록 준비
+            targetLeague.scores = targetLeague.scores || {};
+            targetLeague.scores[g] = targetLeague.scores[g] || {};
+            for (let i = 1; i <= requiredSize; i++) {
+                targetLeague.scores[g][i] = targetLeague.scores[g][i] || {};
+            }
+
+            // 결과(승부 현황) 매핑
+            if (parsed.results && Array.isArray(parsed.results)) {
+                parsed.results.forEach(res => {
+                    const idx1 = parsed.players.indexOf(res.player1) + 1;
+                    const idx2 = parsed.players.indexOf(res.player2) + 1;
+                    if (idx1 > 0 && idx2 > 0 && idx1 !== idx2) {
+                        let scoreStr = res.score ? res.score.toString() : '';
+                        let [w, l] = scoreStr.split(/[:\-]/);
+                        if (w !== undefined && l !== undefined) {
+                            w = w.trim(); l = l.trim();
+                            targetLeague.scores[g][idx1][idx2] = w;
+                            targetLeague.scores[g][idx2][idx1] = l;
+                        } else if (scoreStr === "승리" || scoreStr === "승") {
+                            targetLeague.scores[g][idx1][idx2] = "2";
+                            targetLeague.scores[g][idx2][idx1] = "0";
+                        } else if (scoreStr === "패배" || scoreStr === "패") {
+                            targetLeague.scores[g][idx1][idx2] = "0";
+                            targetLeague.scores[g][idx2][idx1] = "2";
+                        } else {
+                            targetLeague.scores[g][idx1][idx2] = w;
+                        }
+                    }
+                });
+            }
+
+            // 화면을 아예 새로 그리기
+            const oldContainer = document.getElementById(`league-container-${targetLeague.id}`);
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = buildLeagueHTML(targetLeague);
+            const newContainer = tempDiv.firstElementChild;
+            if (oldContainer) {
+                oldContainer.parentNode.replaceChild(newContainer, oldContainer);
+            } else {
+                const emptyMsg = document.getElementById('op-group-empty-msg');
+                if (emptyMsg) emptyMsg.style.display = 'none';
+                document.getElementById('op-group-container').insertAdjacentHTML('beforeend', buildLeagueHTML(targetLeague));
+            }
+
+            // 점수 UI 바인딩
+            for (let i = 1; i <= requiredSize; i++) {
+                for (let j = 1; j <= requiredSize; j++) {
+                    if (i === j) continue;
+                    let input = document.getElementById(`score-${targetLeague.id}-g${g}-r${i}-c${j}`);
+                    if (input && targetLeague.scores[g][i][j]) {
+                        input.value = targetLeague.scores[g][i][j];
+                        syncText(input);
+                    }
+                }
+            }
+
+            // 오더 표시 반영
+            const tableEl = document.getElementById(`table-${targetLeague.id}-g${g}`);
+            if (tableEl) { updateMatchOrderDisplay(targetLeague.id, g, tableEl.querySelectorAll('tbody tr').length); }
+        }
+
         function renderAll() {
             renderSeasonDropdown();
             recalculateAllScores();
