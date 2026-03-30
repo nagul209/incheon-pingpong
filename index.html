@@ -9,7 +9,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;700;800;900&display=swap');
@@ -2002,94 +2002,12 @@
         function syncText(inputElem) { inputElem.nextElementSibling.innerText = inputElem.value || inputElem.placeholder; }
 
         async function copyGroupTableImage(leagueId, g) {
-            const btn = document.getElementById(`btn-copy-${leagueId}-g${g}`);
-            const originalText = btn.innerText;
-            btn.innerText = "⏳ 복사중...";
+            const containerId = `table-container-${leagueId}-g${g}`;
+            await copyImageForKakao(containerId);
+        }
 
-            try {
-                const league = getLeagueById(leagueId);
-                let size = league ? (league.groupSizes[g] || 4) : 4;
-
-                let headers = ['선수명'];
-                for (let i = 1; i <= size; i++) headers.push(`${i}`);
-                headers.push('승/패', '득/실', '순위');
-
-                let rows = [];
-                for (let i = 1; i <= size; i++) {
-                    let tdInput = document.querySelector(`#td-${leagueId}-g${g}-p${i} input`);
-                    let tdSpan = document.querySelector(`#td-${leagueId}-g${g}-p${i} span.capture-text`);
-                    let nameField = tdInput && tdInput.value.trim() !== '' && tdInput.value.trim() !== '터치👉' ? tdInput.value : `${i}번`;
-                    if (tdSpan && tdSpan.innerText && tdSpan.innerText.trim() !== '터치👉' && tdSpan.innerText.trim() !== '') {
-                        nameField = tdSpan.innerText.trim();
-                    }
-
-                    let row = [nameField];
-                    for (let j = 1; j <= size; j++) {
-                        if (i === j) {
-                            row.push('-');
-                        } else {
-                            let scoreInput = document.getElementById(`score-${leagueId}-g${g}-r${i}-c${j}`);
-                            row.push(scoreInput ? scoreInput.value : '');
-                        }
-                    }
-
-                    let wlInput = document.getElementById(`wl-${leagueId}-g${g}-p${i}`);
-                    let diffInput = document.getElementById(`diff-${leagueId}-g${g}-p${i}`);
-                    let rankInput = document.getElementById(`rank-${leagueId}-g${g}-p${i}`);
-
-                    row.push(wlInput && wlInput.value && wlInput.value !== '/' ? wlInput.value : '');
-                    row.push(diffInput && diffInput.value && diffInput.value !== '/' ? diffInput.value : '');
-                    row.push(rankInput ? rankInput.value : '');
-                    rows.push(row);
-                }
-
-                const getStrWidth = (str) => {
-                    if (!str) return 0;
-                    let w = 0;
-                    for (let char of str) {
-                        if (/[^\x00-\x7F]/.test(char)) w += 2;
-                        else w += 1;
-                    }
-                    return w;
-                };
-
-                const padRight = (str, width) => {
-                    if (!str) str = '';
-                    let w = getStrWidth(str);
-                    return str + ' '.repeat(Math.max(0, width - w));
-                };
-
-                const padCenter = (str, width) => {
-                    if (!str) str = '';
-                    let w = getStrWidth(str);
-                    let pad = Math.max(0, width - w);
-                    let left = Math.floor(pad / 2);
-                    let right = pad - left;
-                    return ' '.repeat(left) + str + ' '.repeat(right);
-                };
-
-                let colWidths = headers.map((h, colIdx) => {
-                    let maxW = getStrWidth(h);
-                    rows.forEach(r => maxW = Math.max(maxW, getStrWidth(r[colIdx] || '')));
-                    return maxW;
-                });
-
-                let titlePart = league && league.title ? `${league.title} ` : '';
-                let resultText = `[ ${titlePart}${g}조 리그 결과 ]\n`;
-                resultText += '| ' + headers.map((h, i) => padCenter(h, colWidths[i])).join(' | ') + ' |\n';
-                resultText += '|-' + colWidths.map(w => '-'.repeat(w)).join('-|-') + '-|\n';
-                rows.forEach(r => {
-                    resultText += '| ' + r.map((cell, i) => i === 0 ? padRight(cell, colWidths[i]) : padCenter(cell, colWidths[i])).join(' | ') + ' |\n';
-                });
-
-                await navigator.clipboard.writeText(resultText.trim());
-                alert(`✅ 텍스트 표가 클립보드에 복사되었습니다! 카카오톡에 붙여넣기 하세요.`);
-            } catch (err) {
-                console.error(err);
-                alert("❌ 클립보드 복사에 실패했습니다.");
-            } finally {
-                btn.innerText = originalText;
-            }
+        async function copyTournamentImage() {
+            await copyImageForKakao('op-tourn-container');
         }
 
         function openHistoryDateModal() {
@@ -3951,10 +3869,11 @@
 
                 // 관리자 버튼 (isAdmin일 때만 생성)
                 const adminButtons = (isAdmin && !isPastSeason) ? `
-                <div class="flex gap-1.5 mt-4 pt-3 border-t border-slate-100">
-                    <button onclick="event.stopPropagation(); openAnnouncement(${match.id})" class="flex-1 py-2 bg-indigo-50 text-indigo-700 text-[10px] rounded-xl border border-indigo-100 hover:bg-indigo-100 font-black shadow-sm btn-press transition-all">공지 복사</button>
-                    <button onclick="event.stopPropagation(); editMatch(${match.id})" class="flex-1 py-2 bg-white text-slate-600 text-[10px] rounded-xl border border-slate-200 hover:bg-slate-50 font-black shadow-sm btn-press transition-all">정보 수정</button>
-                    <button onclick="event.stopPropagation(); deleteMatch(${match.id})" class="flex-1 py-2 bg-red-50 text-red-600 text-[10px] rounded-xl border border-red-100 hover:bg-red-100 font-black shadow-sm btn-press transition-all">기록 삭제</button>
+                <div class="flex gap-1.5 mt-4 pt-3 border-t border-slate-100 flex-wrap">
+                    <button onclick="event.stopPropagation(); openAnnouncement(${match.id})" class="flex-1 py-2 bg-indigo-50 text-indigo-700 text-[10px] rounded-xl border border-indigo-100 hover:bg-indigo-100 font-black shadow-sm btn-press transition-all min-w-[30%]">NotebookLM 복사</button>
+                    <button onclick="event.stopPropagation(); copyImageForKakao('match-card-${match.id}')" class="flex-[1.2] py-2 bg-[#FEE500] text-[#391B1B] text-[10px] rounded-xl border border-[#FEE500] hover:bg-[#FADA0A] font-black shadow-sm btn-press transition-all min-w-[35%]">카카오톡 이미지 복사</button>
+                    <button onclick="event.stopPropagation(); editMatch(${match.id})" class="flex-1 py-2 bg-white text-slate-600 text-[10px] rounded-xl border border-slate-200 hover:bg-slate-50 font-black shadow-sm btn-press transition-all min-w-[20%]">정보 수정</button>
+                    <button onclick="event.stopPropagation(); deleteMatch(${match.id})" class="flex-1 py-2 bg-red-50 text-red-600 text-[10px] rounded-xl border border-red-100 hover:bg-red-100 font-black shadow-sm btn-press transition-all min-w-[20%]">기록 삭제</button>
                 </div>` : '';
 
                 let displayDate = match.date ? escapeHTML(match.date) : '날짜 미정';
@@ -3962,7 +3881,7 @@
                 let formattedDate = dateParts.length === 3 ? `${parseInt(dateParts[1])}월 ${parseInt(dateParts[2])}일` : displayDate;
 
                 list.innerHTML += `
-                <div class="bg-white shadow-md rounded-xl border border-slate-100 animate-fade-in overflow-hidden">
+                <div id="match-card-${match.id}" class="bg-white shadow-md rounded-xl border border-slate-100 animate-fade-in overflow-hidden relative">
                     <!-- 헤더 (아코디언 트리거) -->
                     <div class="text-center py-4 cursor-pointer hover:bg-slate-50 transition-colors" onclick="toggleMatchDetail(${match.id})">
                         <div class="text-base font-bold text-slate-800 tracking-tight">${formattedDate} ${escapeHTML(match.type) || ''}</div>
@@ -4430,6 +4349,127 @@
         // 초기화
         generateGroupSizeInputs();
         loadDataFromStorage();
+
+        // 카카오톡 이미지 복사 함수 구현
+        async function copyImageForKakao(elementId) {
+            const targetElement = document.getElementById(elementId);
+            if (!targetElement) return;
+
+            // [전처리] 1. 원본 상태 저장을 위한 변수들
+            const originalStyles = new Map();
+            const buttonsToHide = targetElement.querySelectorAll('button');
+            const scrollWrappers = targetElement.querySelectorAll('.overflow-x-auto');
+
+            try {
+                // [전처리] 2. 캡처에 불필요한 요소 숨김 및 스타일 임시 변경
+                buttonsToHide.forEach(btn => {
+                    originalStyles.set(btn, btn.style.display);
+                    btn.style.display = 'none';
+                });
+
+                // [전처리] 3. 가로 스크롤 영역을 강제로 넓게 펼침 (잘림 방지)
+                scrollWrappers.forEach(wrapper => {
+                    originalStyles.set(wrapper, {
+                        overflow: wrapper.style.overflow,
+                        overflowX: wrapper.style.overflowX,
+                        width: wrapper.style.width,
+                        maxWidth: wrapper.style.maxWidth
+                    });
+                    wrapper.style.overflow = 'visible';
+                    wrapper.style.overflowX = 'visible';
+                    wrapper.style.width = wrapper.scrollWidth + 'px';
+                    wrapper.style.maxWidth = 'none';
+                });
+
+                // [전처리] 4. 타겟 요소 자체도 확장
+                originalStyles.set(targetElement, {
+                    overflow: targetElement.style.overflow,
+                    width: targetElement.style.width,
+                    maxWidth: targetElement.style.maxWidth
+                });
+                targetElement.style.overflow = 'visible';
+                targetElement.style.width = targetElement.scrollWidth + 'px';
+                targetElement.style.maxWidth = 'none';
+
+                // DOM 렌더링 완료를 위해 아주 짧게 대기
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                // [이미지 캡처] html2canvas 실행 (요구하신 옵션 적용)
+                const canvas = await html2canvas(targetElement, {
+                    windowWidth: targetElement.scrollWidth,
+                    width: targetElement.scrollWidth,
+                    scale: 2,           // 고화질
+                    useCORS: true,      // 외부 이미지 허용
+                    backgroundColor: '#ffffff' // 배경 흰색 고정
+                });
+
+                // [클립보드 복사]
+                canvas.toBlob(async (blob) => {
+                    if (!blob) throw new Error("이미지 생성 실패");
+                    try {
+                        // 최신 Clipboard API 사용
+                        const data = [new ClipboardItem({ "image/png": blob })];
+                        await navigator.clipboard.write(data);
+                        alert("이미지가 복사되었습니다. 카카오톡에 '붙여넣기' 하세요.");
+                    } catch (clipErr) {
+                        console.warn("클립보드 API 실패, 폴백 모달 실행", clipErr);
+                        showFallbackImage(canvas, "이미지를 꾹 눌러서 복사하거나 저장하세요.");
+                    }
+                }, "image/png");
+
+            } catch (err) {
+                console.error("캡처 프로세스 오류:", err);
+                alert("이미지 생성 중 오류가 발생했습니다.");
+            } finally {
+                // [후처리] 5. 완벽한 사후 복구 (무조건 실행)
+                buttonsToHide.forEach(btn => {
+                    if (originalStyles.has(btn)) {
+                        btn.style.display = originalStyles.get(btn);
+                    }
+                });
+
+                scrollWrappers.forEach(wrapper => {
+                    const saved = originalStyles.get(wrapper);
+                    if (saved) {
+                        wrapper.style.overflow = saved.overflow;
+                        wrapper.style.overflowX = saved.overflowX;
+                        wrapper.style.width = saved.width;
+                        wrapper.style.maxWidth = saved.maxWidth;
+                    }
+                });
+
+                const targetSaved = originalStyles.get(targetElement);
+                if (targetSaved) {
+                    targetElement.style.overflow = targetSaved.overflow;
+                    targetElement.style.width = targetSaved.width;
+                    targetElement.style.maxWidth = targetSaved.maxWidth;
+                }
+            }
+        }
+
+        function showFallbackImage(canvas, message) {
+            const overlay = document.createElement('div');
+            overlay.className = 'fixed inset-0 bg-black/80 backdrop-blur flex flex-col justify-center items-center z-[9999] p-4 animate-fade-in';
+            overlay.onclick = () => document.body.removeChild(overlay);
+            
+            const msg = document.createElement('p');
+            msg.className = 'text-white font-bold mb-4 text-center';
+            msg.innerText = message;
+            
+            const img = document.createElement('img');
+            img.src = canvas.toDataURL('image/png');
+            img.className = 'max-w-full max-h-[75vh] object-contain rounded-xl shadow-2xl bg-white border border-slate-200';
+            img.onclick = (e) => e.stopPropagation();
+            
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'mt-5 px-6 py-2.5 bg-white text-slate-800 rounded-xl font-extrabold shadow-lg hover:bg-slate-100 transition-colors btn-press';
+            closeBtn.innerText = '닫기';
+            
+            overlay.appendChild(msg);
+            overlay.appendChild(img);
+            overlay.appendChild(closeBtn);
+            document.body.appendChild(overlay);
+        }
     </script>
 </body>
 
