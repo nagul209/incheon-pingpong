@@ -267,10 +267,15 @@
                     onchange="renderRanking()">
                     <option value="current">📍 현재 진행중인 시즌</option>
                 </select>
+                <button onclick="copyRankingImage()" id="btn-capture-ranking"
+                    class="text-[11px] bg-indigo-500 text-white px-3 py-1.5 rounded-xl border border-indigo-600 hover:bg-indigo-600 font-extrabold btn-press shadow-sm flex items-center gap-1 shrink-0">
+                    📸 순위표 이미지로 복사
+                </button>
                 <button onclick="downloadRankingExcel()"
                     class="text-[11px] bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-xl border border-emerald-200 hover:bg-emerald-100 font-extrabold btn-press shadow-sm flex items-center gap-1 shrink-0">
                     📊 엑셀 저장
                 </button>
+
             </div>
             <div class="mb-2 px-1 text-right">
                 <span id="ranking-instruction"
@@ -278,7 +283,7 @@
                     이름을 터치하면 상세기록</span>
             </div>
 
-            <div
+            <div id="ranking-card"
                 class="shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 rounded-2xl bg-white overflow-hidden mb-2">
                 <table class="w-full text-sm text-left text-slate-700">
                     <thead
@@ -4344,6 +4349,104 @@
             renderMembersList();
             renderMemberPublicList();
             renderPastSeasonList(); // 👈 이 줄을 추가합니다.
+        }
+
+        // 📸 순위표 이미지 캡처 및 클립보드 복사 함수
+        async function copyRankingImage() {
+            const targetElement = document.getElementById('ranking-card');
+            const captureBtn = document.getElementById('btn-capture-ranking');
+            if (!targetElement) return;
+
+            // [전처리] 1. 원본 상태 저장을 위한 변수 및 요소 수집
+            const originalStyles = new Map();
+            const scrollWrappers = targetElement.querySelectorAll('.overflow-x-auto');
+
+            try {
+                // [전처리] 2. 캡처 버튼 자체를 일시적으로 숨김 (화면에 안나오게)
+                if (captureBtn) {
+                    originalStyles.set(captureBtn, captureBtn.style.display);
+                    captureBtn.style.display = 'none';
+                }
+
+                // [전처리] 3. 타겟 요소 및 내부 스크롤 영역 강제 확장 (스크롤 잘림 방지)
+                originalStyles.set(targetElement, {
+                    overflow: targetElement.style.overflow,
+                    width: targetElement.style.width,
+                    height: targetElement.style.height,
+                    maxWidth: targetElement.style.maxWidth
+                });
+                
+                // 전체 컨텐츠가 보이도록 스타일 변경
+                targetElement.style.overflow = 'visible';
+                targetElement.style.width = targetElement.scrollWidth + 'px';
+                targetElement.style.height = targetElement.scrollHeight + 'px';
+                targetElement.style.maxWidth = 'none';
+
+                scrollWrappers.forEach(wrapper => {
+                    originalStyles.set(wrapper, {
+                        overflow: wrapper.style.overflow,
+                        width: wrapper.style.width,
+                        maxWidth: wrapper.style.maxWidth
+                    });
+                    wrapper.style.overflow = 'visible';
+                    wrapper.style.width = wrapper.scrollWidth + 'px';
+                    wrapper.style.maxWidth = 'none';
+                });
+
+                // DOM 스타일 변경이 브라우저에 반영될 시간을 줌
+                await new Promise(resolve => setTimeout(resolve, 150));
+
+                // [이미지 생성] html2canvas 실행
+                const canvas = await html2canvas(targetElement, {
+                    scale: 2,           // 고화질 (Retina 대응)
+                    useCORS: true,      // 외부 이미지 허용 (필요 시)
+                    backgroundColor: '#ffffff', // 배경색 흰색 고정
+                    width: targetElement.scrollWidth,
+                    height: targetElement.scrollHeight,
+                    windowWidth: targetElement.scrollWidth,
+                    windowHeight: targetElement.scrollHeight
+                });
+
+                // [클립보드 복사] Blob으로 변환하여 복사
+                canvas.toBlob(async (blob) => {
+                    if (!blob) throw new Error("이미지 데이터(Blob) 생성 실패");
+                    try {
+                        // 최신 Clipboard API
+                        const data = [new ClipboardItem({ "image/png": blob })];
+                        await navigator.clipboard.write(data);
+                        alert("순위표 이미지가 복사되었습니다. 단톡방에 붙여넣기 하세요.");
+                    } catch (clipErr) {
+                        console.warn("클립보드 API 오류, 폴백 모달 실행:", clipErr);
+                        showFallbackImage(canvas, "이미지를 꾹 눌러서 복사하거나 저장하세요.");
+                    }
+                }, "image/png");
+
+            } catch (err) {
+                console.error("순위표 캡처 프로세스 오류:", err);
+                alert("이미지 생성 중 오류가 발생했습니다.");
+            } finally {
+                // [후처리] 4. 무조건 원래 상태로 복구 (finally 구문 필수 준수)
+                if (captureBtn && originalStyles.has(captureBtn)) {
+                    captureBtn.style.display = originalStyles.get(captureBtn);
+                }
+
+                const targetSaved = originalStyles.get(targetElement);
+                if (targetSaved) {
+                    targetElement.style.overflow = targetSaved.overflow;
+                    targetElement.style.width = targetSaved.width;
+                    targetElement.style.height = targetSaved.height;
+                    targetElement.style.maxWidth = targetSaved.maxWidth;
+                }
+
+                scrollWrappers.forEach(wrapper => {
+                    const saved = originalStyles.get(wrapper);
+                    if (saved) {
+                        wrapper.style.overflow = saved.overflow;
+                        wrapper.style.width = saved.width;
+                        wrapper.style.maxWidth = saved.maxWidth;
+                    }
+                });
+            }
         }
 
         // 초기화
