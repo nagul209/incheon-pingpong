@@ -2840,7 +2840,7 @@
         // ==============================================================================
         function filterSelector(keyword) { const btns = document.querySelectorAll('#selector-list button'); btns.forEach(b => { if (b.innerText.toLowerCase().includes(keyword.toLowerCase())) b.classList.remove('hidden'); else b.classList.add('hidden'); }); }
 
-        function renderSelectorList(onlyAttendees, target, extraExcludedNames = []) {
+function renderSelectorList(onlyAttendees, target, extraExcludedNames = []) {
             let candidates = [];
             if (target === 'opAttend') {
                 candidates = members.filter(m => m.status === 'active');
@@ -2859,7 +2859,7 @@
             }
 
             let excludedNames = [];
-            const prefix = target.replace(/[0-9]/g, ''); // 'tn', 'utn', 'ltn' 등 동적 추출
+            const prefix = target.replace(/[0-9]/g, '');
             if (['lg', 'tm', 'tn', 'utn', 'ltn', 'db'].includes(prefix)) {
                 ['1', '2', '3'].forEach(num => {
                     if (prefix + num !== target && formState[prefix + num]) {
@@ -2869,19 +2869,94 @@
             }
             candidates = candidates.filter(m => !excludedNames.includes(m.name) && !extraExcludedNames.includes(m.name));
 
-            const listEl = document.getElementById('selector-list'); const emptyMsg = document.getElementById('selector-empty-msg'); listEl.innerHTML = '';
-            if (candidates.length === 0) { listEl.classList.add('hidden'); emptyMsg.classList.remove('hidden'); } else {
-                listEl.classList.remove('hidden'); emptyMsg.classList.add('hidden');
-                candidates.sort((a, b) => { if (a.handicap !== b.handicap) return a.handicap - b.handicap; return a.name.localeCompare(b.name); }).forEach(m => {
+            const listEl = document.getElementById('selector-list'); 
+            const emptyMsg = document.getElementById('selector-empty-msg'); 
+            listEl.innerHTML = '';
+            
+            if (candidates.length === 0) { 
+                listEl.classList.add('hidden'); 
+                emptyMsg.classList.remove('hidden'); 
+            } else {
+                listEl.classList.remove('hidden'); 
+                emptyMsg.classList.add('hidden');
+                
+                // 1순위: 부수 오름차순, 2순위: 연회원 먼저, 3순위: 이름 가나다순 정렬
+                candidates.sort((a, b) => { 
+                    if (a.handicap !== b.handicap) return a.handicap - b.handicap; 
+                    const aIsYearly = a.type === '연회원' ? 1 : 0;
+                    const bIsYearly = b.type === '연회원' ? 1 : 0;
+                    if (aIsYearly !== bIsYearly) return bIsYearly - aIsYearly;
+                    return a.name.localeCompare(b.name); 
+                }).forEach(m => {
                     const isSelected = !isSinglePickMode && tempSelectorList.includes(m.name);
-                    const bgClass = isSelected ? 'bg-indigo-600 text-white border-indigo-700 shadow-inner' : 'bg-white text-slate-600 border-slate-200 shadow-sm hover:bg-slate-50';
-                    listEl.innerHTML += `<button onclick="${isSinglePickMode ? `window.singlePickCallback('${m.id}'); closeSelector();` : `toggleSelect('${escapeHTML(m.name)}')`}" id="sel-btn-${escapeHTML(m.name)}" class="py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press ${bgClass}">${escapeHTML(m.name)} <span class="text-[9px] ${isSelected ? 'text-indigo-200' : 'text-slate-400'} block mt-0.5 font-medium">${m.handicap}부</span></button>`;
+                    
+                    let bgClass = '';
+                    let subTextClass = '';
+                    
+                    // 속성별 명단 카드 색상 구분
+                    if (isSelected) {
+                        bgClass = 'bg-indigo-600 text-white border-indigo-700 shadow-inner';
+                        subTextClass = 'text-indigo-200';
+                    } else if (m.type === '연회원') {
+                        bgClass = 'bg-blue-50 text-blue-800 border-blue-200 shadow-sm hover:bg-blue-100'; 
+                        subTextClass = 'text-blue-400';
+                    } else if (m.affiliation === '초청') {
+                        bgClass = 'bg-amber-50 text-amber-800 border-amber-200 shadow-sm hover:bg-amber-100'; 
+                        subTextClass = 'text-amber-400';
+                    } else {
+                        bgClass = 'bg-white text-slate-600 border-slate-200 shadow-sm hover:bg-slate-50'; 
+                        subTextClass = 'text-slate-400';
+                    }
+
+                    listEl.innerHTML += `<button onclick="${isSinglePickMode ? `window.singlePickCallback('${m.id}'); closeSelector();` : `toggleSelect('${escapeHTML(m.name)}')`}" id="sel-btn-${escapeHTML(m.name)}" class="py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press ${bgClass}">${escapeHTML(m.name)} <span class="text-[9px] ${subTextClass} block mt-0.5 font-medium">${m.handicap}부</span></button>`;
                 });
-            } return true;
+            } 
+            return true;
         }
-        function openSelector(target, title, onlyAttendees) { isSinglePickMode = false; document.getElementById('selector-count').classList.remove('hidden'); document.getElementById('btn-selector-confirm').classList.remove('hidden'); document.getElementById('selector-search').value = ""; currentSelectorTarget = target; document.getElementById('selector-title').innerText = title; tempSelectorList = [...(formState[target] || [])]; if (renderSelectorList(onlyAttendees, target) !== false) { updateSelectorCount(); document.getElementById('member-selector-modal').classList.remove('hidden'); } }
-        function toggleSelect(name) { const idx = tempSelectorList.indexOf(name); const btn = document.getElementById(`sel-btn-${name}`); if (idx > -1) { tempSelectorList.splice(idx, 1); btn.className = "py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all bg-white text-slate-600 border-slate-200 shadow-sm hover:bg-slate-50 btn-press"; btn.querySelector('span').className = "text-[9px] text-slate-400 block mt-0.5 font-medium"; } else { tempSelectorList.push(name); btn.className = "py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all bg-indigo-600 text-white border-indigo-700 shadow-inner btn-press"; btn.querySelector('span').className = "text-[9px] text-indigo-200 block mt-0.5 font-medium"; } updateSelectorCount(); }
-        function updateSelectorCount() { document.getElementById('selector-count').innerText = `${tempSelectorList.length}명 선택됨`; }
+
+        function openSelector(target, title, onlyAttendees) { 
+            isSinglePickMode = false; 
+            document.getElementById('selector-count').classList.remove('hidden'); 
+            document.getElementById('btn-selector-confirm').classList.remove('hidden'); 
+            document.getElementById('selector-search').value = ""; 
+            currentSelectorTarget = target; 
+            document.getElementById('selector-title').innerText = title; 
+            tempSelectorList = [...(formState[target] || [])]; 
+            if (renderSelectorList(onlyAttendees, target) !== false) { 
+                updateSelectorCount(); 
+                document.getElementById('member-selector-modal').classList.remove('hidden'); 
+            } 
+        }
+
+        function toggleSelect(name) { 
+            const idx = tempSelectorList.indexOf(name); 
+            const btn = document.getElementById(`sel-btn-${name}`); 
+            const m = members.find(x => x.name === name); // 클릭한 회원 속성 참조
+            
+            if (idx > -1) { 
+                tempSelectorList.splice(idx, 1); 
+                // 선택 해제 시 원래 등급/구분 색상으로 복구
+                if (m && m.type === '연회원') {
+                    btn.className = "py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press bg-blue-50 text-blue-800 border-blue-200 shadow-sm hover:bg-blue-100";
+                    btn.querySelector('span').className = "text-[9px] text-blue-400 block mt-0.5 font-medium";
+                } else if (m && m.affiliation === '초청') {
+                    btn.className = "py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press bg-amber-50 text-amber-800 border-amber-200 shadow-sm hover:bg-amber-100";
+                    btn.querySelector('span').className = "text-[9px] text-amber-400 block mt-0.5 font-medium";
+                } else {
+                    btn.className = "py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press bg-white text-slate-600 border-slate-200 shadow-sm hover:bg-slate-50"; 
+                    btn.querySelector('span').className = "text-[9px] text-slate-400 block mt-0.5 font-medium"; 
+                }
+            } else { 
+                tempSelectorList.push(name); 
+                btn.className = "py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press bg-indigo-600 text-white border-indigo-700 shadow-inner"; 
+                btn.querySelector('span').className = "text-[9px] text-indigo-200 block mt-0.5 font-medium"; 
+            } 
+            updateSelectorCount(); 
+        }
+
+        function updateSelectorCount() { 
+            document.getElementById('selector-count').innerText = `${tempSelectorList.length}명 선택됨`; 
+        }
         function closeSelector() { document.getElementById('member-selector-modal').classList.add('hidden'); }
         function confirmSelector() {
             if (currentSelectorTarget === 'league') {
