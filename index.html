@@ -461,9 +461,6 @@
                     <button onclick="loadQualifierResults()"
                         class="flex-1 bg-indigo-50 text-indigo-700 border border-indigo-200 py-2 rounded-xl text-[11px] font-extrabold shadow-sm btn-press">📥
                         예선 결과 불러오기</button>
-                    <button id="btn-swap-mode" onclick="toggleSwapMode()"
-                        class="flex-1 bg-slate-100 text-slate-700 border border-slate-200 py-2 rounded-xl text-[11px] font-extrabold shadow-sm btn-press transition-colors">🔄
-                        자리 변경 모드</button>
                     <div id="op-tourn-info"
                         class="flex-[2] text-[10px] font-extrabold text-rose-700 bg-rose-50 p-2 rounded-xl text-center border border-rose-100 hidden">
                     </div>
@@ -2409,8 +2406,9 @@
             visibleRound: 0,
             originalTemplate: []  // 예선 결과 재매칭을 위한 원본 템플릿 저장용
         };
-        let isSwapMode = false;
-        let swapFirstIdx = null;
+        let isFullView = false;    // 전체 대진표 보기 모드
+        let isSwapMode = false;    // 자리 변경 모드
+        let swapFirstPick = null;  // 스왑 대상을 상징하는 인덱스 (선택 시 저장)
 
         function initTournamentState() {
             const groups = parseInt(document.getElementById('op-tourn-groups').value);
@@ -2566,49 +2564,56 @@
         function toggleSwapMode() {
             if (!isAdmin) return alert("관리자 모드에서만 사용 가능합니다.");
             isSwapMode = !isSwapMode;
-            swapFirstIdx = null;
-            
-            const btn = document.getElementById('btn-swap-mode');
-            if (isSwapMode) {
-                btn.classList.replace('bg-slate-100', 'bg-orange-500');
-                btn.classList.replace('text-slate-700', 'text-white');
-                btn.classList.replace('border-slate-200', 'border-orange-600');
-                btn.innerHTML = "🎯 변경 대상을 선택하세요";
-            } else {
-                btn.classList.replace('bg-orange-500', 'bg-slate-100');
-                btn.classList.replace('text-white', 'text-slate-700');
-                btn.classList.replace('border-orange-600', 'border-slate-200');
-                btn.innerHTML = "🔄 자리 변경 모드";
-            }
+            swapFirstPick = null;
             renderTournamentUI();
         }
 
+        function toggleFullView() {
+            isFullView = !isFullView;
+            renderTournamentUI();
+        }
+
+        function handleTournamentClick(round, idx) {
+            if (!isAdmin) return;
+            
+            // 자리 변경 모드 처리 (1라운드 시드만 가능)
+            if (isSwapMode) {
+                if (round === 0) {
+                    handleSwap(idx);
+                } else {
+                    alert("자리 변경(Swap)은 1라운드 선수들끼리만 가능합니다.");
+                }
+                return;
+            }
+
+            // 일반 모드: 승자 선택/취소
+            toggleTournamentWinner(round, idx);
+        }
+
         function handleSwap(idx) {
-            if (swapFirstIdx === null) {
-                swapFirstIdx = idx;
+            if (swapFirstPick === null) {
+                swapFirstPick = idx;
                 renderTournamentUI();
             } else {
-                if (swapFirstIdx === idx) {
-                    swapFirstIdx = null;
+                if (swapFirstPick === idx) {
+                    swapFirstPick = null;
                     renderTournamentUI();
                     return;
                 }
                 
                 // 위치 교환
-                const temp = tournamentState.tree[0][swapFirstIdx];
-                tournamentState.tree[0][swapFirstIdx] = tournamentState.tree[0][idx];
+                const temp = tournamentState.tree[0][swapFirstPick];
+                tournamentState.tree[0][swapFirstPick] = tournamentState.tree[0][idx];
                 tournamentState.tree[0][idx] = temp;
                 
                 // 연쇄적 결과 초기화 및 부전승 재계산
-                cascadeClearTournament(0, swapFirstIdx);
+                cascadeClearTournament(0, swapFirstPick);
                 cascadeClearTournament(0, idx);
                 
-                swapFirstIdx = null;
+                swapFirstPick = null;
                 propagateByes();
                 renderTournamentUI();
                 saveDataToStorage();
-                
-                // 모드 유지 여부는 사용자 편의에 따라 결정 (여기서는 한 번 교체 후 유지)
             }
         }
 
@@ -2622,25 +2627,7 @@
             }
         }
 
-        function toggleTournFullView() {
-            const container = document.getElementById('op-tourn-container');
-            const area = document.getElementById('op-tourn-scroll-area');
-            const btn = document.getElementById('btn-tourn-fullview');
-            if (!container || !area) return;
 
-            container.classList.toggle('full-view-active');
-            area.classList.toggle('tourn-full-view');
-
-            if (area.classList.contains('tourn-full-view')) {
-                btn.innerHTML = "🔙 원래대로 보기";
-                btn.classList.replace('bg-slate-100', 'bg-slate-800');
-                btn.classList.replace('text-slate-700', 'text-white');
-            } else {
-                btn.innerHTML = "📱 한화면 전체보기";
-                btn.classList.replace('bg-slate-800', 'bg-slate-100');
-                btn.classList.replace('text-white', 'text-slate-700');
-            }
-        }
 
         function renderTournamentUI() {
             if (!tournamentState.tree) return;
@@ -2650,34 +2637,45 @@
 
             const filterContainer = document.getElementById('tourn-filter-container');
             filterContainer.classList.remove('hidden');
-            document.getElementById('tourn-quick-nav').classList.add('hidden'); // 트리 뷰용 퀵네비는 숨김
+            document.getElementById('tourn-quick-nav').classList.add('hidden');
 
-            // 1. 라운드 선택 탭 (가로 스크롤)
+            // 1. 조작 버튼 및 라운드 필터 렌더링
             let filterHtml = `
-                <div class="flex overflow-x-auto pb-2 gap-2 no-scrollbar">
+                <div class="flex flex-col w-full gap-2">
+                    <div class="flex gap-2 justify-end">
+                        <button onclick="toggleFullView()" class="text-[11px] px-3 py-1.5 rounded-lg font-bold border transition-all ${isFullView ? 'bg-indigo-600 text-white border-indigo-700 shadow-inner' : 'bg-white text-slate-700 border-slate-200'}">🌳 전체 보기</button>
+                        <button onclick="toggleSwapMode()" class="text-[11px] px-3 py-1.5 rounded-lg font-bold border transition-all ${isSwapMode ? 'bg-orange-500 text-white border-orange-600 shadow-inner' : 'bg-white text-slate-700 border-slate-200'}">🔄 자리 변경 모드</button>
+                    </div>
+                    <div class="flex overflow-x-auto pb-2 gap-2 no-scrollbar">
             `;
             for (let r = 0; r < rounds; r++) {
                 let roundSize = size / Math.pow(2, r);
                 let btnText = roundSize === 2 ? "결승" : roundSize === 4 ? "4강" : roundSize + "강";
-
-                const activeClass = vRound === r ? 'bg-indigo-600 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-600';
+                const activeClass = (vRound === r && !isFullView) ? 'bg-indigo-600 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-600';
                 filterHtml += `
-                    <button onclick="setTournamentFilter(${r})" class="whitespace-nowrap px-5 py-2 rounded-full text-xs font-bold transition-all ${activeClass}">
+                    <button onclick="isFullView = false; setTournamentFilter(${r})" class="whitespace-nowrap px-5 py-2 rounded-full text-xs font-bold transition-all ${activeClass}">
                         ${btnText}
                     </button>
                 `;
             }
-            // 우승자 탭 추가
-            const winnerActive = vRound === rounds;
+            const winnerActive = vRound === rounds && !isFullView;
             filterHtml += `
-                <button onclick="setTournamentFilter(${rounds})" class="whitespace-nowrap px-5 py-2 rounded-full text-xs font-bold transition-all ${winnerActive ? 'bg-amber-500 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-600'}">
+                <button onclick="isFullView = false; setTournamentFilter(${rounds})" class="whitespace-nowrap px-5 py-2 rounded-full text-xs font-bold transition-all ${winnerActive ? 'bg-amber-500 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-600'}">
                     🏆 우승자
                 </button>
-            </div>`;
+            </div></div>`;
             filterContainer.innerHTML = filterHtml;
 
-            // 2. 매치업 카드 리스트 (세로)
-            let html = `<div class="mt-4 space-y-4 pb-10">`;
+            const container = document.getElementById('op-tourn-container');
+
+            // [추가 요구사항] 전체 보기 모드 렌더링
+            if (isFullView) {
+                container.innerHTML = createTraditionalTreeHTML();
+                return;
+            }
+
+            // 2. 기존 라운드별 매치업 카드 리스트 렌더링
+            let html = `<div id="op-tourn-scroll-area" class="mt-4 space-y-4 pb-10 px-2 bg-slate-50/50">`;
 
             if (vRound < rounds) {
                 const numMatches = size / Math.pow(2, vRound + 1);
@@ -2695,13 +2693,13 @@
                     const isP2Winner = nextWinner && nextWinner === p2 && p2 !== "부전승(BYE)";
                     const isBye = p2 === "부전승(BYE)";
 
-                    const isP1Selected = isSwapMode && vRound === 0 && swapFirstIdx === p1Idx;
-                    const isP2Selected = isSwapMode && vRound === 0 && swapFirstIdx === p2Idx;
+                    const isP1Selected = isSwapMode && vRound === 0 && swapFirstPick === p1Idx;
+                    const isP2Selected = isSwapMode && vRound === 0 && swapFirstPick === p2Idx;
 
                     html += `
                         <div class="bg-white rounded-2xl shadow-sm p-4 border border-slate-100 transition-all ${isSwapMode && vRound === 0 ? 'ring-2 ring-orange-200' : ''}">
                             <div class="flex items-center justify-between gap-3 relative">
-                                <div onclick="toggleTournamentWinner(${vRound}, ${p1Idx})" 
+                                <div onclick="handleTournamentClick(${vRound}, ${p1Idx})" 
                                      class="flex-1 p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-center min-h-[60px] ${isP1Selected ? 'bg-orange-100 border-orange-500 shadow-inner' : (isP1Winner ? 'bg-blue-100 border-blue-500 shadow-sm' : 'bg-slate-50 border-transparent')}">
                                     <span class="text-xs font-black break-all whitespace-normal text-center ${isP1Winner ? 'text-blue-800' : (isP1Selected ? 'text-orange-800' : 'text-slate-700')}">${p1 || (vRound === 0 ? '터치선택' : '대기중')}</span>
                                 </div>
@@ -2709,7 +2707,7 @@
                                     <span class="text-[10px] font-black text-slate-300 italic">VS</span>
                                     ${isBye ? '<span class="text-[8px] font-bold text-indigo-500 mt-1">BYE</span>' : ''}
                                 </div>
-                                <div onclick="toggleTournamentWinner(${vRound}, ${p2Idx})" 
+                                <div onclick="handleTournamentClick(${vRound}, ${p2Idx})" 
                                      class="flex-1 p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-center min-h-[60px] ${isP2Selected ? 'bg-orange-100 border-orange-500 shadow-inner' : (isP2Winner ? 'bg-blue-100 border-blue-500 shadow-sm' : (isBye ? 'bg-slate-100 border-slate-200 opacity-50' : 'bg-slate-50 border-transparent'))}">
                                     <span class="text-xs font-black break-all whitespace-normal text-center ${isP2Winner ? 'text-blue-800' : (isP2Selected ? 'text-orange-800' : 'text-slate-700')}">${p2 || (vRound === 0 ? '터치선택' : '대기중')}</span>
                                 </div>
@@ -2736,19 +2734,12 @@
             }
 
             html += `</div>`;
-            const container = document.getElementById('op-tourn-container');
             container.innerHTML = html;
         }
 
         function toggleTournamentWinner(round, idx) {
             if (!isAdmin) return;
             
-            // 자리 변경 모드 처리
-            if (isSwapMode && round === 0) {
-                handleSwap(idx);
-                return;
-            }
-
             const player = tournamentState.tree[round][idx];
             if (!player || player === "부전승(BYE)") return;
 
@@ -2857,15 +2848,7 @@
             closeWinnerSelector();
         }
 
-        function cascadeClearTournament(startR, startN) {
-            let r = startR + 1;
-            let n = Math.floor(startN / 2);
-            while (r <= tournamentState.rounds) {
-                tournamentState.tree[r][n] = null;
-                r++;
-                n = Math.floor(n / 2);
-            }
-        }
+
 
         async function copyTournamentImage() {
             const wrapper = document.getElementById('op-tourn-scroll-area');
@@ -2926,12 +2909,12 @@
             const size = tournamentState.size;
             const rounds = tournamentState.rounds;
 
-            let html = `<div class="flex items-center justify-center min-w-max p-10 bg-white">`;
+            let html = `<div id="op-tourn-scroll-area" class="flex items-center justify-center min-w-max p-10 bg-white">`;
 
             for (let r = 0; r <= rounds; r++) {
                 let numNodes = size / Math.pow(2, r);
                 let colClass = "flex flex-col justify-around h-full relative";
-                let colStyle = `width: 180px; min-height: ${Math.max(size * 40, 600)}px;`;
+                let colStyle = `width: 180px; min-height: ${Math.max(size * 40, 600)}px; margin-right: 40px;`;
 
                 html += `<div class="${colClass}" style="${colStyle}">`;
 
@@ -2944,6 +2927,12 @@
                         if (tournamentState.tree[r + 1][Math.floor(n / 2)] === player) isWinner = true;
                     }
 
+                    // [추가 요구사항] 전체 보기 모드에서도 스왑 강조 및 클릭 연동
+                    let highlightClass = "";
+                    if (isSwapMode && r === 0 && swapFirstPick === n) {
+                        highlightClass = "ring-4 ring-orange-500 border-orange-500 scale-105 z-20 shadow-md";
+                    }
+
                     // 커넥터 라인 로직
                     let borderClass = "";
                     if (r < rounds) {
@@ -2954,12 +2943,13 @@
                     html += `
                         <div class="flex-1 flex items-center relative py-2">
                             <!-- 이름 박스 -->
-                            <div class="relative z-10 w-full border-2 ${isWinner ? 'border-blue-600 bg-blue-50' : 'border-slate-300 bg-white'} rounded-md p-2 text-center shadow-sm">
+                            <div onclick="handleTournamentClick(${r}, ${n})"
+                                 class="relative z-10 w-full border-2 ${isWinner ? 'border-blue-600 bg-blue-50' : 'border-slate-300 bg-white'} rounded-md p-2 text-center shadow-sm cursor-pointer transition-all hover:border-indigo-400 ${highlightClass}">
                                 <span class="text-[11px] font-black ${isWinner ? 'text-blue-700' : 'text-slate-800'}">${player || (isBye ? 'BYE' : '-')}</span>
                             </div>
                             <!-- 연결선 -->
                             ${r < rounds ? `
-                                <div class="absolute right-0 w-1/2 h-1/2 ${n % 2 === 0 ? 'bottom-0' : 'top-0'} ${borderClass} border-slate-400 z-0" style="right: -90px; width: 90px;"></div>
+                                <div class="absolute right-0 w-1/2 h-1/2 ${n % 2 === 0 ? 'bottom-0' : 'top-0'} ${borderClass} border-slate-400 z-0" style="right: -40px; width: 40px;"></div>
                             ` : ''}
                         </div>
                     `;
