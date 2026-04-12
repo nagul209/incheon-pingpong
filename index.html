@@ -2251,12 +2251,47 @@
                 const m = members.find(x => x.id == memberId);
                 if (m) {
                     const displayName = `${m.name}(${m.handicap})`;
+                    // 현재 슬롯(p)에 선수 데이터 할당
                     league.players[`g${g}_p${p}`] = { id: m.id, name: m.name, display: displayName, handicap: m.handicap };
-                    inputElem.value = displayName;
-                    if (inputElem.nextElementSibling) inputElem.nextElementSibling.innerText = displayName;
+                    
+                    // 현재 슬롯의 UI 업데이트 (input 및 span)
+                    const currentTd = document.getElementById(`td-${leagueId}-g${g}-p${p}`);
+                    const currentInput = currentTd ? currentTd.querySelector('input') : inputElem;
+                    if (currentInput) {
+                        currentInput.value = displayName;
+                        if (currentInput.nextElementSibling) currentInput.nextElementSibling.innerText = displayName;
+                    }
                     const th = document.getElementById(`th-${leagueId}-g${g}-p${p}`);
                     if (th) th.innerText = m.name;
-                    updateMatchOrderDisplay(leagueId, g, document.getElementById(`table-${leagueId}-g${g}`).querySelectorAll('tbody tr').length);
+
+                    // 다음 칸(p+1)으로 이동 시도
+                    p++;
+                    const maxPlayers = league.groupSizes[g] || 4;
+
+                    if (p <= maxPlayers) {
+                        // 제목 갱신
+                        document.getElementById('selector-title').innerText = `${g}조 ${p}번 선수 선택 (${limitText})`;
+                        
+                        // 제외 명단 다시 계산 (선택된 선수 포함)
+                        let newExcludedNames = [];
+                        for (let key in league.players) {
+                            if (key !== `g${g}_p${p}` && league.players[key]) {
+                                const names = String(league.players[key].name).split(',').map(n => n.trim());
+                                newExcludedNames.push(...names);
+                            }
+                        }
+                        
+                        // 남은 명단으로 재렌더링 (모달 유지)
+                        renderSelectorList(true, 'league', newExcludedNames);
+                        updateSelectorCount();
+
+                        // 매치 순서 실시간 업데이트
+                        updateMatchOrderDisplay(leagueId, g, document.getElementById(`table-${leagueId}-g${g}`).querySelectorAll('tbody tr').length);
+                    } else {
+                        // 모든 슬롯이 다 찼으면 매치 순서 최종 업데이트 후 모달 닫기
+                        updateMatchOrderDisplay(leagueId, g, document.getElementById(`table-${leagueId}-g${g}`).querySelectorAll('tbody tr').length);
+                        closeSelector();
+                    }
                 }
             };
 
@@ -2676,6 +2711,7 @@
                     cascadeClearTournament(0, n);
                     propagateByes();
                     renderTournamentUI();
+                    closeSelector(); // 한 명 선택 후 모달 닫기
                 }
             };
         }
@@ -2923,8 +2959,13 @@
                 listEl.classList.remove('hidden');
                 emptyMsg.classList.add('hidden');
 
-                // 1순위: 참석 횟수 내림차순, 2순위: 부수 오름차순, 3순위: 연회원 먼저, 4순위: 이름 가나다순 정렬
+                // 정렬 기준 적용
                 candidates.sort((a, b) => {
+                    // 조별리그(league)인 경우 부수 낮은 순을 최우선으로 적용
+                    if (target === 'league') {
+                        if (a.handicap !== b.handicap) return a.handicap - b.handicap;
+                    }
+
                     // 1순위: 참석 횟수(attendCount) 내림차순 (많이 참석한 순서)
                     const aAttend = a.attendCount || 0;
                     const bAttend = b.attendCount || 0;
@@ -2961,7 +3002,7 @@
                         subTextClass = 'text-slate-400';
                     }
 
-                    listEl.innerHTML += `<button onclick="${isSinglePickMode ? `window.singlePickCallback('${m.id}'); closeSelector();` : `toggleSelect('${escapeHTML(m.name)}')`}" id="sel-btn-${escapeHTML(m.name)}" class="py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press ${bgClass}">${escapeHTML(m.name)} <span class="text-[9px] ${subTextClass} block mt-0.5 font-medium">${m.handicap}부</span></button>`;
+                    listEl.innerHTML += `<button onclick="${isSinglePickMode ? `window.singlePickCallback('${m.id}')` : `toggleSelect('${escapeHTML(m.name)}')`}" id="sel-btn-${escapeHTML(m.name)}" class="py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press ${bgClass}">${escapeHTML(m.name)} <span class="text-[9px] ${subTextClass} block mt-0.5 font-medium">${m.handicap}부</span></button>`;
                 });
             }
             return true;
