@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>인천광역시 탁구동호회 토요리그</title>
+    <title>인천시 탁구동호회 토요리그</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
@@ -243,7 +243,7 @@
     <header
         class="bg-gradient-to-r from-blue-700 to-indigo-600 p-4 text-white flex justify-between items-center relative z-20 shadow-md rounded-b-[2.5rem]">
         <div>
-            <h1 class="text-xl font-extrabold tracking-tight">🏓 인천광역시 탁구동호회</h1>
+            <h1 class="text-xl font-extrabold tracking-tight">🏓 인천시 탁구동호회 토요리그</h1>
             <p class="text-[11px] opacity-80 font-medium mt-0.5">토요리그 통합 관리 시스템</p>
         </div>
         <div class="flex gap-2">
@@ -1693,7 +1693,7 @@
             if (!league) return;
             const inputEl = document.getElementById(`bulk-score-${leagueId}-g${g}`);
             if (!inputEl) return;
-            
+
             const scoreString = inputEl.value.trim();
             if (!scoreString) {
                 alert("적용할 스코어 문자열을 입력해주세요.");
@@ -2064,11 +2064,11 @@
                 for (let r = 0; r < tournamentState.tree.length; r++) {
                     if (!tournamentState.tree[r]) continue;
                     for (let n = 0; n < tournamentState.tree[r].length; n++) {
-                         let player = tournamentState.tree[r][n];
-                         if (player && player !== "부전승(BYE)" && !/^\d+조\d+위$/.test(player)) {
-                             hasActualPlayers = true;
-                             break;
-                         }
+                        let player = tournamentState.tree[r][n];
+                        if (player && player !== "부전승(BYE)" && !/^\d+조\d+위$/.test(player)) {
+                            hasActualPlayers = true;
+                            break;
+                        }
                     }
                     if (hasActualPlayers) break;
                 }
@@ -2840,7 +2840,7 @@
         // ==============================================================================
         function filterSelector(keyword) { const btns = document.querySelectorAll('#selector-list button'); btns.forEach(b => { if (b.innerText.toLowerCase().includes(keyword.toLowerCase())) b.classList.remove('hidden'); else b.classList.add('hidden'); }); }
 
-function renderSelectorList(onlyAttendees, target, extraExcludedNames = []) {
+        function renderSelectorList(onlyAttendees, target, extraExcludedNames = []) {
             let candidates = [];
             if (target === 'opAttend') {
                 candidates = members.filter(m => m.status === 'active');
@@ -2869,72 +2869,82 @@ function renderSelectorList(onlyAttendees, target, extraExcludedNames = []) {
             }
             candidates = candidates.filter(m => !excludedNames.includes(m.name) && !extraExcludedNames.includes(m.name));
 
-            const listEl = document.getElementById('selector-list'); 
-            const emptyMsg = document.getElementById('selector-empty-msg'); 
+            const listEl = document.getElementById('selector-list');
+            const emptyMsg = document.getElementById('selector-empty-msg');
             listEl.innerHTML = '';
-            
-            if (candidates.length === 0) { 
-                listEl.classList.add('hidden'); 
-                emptyMsg.classList.remove('hidden'); 
+
+            if (candidates.length === 0) {
+                listEl.classList.add('hidden');
+                emptyMsg.classList.remove('hidden');
             } else {
-                listEl.classList.remove('hidden'); 
+                listEl.classList.remove('hidden');
                 emptyMsg.classList.add('hidden');
-                
-                // 1순위: 부수 오름차순, 2순위: 연회원 먼저, 3순위: 이름 가나다순 정렬
-                candidates.sort((a, b) => { 
-                    if (a.handicap !== b.handicap) return a.handicap - b.handicap; 
+
+                // 1순위: 참석 횟수 내림차순, 2순위: 부수 오름차순, 3순위: 연회원 먼저, 4순위: 이름 가나다순 정렬
+                candidates.sort((a, b) => {
+                    // 1순위: 참석 횟수(attendCount) 내림차순 (많이 참석한 순서)
+                    const aAttend = a.attendCount || 0;
+                    const bAttend = b.attendCount || 0;
+                    if (aAttend !== bAttend) return bAttend - aAttend;
+
+                    // 2순위: 부수(handicap) 오름차순 (낮은 부수 우선)
+                    if (a.handicap !== b.handicap) return a.handicap - b.handicap;
+
+                    // 3순위: 등급(type)이 '연회원'인 회원을 먼저 배치
                     const aIsYearly = a.type === '연회원' ? 1 : 0;
                     const bIsYearly = b.type === '연회원' ? 1 : 0;
                     if (aIsYearly !== bIsYearly) return bIsYearly - aIsYearly;
-                    return a.name.localeCompare(b.name); 
+
+                    // 4순위: 이름 가나다순 (위 순위가 모두 동일할 경우)
+                    return a.name.localeCompare(b.name);
                 }).forEach(m => {
                     const isSelected = !isSinglePickMode && tempSelectorList.includes(m.name);
-                    
+
                     let bgClass = '';
                     let subTextClass = '';
-                    
+
                     // 속성별 명단 카드 색상 구분
                     if (isSelected) {
                         bgClass = 'bg-indigo-600 text-white border-indigo-700 shadow-inner';
                         subTextClass = 'text-indigo-200';
                     } else if (m.type === '연회원') {
-                        bgClass = 'bg-blue-50 text-blue-800 border-blue-200 shadow-sm hover:bg-blue-100'; 
+                        bgClass = 'bg-blue-50 text-blue-800 border-blue-200 shadow-sm hover:bg-blue-100';
                         subTextClass = 'text-blue-400';
                     } else if (m.affiliation === '초청') {
-                        bgClass = 'bg-amber-50 text-amber-800 border-amber-200 shadow-sm hover:bg-amber-100'; 
+                        bgClass = 'bg-amber-50 text-amber-800 border-amber-200 shadow-sm hover:bg-amber-100';
                         subTextClass = 'text-amber-400';
                     } else {
-                        bgClass = 'bg-white text-slate-600 border-slate-200 shadow-sm hover:bg-slate-50'; 
+                        bgClass = 'bg-white text-slate-600 border-slate-200 shadow-sm hover:bg-slate-50';
                         subTextClass = 'text-slate-400';
                     }
 
                     listEl.innerHTML += `<button onclick="${isSinglePickMode ? `window.singlePickCallback('${m.id}'); closeSelector();` : `toggleSelect('${escapeHTML(m.name)}')`}" id="sel-btn-${escapeHTML(m.name)}" class="py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press ${bgClass}">${escapeHTML(m.name)} <span class="text-[9px] ${subTextClass} block mt-0.5 font-medium">${m.handicap}부</span></button>`;
                 });
-            } 
+            }
             return true;
         }
 
-        function openSelector(target, title, onlyAttendees) { 
-            isSinglePickMode = false; 
-            document.getElementById('selector-count').classList.remove('hidden'); 
-            document.getElementById('btn-selector-confirm').classList.remove('hidden'); 
-            document.getElementById('selector-search').value = ""; 
-            currentSelectorTarget = target; 
-            document.getElementById('selector-title').innerText = title; 
-            tempSelectorList = [...(formState[target] || [])]; 
-            if (renderSelectorList(onlyAttendees, target) !== false) { 
-                updateSelectorCount(); 
-                document.getElementById('member-selector-modal').classList.remove('hidden'); 
-            } 
+        function openSelector(target, title, onlyAttendees) {
+            isSinglePickMode = false;
+            document.getElementById('selector-count').classList.remove('hidden');
+            document.getElementById('btn-selector-confirm').classList.remove('hidden');
+            document.getElementById('selector-search').value = "";
+            currentSelectorTarget = target;
+            document.getElementById('selector-title').innerText = title;
+            tempSelectorList = [...(formState[target] || [])];
+            if (renderSelectorList(onlyAttendees, target) !== false) {
+                updateSelectorCount();
+                document.getElementById('member-selector-modal').classList.remove('hidden');
+            }
         }
 
-        function toggleSelect(name) { 
-            const idx = tempSelectorList.indexOf(name); 
-            const btn = document.getElementById(`sel-btn-${name}`); 
+        function toggleSelect(name) {
+            const idx = tempSelectorList.indexOf(name);
+            const btn = document.getElementById(`sel-btn-${name}`);
             const m = members.find(x => x.name === name); // 클릭한 회원 속성 참조
-            
-            if (idx > -1) { 
-                tempSelectorList.splice(idx, 1); 
+
+            if (idx > -1) {
+                tempSelectorList.splice(idx, 1);
                 // 선택 해제 시 원래 등급/구분 색상으로 복구
                 if (m && m.type === '연회원') {
                     btn.className = "py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press bg-blue-50 text-blue-800 border-blue-200 shadow-sm hover:bg-blue-100";
@@ -2943,19 +2953,19 @@ function renderSelectorList(onlyAttendees, target, extraExcludedNames = []) {
                     btn.className = "py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press bg-amber-50 text-amber-800 border-amber-200 shadow-sm hover:bg-amber-100";
                     btn.querySelector('span').className = "text-[9px] text-amber-400 block mt-0.5 font-medium";
                 } else {
-                    btn.className = "py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press bg-white text-slate-600 border-slate-200 shadow-sm hover:bg-slate-50"; 
-                    btn.querySelector('span').className = "text-[9px] text-slate-400 block mt-0.5 font-medium"; 
+                    btn.className = "py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press bg-white text-slate-600 border-slate-200 shadow-sm hover:bg-slate-50";
+                    btn.querySelector('span').className = "text-[9px] text-slate-400 block mt-0.5 font-medium";
                 }
-            } else { 
-                tempSelectorList.push(name); 
-                btn.className = "py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press bg-indigo-600 text-white border-indigo-700 shadow-inner"; 
-                btn.querySelector('span').className = "text-[9px] text-indigo-200 block mt-0.5 font-medium"; 
-            } 
-            updateSelectorCount(); 
+            } else {
+                tempSelectorList.push(name);
+                btn.className = "py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press bg-indigo-600 text-white border-indigo-700 shadow-inner";
+                btn.querySelector('span').className = "text-[9px] text-indigo-200 block mt-0.5 font-medium";
+            }
+            updateSelectorCount();
         }
 
-        function updateSelectorCount() { 
-            document.getElementById('selector-count').innerText = `${tempSelectorList.length}명 선택됨`; 
+        function updateSelectorCount() {
+            document.getElementById('selector-count').innerText = `${tempSelectorList.length}명 선택됨`;
         }
         function closeSelector() { document.getElementById('member-selector-modal').classList.add('hidden'); }
         function confirmSelector() {
@@ -3784,14 +3794,14 @@ function renderSelectorList(onlyAttendees, target, extraExcludedNames = []) {
                         `;
 
                         if (!league.groups) return;
-                        
+
                         league.groups.forEach(g => {
-                        const isMatrix = g.players && g.players.length > 0 && g.players.some(p => p.scores && Object.keys(p.scores).length > 0);
+                            const isMatrix = g.players && g.players.length > 0 && g.players.some(p => p.scores && Object.keys(p.scores).length > 0);
 
-                        let currentSize = g.size || (g.players ? g.players.length : 4);
-                        if (isNaN(currentSize) || currentSize < 2) currentSize = 2;
+                            let currentSize = g.size || (g.players ? g.players.length : 4);
+                            if (isNaN(currentSize) || currentSize < 2) currentSize = 2;
 
-                        html += `
+                            html += `
                     <div class="border-2 border-slate-800/80 rounded-xl overflow-hidden bg-white w-fit max-w-full shadow-sm mx-auto mb-4">
                         <div class="bg-slate-100 p-2 flex justify-start items-center gap-1.5 border-b border-slate-200">
                             <span class="text-xs font-bold text-slate-500 mr-auto ml-1">${g.id}조 예선 결과</span>
@@ -3810,52 +3820,52 @@ function renderSelectorList(onlyAttendees, target, extraExcludedNames = []) {
                                     <th class="px-1.5 py-1 border-r border-sky-100 bg-blue-100/50 w-px whitespace-nowrap">선수명</th>
                     `;
 
-                        if (isMatrix) {
-                            const tablePlayers = [...g.players].sort((a, b) => (a.idx || 0) - (b.idx || 0));
-                            const size = g.size || tablePlayers.length;
+                            if (isMatrix) {
+                                const tablePlayers = [...g.players].sort((a, b) => (a.idx || 0) - (b.idx || 0));
+                                const size = g.size || tablePlayers.length;
 
-                            for (let i = 1; i <= size; i++) {
-                                let targetP = tablePlayers.find(p => p.idx === i);
-                                let pName = targetP ? escapeHTML(targetP.name) : `${i}번`;
-                                html += `<th class="px-1 py-1 border-r border-sky-100 font-bold text-[11px] whitespace-nowrap w-px text-sky-900">${pName}</th>`;
-                            }
-                            html += `<th class="px-1.5 py-1 border-r border-sky-100 w-px whitespace-nowrap">승/패</th><th class="px-1.5 py-1 border-r border-sky-100 w-px whitespace-nowrap">득/실</th><th class="px-1.5 py-1 bg-sky-100 text-sky-700 w-px whitespace-nowrap drop-shadow-none">순위</th></tr></thead><tbody class="bg-sky-50 text-slate-800">`;
+                                for (let i = 1; i <= size; i++) {
+                                    let targetP = tablePlayers.find(p => p.idx === i);
+                                    let pName = targetP ? escapeHTML(targetP.name) : `${i}번`;
+                                    html += `<th class="px-1 py-1 border-r border-sky-100 font-bold text-[11px] whitespace-nowrap w-px text-sky-900">${pName}</th>`;
+                                }
+                                html += `<th class="px-1.5 py-1 border-r border-sky-100 w-px whitespace-nowrap">승/패</th><th class="px-1.5 py-1 border-r border-sky-100 w-px whitespace-nowrap">득/실</th><th class="px-1.5 py-1 bg-sky-100 text-sky-700 w-px whitespace-nowrap drop-shadow-none">순위</th></tr></thead><tbody class="bg-sky-50 text-slate-800">`;
 
-                            tablePlayers.forEach((p, i) => {
-                                let rankText = p.rank === 999 ? '-' : p.rank;
-                                let medal = p.rank === 1 ? '🥇 ' : (p.rank === 2 ? '🥈 ' : (p.rank === 3 ? '🥉 ' : ''));
-                                let formattedName = medal + escapeHTML(p.name);
+                                tablePlayers.forEach((p, i) => {
+                                    let rankText = p.rank === 999 ? '-' : p.rank;
+                                    let medal = p.rank === 1 ? '🥇 ' : (p.rank === 2 ? '🥈 ' : (p.rank === 3 ? '🥉 ' : ''));
+                                    let formattedName = medal + escapeHTML(p.name);
 
-                                html += `<tr class="border-b border-sky-100 hover:bg-sky-100/50">
+                                    html += `<tr class="border-b border-sky-100 hover:bg-sky-100/50">
                                 <td class="p-0 border-r border-sky-100 bg-sky-50 font-bold text-[11px] w-px whitespace-nowrap">
                                     <span class="font-bold text-[11px] text-slate-800 px-1 py-1 block w-full whitespace-nowrap drop-shadow-none">${formattedName}</span>
                                 </td>`;
 
-                                for (let j = 1; j <= size; j++) {
-                                    if (p.idx === j) {
-                                        html += `<td class="border-r border-sky-100 diagonal-strike w-px"></td>`;
-                                    } else {
-                                        let score = (p.scores && p.scores[j]) || '';
-                                        html += `<td class="border-r border-sky-100 p-0 w-px"><span class="font-medium text-slate-600 px-1 py-1 block w-full drop-shadow-none">${escapeHTML(score)}</span></td>`;
+                                    for (let j = 1; j <= size; j++) {
+                                        if (p.idx === j) {
+                                            html += `<td class="border-r border-sky-100 diagonal-strike w-px"></td>`;
+                                        } else {
+                                            let score = (p.scores && p.scores[j]) || '';
+                                            html += `<td class="border-r border-sky-100 p-0 w-px"><span class="font-medium text-slate-600 px-1 py-1 block w-full drop-shadow-none">${escapeHTML(score)}</span></td>`;
+                                        }
                                     }
-                                }
 
-                                html += `
+                                    html += `
                                 <td class="border-r border-sky-100 p-0 w-px"><span class="font-bold text-slate-700 px-1.5 py-1 block w-full drop-shadow-none">${escapeHTML(p.wl)}</span></td>
                                 <td class="border-r border-sky-100 p-0 w-px"><span class="font-bold text-slate-700 px-1.5 py-1 block w-full drop-shadow-none">${escapeHTML(p.diff)}</span></td>
                                 <td class="bg-sky-100/50 p-0 w-px"><span class="font-black text-sky-600 px-1.5 py-1 block w-full drop-shadow-none text-sm">${rankText}</span></td>
                             </tr>`;
-                            });
-                        } else {
-                            html += `<th class="px-1.5 py-1 border-r border-sky-100 w-px whitespace-nowrap">승/패</th><th class="px-1.5 py-1 border-r border-sky-100 w-px whitespace-nowrap">득/실</th><th class="px-1.5 py-1 bg-sky-100 text-sky-700 w-px whitespace-nowrap drop-shadow-none">순위</th></tr></thead><tbody class="bg-sky-50 text-slate-800">`;
+                                });
+                            } else {
+                                html += `<th class="px-1.5 py-1 border-r border-sky-100 w-px whitespace-nowrap">승/패</th><th class="px-1.5 py-1 border-r border-sky-100 w-px whitespace-nowrap">득/실</th><th class="px-1.5 py-1 bg-sky-100 text-sky-700 w-px whitespace-nowrap drop-shadow-none">순위</th></tr></thead><tbody class="bg-sky-50 text-slate-800">`;
 
-                            const sortedPlayers = [...g.players].sort((a, b) => a.rank - b.rank);
-                            sortedPlayers.forEach((p, idx) => {
-                                let rankText = p.rank === 999 ? '-' : p.rank;
-                                let medal = p.rank === 1 ? '🥇 ' : (p.rank === 2 ? '🥈 ' : (p.rank === 3 ? '🥉 ' : ''));
-                                let formattedName = medal + escapeHTML(p.name);
+                                const sortedPlayers = [...g.players].sort((a, b) => a.rank - b.rank);
+                                sortedPlayers.forEach((p, idx) => {
+                                    let rankText = p.rank === 999 ? '-' : p.rank;
+                                    let medal = p.rank === 1 ? '🥇 ' : (p.rank === 2 ? '🥈 ' : (p.rank === 3 ? '🥉 ' : ''));
+                                    let formattedName = medal + escapeHTML(p.name);
 
-                                html += `<tr class="border-b border-sky-100 hover:bg-sky-100/50">
+                                    html += `<tr class="border-b border-sky-100 hover:bg-sky-100/50">
                                 <td class="p-0 border-r border-sky-100 bg-sky-50 font-bold text-[11px] w-px whitespace-nowrap">
                                     <span class="font-bold text-[11px] text-slate-800 px-1 py-1 block w-full whitespace-nowrap drop-shadow-none">${formattedName}</span>
                                 </td>
@@ -3863,20 +3873,20 @@ function renderSelectorList(onlyAttendees, target, extraExcludedNames = []) {
                                 <td class="border-r border-sky-100 p-0 w-px"><span class="font-bold text-slate-700 px-1.5 py-1 block w-full drop-shadow-none">${escapeHTML(p.diff)}</span></td>
                                 <td class="bg-sky-100/50 p-0 w-px"><span class="font-black text-sky-600 px-1.5 py-1 block w-full drop-shadow-none text-sm">${rankText}</span></td>
                             </tr>`;
-                            });
-                        }
-                        html += `</tbody></table></div></div></div>`;
+                                });
+                            }
+                            html += `</tbody></table></div></div></div>`;
                         });
                         html += `</div></div>`;
                     });
-                    
+
                     html += `</div></div>`;
                     return html;
                 };
 
                 const renderTournamentTreeHistory = (data, matchId) => {
                     if (!data || !data.tree || data.tree.length === 0) return '';
-                    
+
                     // 빈 껍데기 체크 로직 추가 (결과 랜더링 직전 다시한번 방어)
                     let hasRealPlayers = false;
                     for (let r = 0; r < data.tree.length; r++) {
@@ -4450,7 +4460,7 @@ function renderSelectorList(onlyAttendees, target, extraExcludedNames = []) {
                     height: targetElement.style.height,
                     maxWidth: targetElement.style.maxWidth
                 });
-                
+
                 // 전체 컨텐츠가 보이도록 스타일 변경
                 targetElement.style.overflow = 'visible';
                 targetElement.style.width = targetElement.scrollWidth + 'px';
@@ -4629,20 +4639,20 @@ function renderSelectorList(onlyAttendees, target, extraExcludedNames = []) {
             const overlay = document.createElement('div');
             overlay.className = 'fixed inset-0 bg-black/80 backdrop-blur flex flex-col justify-center items-center z-[9999] p-4 animate-fade-in';
             overlay.onclick = () => document.body.removeChild(overlay);
-            
+
             const msg = document.createElement('p');
             msg.className = 'text-white font-bold mb-4 text-center';
             msg.innerText = message;
-            
+
             const img = document.createElement('img');
             img.src = canvas.toDataURL('image/png');
             img.className = 'max-w-full max-h-[75vh] object-contain rounded-xl shadow-2xl bg-white border border-slate-200';
             img.onclick = (e) => e.stopPropagation();
-            
+
             const closeBtn = document.createElement('button');
             closeBtn.className = 'mt-5 px-6 py-2.5 bg-white text-slate-800 rounded-xl font-extrabold shadow-lg hover:bg-slate-100 transition-colors btn-press';
             closeBtn.innerText = '닫기';
-            
+
             overlay.appendChild(msg);
             overlay.appendChild(img);
             overlay.appendChild(closeBtn);
