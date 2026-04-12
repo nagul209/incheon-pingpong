@@ -1773,72 +1773,115 @@
                     }
                 }
             });
-            let saveData = { multiLeagues: window.multiLeagues };
+
+            // 파일로 내보낼 데이터 객체 구성
+            const exportData = {
+                opAttend: formState.opAttend || [],
+                multiLeagues: window.multiLeagues,
+                matchHistory: matchHistory
+            };
+
             try {
-                localStorage.setItem('pingpongMultiTempTable', JSON.stringify(saveData));
-                alert('💾 작성중인 모든 대진표와 점수가 임시저장 되었습니다.');
+                const jsonString = JSON.stringify(exportData, null, 2);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const now = new Date();
+                const dateStr = now.getFullYear() + 
+                                String(now.getMonth() + 1).padStart(2, '0') + 
+                                String(now.getDate()).padStart(2, '0');
+                const timeStr = String(now.getHours()).padStart(2, '0') + 
+                                String(now.getMinutes()).padStart(2, '0') + 
+                                String(now.getSeconds()).padStart(2, '0');
+                
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `탁구운영_임시저장_${dateStr}_${timeStr}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+
+                alert('💾 작성중인 모든 데이터(참석자, 리그전표, 기록)가 JSON 파일로 다운로드되었습니다.');
             } catch (e) {
-                alert('저장 중 오류가 발생했습니다.');
+                console.error(e);
+                alert('파일 저장 중 오류가 발생했습니다.');
             }
         }
 
         function loadTempTable() {
-            let dataStr = localStorage.getItem('pingpongMultiTempTable');
-            if (!dataStr) {
-                // 기존 호환성용 체크
-                let oldStr = localStorage.getItem('pingpongTempTable');
-                if (oldStr) {
-                    alert('새로운 형식의 임시저장 데이터가 없습니다. (단일 구조 구버전 데이터만 존재하므로 불러올 수 없습니다.)');
-                } else {
-                    alert('임시저장된 데이터가 없습니다.');
-                }
-                return;
-            }
-            try {
-                let tableData = JSON.parse(dataStr);
-                window.multiLeagues = tableData.multiLeagues || [];
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.json';
+            
+            fileInput.onchange = e => {
+                const file = e.target.files[0];
+                if (!file) return;
 
-                // 화면 초기화
-                const container = document.getElementById('op-group-container');
-                const emptyMsg = document.getElementById('op-group-empty-msg');
-                if (emptyMsg) emptyMsg.style.display = window.multiLeagues.length ? 'none' : 'block';
+                const reader = new FileReader();
+                reader.onload = event => {
+                    try {
+                        const importedData = JSON.parse(event.target.result);
+                        
+                        // 데이터 복구
+                        if (importedData.opAttend) formState.opAttend = importedData.opAttend;
+                        if (importedData.multiLeagues) window.multiLeagues = importedData.multiLeagues;
+                        if (importedData.matchHistory) matchHistory = importedData.matchHistory;
 
-                // 기존 표 모두 제거
-                Array.from(container.children).forEach(child => {
-                    if (child.id !== 'op-group-empty-msg') container.removeChild(child);
-                });
+                        // 화면 즉시 동기화
+                        updateFormUI();            // 참석자 명단 UI 업데이트
+                        generateGroupSizeInputs(); // 조 크기 자동 세팅 연동 (운영 탭)
+                        renderHistory();           // 기록 탭 렌더링
 
-                // 다시 렌더링
-                window.multiLeagues.forEach(league => {
-                    const html = buildLeagueHTML(league);
-                    container.insertAdjacentHTML('beforeend', html);
+                        // 리그전표 화면 복원
+                        const container = document.getElementById('op-group-container');
+                        const emptyMsg = document.getElementById('op-group-empty-msg');
+                        if (emptyMsg) emptyMsg.style.display = window.multiLeagues.length ? 'none' : 'block';
 
-                    // 점수 복원 로직
-                    for (let g = 1; g <= league.groupCount; g++) {
-                        let size = league.groupSizes[g] || 4;
-                        for (let i = 1; i <= size; i++) {
-                            for (let j = 1; j <= size; j++) {
-                                if (i === j) continue;
-                                let input = document.getElementById(`score-${league.id}-g${g}-r${i}-c${j}`);
-                                if (input && league.scores && league.scores[g] && league.scores[g][i]) {
-                                    input.value = league.scores[g][i][j] || ''; syncText(input);
+                        // 기존 표 모두 제거
+                        Array.from(container.children).forEach(child => {
+                            if (child.id !== 'op-group-empty-msg') container.removeChild(child);
+                        });
+
+                        // 다시 렌더링
+                        window.multiLeagues.forEach(league => {
+                            const html = buildLeagueHTML(league);
+                            container.insertAdjacentHTML('beforeend', html);
+
+                            // 점수 및 순위 복원
+                            for (let g = 1; g <= league.groupCount; g++) {
+                                let size = league.groupSizes[g] || 4;
+                                for (let i = 1; i <= size; i++) {
+                                    for (let j = 1; j <= size; j++) {
+                                        if (i === j) continue;
+                                        let input = document.getElementById(`score-${league.id}-g${g}-r${i}-c${j}`);
+                                        if (input && league.scores && league.scores[g] && league.scores[g][i]) {
+                                            input.value = league.scores[g][i][j] || ''; 
+                                            syncText(input);
+                                        }
+                                    }
+                                    let wl = document.getElementById(`wl-${league.id}-g${g}-p${i}`);
+                                    let diff = document.getElementById(`diff-${league.id}-g${g}-p${i}`);
+                                    let rank = document.getElementById(`rank-${league.id}-g${g}-p${i}`);
+                                    if (wl && league.scores && league.scores[g] && league.scores[g][i]) { wl.value = league.scores[g][i].wl || ''; syncText(wl); }
+                                    if (diff && league.scores && league.scores[g] && league.scores[g][i]) { diff.value = league.scores[g][i].diff || ''; syncText(diff); }
+                                    if (rank && league.scores && league.scores[g] && league.scores[g][i]) { rank.value = league.scores[g][i].rank || ''; syncText(rank); }
                                 }
+                                const tableEl = document.getElementById(`table-${league.id}-g${g}`);
+                                if (tableEl) updateMatchOrderDisplay(league.id, g, tableEl.querySelectorAll('tbody tr').length);
                             }
-                            let wl = document.getElementById(`wl-${league.id}-g${g}-p${i}`);
-                            let diff = document.getElementById(`diff-${league.id}-g${g}-p${i}`);
-                            let rank = document.getElementById(`rank-${league.id}-g${g}-p${i}`);
-                            if (wl && league.scores && league.scores[g] && league.scores[g][i]) { wl.value = league.scores[g][i].wl || ''; syncText(wl); }
-                            if (diff && league.scores && league.scores[g] && league.scores[g][i]) { diff.value = league.scores[g][i].diff || ''; syncText(diff); }
-                            if (rank && league.scores && league.scores[g] && league.scores[g][i]) { rank.value = league.scores[g][i].rank || ''; syncText(rank); }
-                        }
-                        const tableEl = document.getElementById(`table-${league.id}-g${g}`);
-                        if (tableEl) updateMatchOrderDisplay(league.id, g, tableEl.querySelectorAll('tbody tr').length);
+                        });
+
+                        alert('📂 JSON 파일에서 데이터를 성공적으로 불러왔습니다.');
+                    } catch (err) {
+                        console.error(err);
+                        alert('파일 불러오기 중 오류가 발생했습니다. 올바른 JSON 파일인지 확인해 주세요.');
                     }
-                });
-                alert('📂 임시저장된 전체 리그 데이터를 불러왔습니다.');
-            } catch (e) {
-                alert('불러오기 중 오류가 발생했습니다.');
-            }
+                };
+                reader.readAsText(file);
+            };
+
+            fileInput.click();
         }
 
         function calculateGroupRankings(leagueId = null) {
