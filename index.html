@@ -2493,10 +2493,13 @@
 
         function loadQualifierResults() {
             if (!tournamentState || tournamentState.size === 0) {
-                alert("먼저 [대진표 생성] 버튼을 눌러 트리를 초기화해 주세요."); return;
+                alert("먼저 [대진표 생성] 버튼을 눌러 트리를 초기화해 주세요.");
+                return;
             }
 
             let rankMap = {};
+            let globalGroupIndex = 1; // [강력한 로직] 절대적 조 번호 부여
+
             if (window.multiLeagues && window.multiLeagues.length > 0) {
                 window.multiLeagues.forEach(league => {
                     for (let g = 1; g <= league.groupCount; g++) {
@@ -2504,46 +2507,59 @@
                         for (let p = 1; p <= size; p++) {
                             let playerObj = league.players[`g${g}_p${p}`];
                             let rankInput = document.getElementById(`rank-${league.id}-g${g}-p${p}`);
+                            
                             if (playerObj && rankInput && rankInput.value.trim() !== "") {
-                                let rankVal = rankInput.value.trim();
-                                rankMap[`${g}조${rankVal}위`] = playerObj.display;
+                                // [강력한 로직] 유연한 순위 텍스트 추출 (숫자만 남김)
+                                let rankNum = rankInput.value.replace(/[^0-9]/g, '');
+                                if (rankNum) {
+                                    // ${globalGroupIndex}조${rankNum}위 형식의 키로 저장
+                                    rankMap[`${globalGroupIndex}조${rankNum}위`] = playerObj.display;
+                                }
                             }
                         }
+                        globalGroupIndex++; // 모든 리그의 조를 순차적으로 증가
                     }
                 });
             }
 
             let mappedCount = 0;
             const size = tournamentState.tree[0].length;
+            // 대진표 치환 시 원본 템플릿(X조 Y위 등) 기준으로 매핑 시도
             const baseTemplate = (tournamentState.originalTemplate && tournamentState.originalTemplate.length === size) 
                 ? tournamentState.originalTemplate 
                 : [...tournamentState.tree[0]];
 
             for (let i = 0; i < size; i++) {
                 let cellVal = baseTemplate[i];
-                if (cellVal && cellVal.includes('조') && cellVal.includes('위')) {
-                    if (rankMap[cellVal]) {
-                        tournamentState.tree[0][i] = rankMap[cellVal];
+                if (cellVal && cellVal !== "부전승(BYE)") {
+                    // [강력한 로직] 대진표 셀 값에서 공백을 완전히 제거 후 비교
+                    let cleanKey = cellVal.replace(/\s+/g, '');
+                    if (rankMap[cleanKey]) {
+                        tournamentState.tree[0][i] = rankMap[cleanKey];
                         mappedCount++;
                     } else {
+                        // 일치하는 결과가 없으면 원본 텍스트 유지
                         tournamentState.tree[0][i] = cellVal;
                     }
-                } else if (cellVal === "부전승(BYE)") {
-                    tournamentState.tree[0][i] = "부전승(BYE)";
+                } else {
+                    tournamentState.tree[0][i] = cellVal;
                 }
             }
 
-            if (mappedCount === 0) {
-                alert("예선 기록에서 산출된 순위 정보가 없습니다. 자동 순위를 먼저 계산해 주세요.");
-            } else {
-                // 상위 모든 라운드 초기화
+            if (mappedCount > 0) {
+                // [요구사항] 성공 알림창 및 즉시 갱신
+                alert(`✅ 총 ${mappedCount}명의 예선 결과가 대진표에 연동되었습니다.`);
+                
+                // 남은 라운드 초기화
                 for (let r = 1; r <= tournamentState.rounds; r++) {
                     tournamentState.tree[r].fill("");
                 }
+                
                 propagateByes();
                 renderTournamentUI();
                 saveDataToStorage();
-                alert(`✅ 총 ${mappedCount}명의 예선 결과가 대진표에 연동되었습니다.`);
+            } else {
+                alert("예선 기록에서 대진표와 일치하는 순위 정보(예: 1조 1위)를 찾지 못했습니다. 자동 순위 계산을 먼저 확인해 주세요.");
             }
         }
 
