@@ -1012,10 +1012,14 @@
                 </div>
             </div>
             <div class="mb-4">
-                <div class="flex justify-between items-end mb-3 px-1">
-                    <h3 class="font-extrabold text-lg text-slate-800">전체 회원 목록</h3><span
-                        class="text-xs text-indigo-600 font-bold bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-100"
-                        id="total-members-count">총 0명</span>
+                <div class="flex justify-between items-end mb-3 px-1 gap-2">
+                    <h3 class="font-extrabold text-lg text-slate-800">전체 회원 목록</h3>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-indigo-600 font-bold bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-100"
+                            id="total-members-count">총 0명</span>
+                        <button onclick="downloadMembersExcel()"
+                            class="text-[11px] font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-full border border-emerald-200 shadow-sm btn-press whitespace-nowrap">📥 회원목록 엑셀</button>
+                    </div>
                 </div>
                 <div class="flex flex-col gap-2 mb-4">
                     <!-- 2단계 필터 시스템 -->
@@ -4535,7 +4539,66 @@
             });
         }
 
-        function renderMembersList() {
+        
+        function downloadMembersExcel() {
+            try {
+                const target = document.getElementById('member-filter-target')?.value || 'name';
+                const val = (document.getElementById('member-filter-value')?.value || '').trim().toLowerCase();
+                const sortBy = document.getElementById('member-sort-select')?.value || 'league_score';
+
+                let filteredMembers = members.filter(m => {
+                    const getValue = (field) => (field || '').toString().toLowerCase();
+                    if (!val) return true;
+                    switch (target) {
+                        case 'name': return getValue(m.name).includes(val);
+                        case 'affiliation_only': return getValue(m.affiliation).includes(val);
+                        case 'dept': return `${getValue(m.affiliation)} ${getValue(m.dept)}`.includes(val);
+                        case 'gender': return getValue(m.gender).includes(val);
+                        case 'type': return getValue(m.type).includes(val);
+                        default: return true;
+                    }
+                });
+
+                const typeOrder = { "연회원": 1, "준회원": 2, "비회원": 3 };
+                filteredMembers.sort((a, b) => {
+                    if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '', 'ko');
+                    if (sortBy === 'handicap') return (a.handicap || 99) - (b.handicap || 99);
+                    if (sortBy === 'rating') return (b.currentRating || 1550) - (a.currentRating || 1550);
+                    if (sortBy === 'league_score') return (b.score || 0) - (a.score || 0);
+                    const ta = typeOrder[a.type] || 4;
+                    const tb = typeOrder[b.type] || 4;
+                    if (ta !== tb) return ta - tb;
+                    return (a.handicap || 99) - (b.handicap || 99);
+                });
+
+                if (filteredMembers.length === 0) {
+                    alert('추출할 회원이 없습니다.');
+                    return;
+                }
+
+                const rows = filteredMembers.map((m, idx) => ({
+                    "번호": idx + 1,
+                    "이름": m.name || '-',
+                    "구분": m.affiliation || '-',
+                    "부서": m.dept || '-',
+                    "등급": m.type || '-',
+                    "부수": m.handicap ? `${m.handicap}부` : '-',
+                    "성별": m.gender || '-',
+                    "상태": m.status === 'inactive' ? '휴면' : '활동',
+                    "토요리그 점수": Number(m.score || 0).toFixed(1),
+                    "레이팅": Math.round(Number(m.currentRating || 1550)),
+                    "연락처": m.phone || '-'
+                }));
+
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), '회원목록');
+                const dateStr = new Date().toISOString().substring(0, 10);
+                XLSX.writeFile(wb, `탁구리그_회원목록_${dateStr}.xlsx`);
+            } catch (e) {
+                alert('회원 목록 엑셀 추출 실패');
+            }
+        }
+function renderMembersList() {
             const list = document.getElementById('member-list-display');
             const filterTarget = document.getElementById('member-filter-target');
             const filterValue = document.getElementById('member-filter-value');
