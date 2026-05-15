@@ -261,21 +261,22 @@
     <div class="relative z-30 mt-4 px-4">
 
         <div id="view-ranking" class="animate-fade-in">
-            <div class="flex justify-between items-center mb-3 px-1 gap-2">
+            <div class="mb-3 px-1 space-y-2">
                 <select id="season-selector"
-                    class="flex-1 text-[12px] font-extrabold text-indigo-800 bg-white border-2 border-indigo-100 rounded-xl px-2.5 py-1.5 shadow-sm focus:ring-2 focus:ring-indigo-400 outline-none truncate"
+                    class="w-full text-[12px] font-extrabold text-indigo-800 bg-white border-2 border-indigo-100 rounded-xl px-2.5 py-1.5 shadow-sm focus:ring-2 focus:ring-indigo-400 outline-none truncate"
                     onchange="renderRanking()">
                     <option value="current">📍 현재 진행중인 시즌</option>
                 </select>
-                <button onclick="copyRankingImage()" id="btn-capture-ranking"
-                    class="text-[11px] bg-indigo-500 text-white px-3 py-1.5 rounded-xl border border-indigo-600 hover:bg-indigo-600 font-extrabold btn-press shadow-sm flex items-center gap-1 shrink-0">
-                    📸 순위표 이미지로 복사
-                </button>
-                <button onclick="downloadRankingExcel()"
-                    class="text-[11px] bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-xl border border-emerald-200 hover:bg-emerald-100 font-extrabold btn-press shadow-sm flex items-center gap-1 shrink-0">
-                    📊 엑셀 저장
-                </button>
-
+                <div class="flex gap-2">
+                    <button onclick="copyRankingImage()" id="btn-capture-ranking"
+                        class="flex-1 min-w-0 justify-center text-[11px] bg-indigo-500 text-white px-2 py-1.5 rounded-xl border border-indigo-600 hover:bg-indigo-600 font-extrabold btn-press shadow-sm flex items-center gap-1 whitespace-nowrap">
+                        📸 순위표 이미지로 복사
+                    </button>
+                    <button onclick="downloadRankingExcel()"
+                        class="shrink-0 text-[11px] bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-xl border border-emerald-200 hover:bg-emerald-100 font-extrabold btn-press shadow-sm flex items-center gap-1 whitespace-nowrap">
+                        📊 엑셀 저장
+                    </button>
+                </div>
             </div>
             <div class="mb-2 px-1 text-right">
                 <span id="ranking-instruction"
