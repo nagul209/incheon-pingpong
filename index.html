@@ -247,10 +247,6 @@
             <p class="text-[11px] opacity-80 font-medium mt-0.5">토요리그 통합 관리 시스템</p>
         </div>
         <div class="flex gap-2">
-            <button onclick="toggleViewMode()" id="btn-view-toggle"
-                class="bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm px-3 py-1.5 rounded-xl transition text-[11px] font-extrabold shadow-inner border border-white/20 btn-press">
-                💻
-            </button>
             <button onclick="toggleAdmin()" id="btn-admin-lock"
                 class="bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm p-2 rounded-full transition w-9 h-9 flex items-center justify-center shadow-inner border border-white/20 btn-press">
                 🔒
@@ -265,7 +261,6 @@
                 <select id="season-selector"
                     class="w-full text-[12px] font-extrabold text-indigo-800 bg-white border-2 border-indigo-100 rounded-xl px-2.5 py-1.5 shadow-sm focus:ring-2 focus:ring-indigo-400 outline-none truncate"
                     onchange="renderRanking()">
-                    <option value="current">📍 현재 진행중인 시즌</option>
                 </select>
                 <div class="flex gap-2">
                     <button onclick="copyRankingImage()" id="btn-capture-ranking"
@@ -498,7 +493,6 @@
                 <select id="history-season-selector"
                     class="flex-1 max-w-[180px] text-[12px] font-extrabold text-indigo-800 bg-white border-2 border-indigo-100 rounded-xl px-2.5 py-1.5 shadow-sm focus:ring-2 focus:ring-indigo-400 outline-none truncate"
                     onchange="renderHistory()">
-                    <option value="current">📍 현재 진행중인 시즌</option>
                 </select>
             </div>
             <div id="match-history-list" class="space-y-4"></div>
@@ -1586,8 +1580,9 @@
         let isPcMode = sessionStorage.getItem('isPcMode') === 'true';
         function applyViewMode() {
             const body = document.getElementById('app-body'); const tabbar = document.getElementById('bottom-tab-bar');
-            if (isPcMode) { body.classList.remove('max-w-md'); body.classList.add('max-w-[1200px]'); tabbar.classList.remove('max-w-md'); tabbar.classList.add('max-w-[1200px]'); document.getElementById('btn-view-toggle').innerText = "📱"; }
-            else { body.classList.add('max-w-md'); body.classList.remove('max-w-[1200px]'); tabbar.classList.add('max-w-md'); tabbar.classList.remove('max-w-[1200px]'); document.getElementById('btn-view-toggle').innerText = "💻"; }
+            const viewToggleBtn = document.getElementById('btn-view-toggle');
+            if (isPcMode) { body.classList.remove('max-w-md'); body.classList.add('max-w-[1200px]'); tabbar.classList.remove('max-w-md'); tabbar.classList.add('max-w-[1200px]'); if (viewToggleBtn) viewToggleBtn.innerText = "📱"; }
+            else { body.classList.add('max-w-md'); body.classList.remove('max-w-[1200px]'); tabbar.classList.add('max-w-md'); tabbar.classList.remove('max-w-[1200px]'); if (viewToggleBtn) viewToggleBtn.innerText = "💻"; }
         }
         function toggleViewMode() { isPcMode = !isPcMode; sessionStorage.setItem('isPcMode', isPcMode); applyViewMode(); }
         function restoreAdminState() { if (sessionStorage.getItem('isAdminLoggedIn') === 'true') { isAdmin = true; document.getElementById('app-body').classList.add('admin-mode-active'); document.getElementById('btn-admin-lock').innerText = "🔓"; } applyViewMode(); }
@@ -4962,23 +4957,34 @@ function renderMembersList() {
             const rSelector = document.getElementById('season-selector');
             const hSelector = document.getElementById('history-season-selector');
 
-            let html = `<option value="current">📍 현재 진행중인 시즌</option>`;
+            let html = '';
+            if (isAdmin) html += `<option value="current">📍 현재 진행중인 시즌</option>`;
             if (appConfig.pastSeasons && appConfig.pastSeasons.length > 0) {
                 [...appConfig.pastSeasons].reverse().forEach((season, index) => {
                     let originalIndex = appConfig.pastSeasons.length - 1 - index;
                     html += `<option value="${originalIndex}">🗄️ ${escapeHTML(season.seasonName)}</option>`;
                 });
             }
-            if (rSelector) {
-                let currentVal = rSelector.value;
-                rSelector.innerHTML = html;
-                rSelector.value = currentVal || "current";
-            }
-            if (hSelector) {
-                let currentVal = hSelector.value;
-                hSelector.innerHTML = html;
-                hSelector.value = currentVal || "current";
-            }
+            if (!html) html = `<option value="current">📍 현재 진행중인 시즌</option>`;
+
+            const applySelectorOptions = (selector) => {
+                if (!selector) return;
+                const currentVal = selector.value;
+                selector.innerHTML = html;
+                const hasCurrentOption = !!selector.querySelector('option[value="current"]');
+                if (currentVal === 'current' && !hasCurrentOption) {
+                    selector.selectedIndex = selector.options.length > 0 ? 0 : -1;
+                } else if (selector.querySelector(`option[value="${currentVal}"]`)) {
+                    selector.value = currentVal;
+                } else if (hasCurrentOption) {
+                    selector.value = 'current';
+                } else if (selector.options.length > 0) {
+                    selector.selectedIndex = 0;
+                }
+            };
+
+            applySelectorOptions(rSelector);
+            applySelectorOptions(hSelector);
         }
         function renderPastSeasonList() {
             const listContainer = document.getElementById('past-season-list');
