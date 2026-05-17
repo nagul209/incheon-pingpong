@@ -1977,6 +1977,25 @@
             }
         }
 
+
+        function handleLeaguePlayerCellClick(event, inputElem, leagueId, g, p) {
+            event.stopPropagation();
+            const lastTouch = Number(inputElem.dataset.lastTouchTs || 0);
+            if (Date.now() - lastTouch < 500) return;
+            selectLeaguePlayer(inputElem, leagueId, g, p);
+        }
+
+        function handleLeaguePlayerCellTouchStart(event) {
+            event.stopPropagation();
+        }
+
+        function handleLeaguePlayerCellTouchEnd(event, inputElem, leagueId, g, p) {
+            event.stopPropagation();
+            event.preventDefault();
+            inputElem.dataset.lastTouchTs = String(Date.now());
+            selectLeaguePlayer(inputElem, leagueId, g, p);
+        }
+
         function buildLeagueHTML(league) {
             let html = `<div id="league-container-${league.id}" class="mb-8 bg-white border-2 border-slate-200 rounded-2xl p-4 shadow-sm relative relative-container">
                 <div class="flex flex-wrap justify-between items-center mb-4 pb-2 border-b border-slate-100 gap-2">
@@ -2030,7 +2049,7 @@
 
                     html += `<tr class="border-b border-sky-100 hover:bg-sky-100/50">
                         <td class="p-0 border-r border-sky-100 bg-sky-50 font-bold text-[11px] w-px whitespace-nowrap" id="td-${league.id}-g${g}-p${i}">
-                            <input type="text" value="${displayVal}" class="w-full min-w-[60px] h-full text-center outline-none cursor-pointer hover:bg-indigo-50 font-bold text-[11px] text-slate-800 px-1 py-1 bg-transparent whitespace-nowrap" placeholder="터치👉" readonly onclick="event.stopPropagation(); selectLeaguePlayer(this, ${league.id}, ${g}, ${i})" onmousedown="event.stopPropagation()" onpointerdown="event.stopPropagation()" ontouchstart="event.stopPropagation()">
+                            <input type="text" value="${displayVal}" class="w-full min-w-[60px] h-full text-center outline-none cursor-pointer hover:bg-indigo-50 font-bold text-[11px] text-slate-800 px-1 py-1 bg-transparent whitespace-nowrap" placeholder="터치👉" readonly onclick="handleLeaguePlayerCellClick(event, this, ${league.id}, ${g}, ${i})" onmousedown="event.stopPropagation()" onpointerdown="event.stopPropagation()" ontouchstart="handleLeaguePlayerCellTouchStart(event)" ontouchend="handleLeaguePlayerCellTouchEnd(event, this, ${league.id}, ${g}, ${i})">
                             <span class="capture-text font-bold text-[11px] text-slate-800 px-1 py-1 bg-sky-50 whitespace-nowrap truncate drop-shadow-none">${placeholderVal}</span>
                         </td>`;
 
