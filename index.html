@@ -1917,18 +1917,11 @@
             return window.multiLeagues.find(l => l.id == leagueId);
         }
 
-        function generateLeagueId() {
-            if (window.crypto && typeof window.crypto.randomUUID === 'function') {
-                return window.crypto.randomUUID();
-            }
-            return `league-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
-        }
-
         function createLeague() {
             const count = parseInt(document.getElementById('op-group-count').value) || 2;
             const matchTypeEl = document.getElementById('op-match-type');
             const matchType = matchTypeEl ? matchTypeEl.value : 'individual';
-            const leagueId = generateLeagueId();
+            const leagueId = Date.now() + Math.floor(Math.random() * 1000);
 
             const newLeague = {
                 id: leagueId,
@@ -1977,47 +1970,17 @@
             }
         }
 
-
-        function handleLeaguePlayerCellClick(event, inputElem, leagueId, g, p) {
-            event.stopPropagation();
-            const lastTouch = Number(inputElem.dataset.lastTouchTs || 0);
-            if (Date.now() - lastTouch < 500) return;
-            selectLeaguePlayer(inputElem, leagueId, g, p);
-        }
-
-        function handleLeaguePlayerCellTouchStart(event) {
-            event.stopPropagation();
-        }
-
-        function handleLeaguePlayerCellPointerUp(event, inputElem, leagueId, g, p) {
-            event.stopPropagation();
-            if (event.pointerType === 'touch' || event.pointerType === 'pen') {
-                inputElem.dataset.lastTouchTs = String(Date.now());
-                selectLeaguePlayer(inputElem, leagueId, g, p);
-            }
-        }
-
-        function handleLeaguePlayerCellTouchEnd(event, inputElem, leagueId, g, p) {
-            event.stopPropagation();
-        function handleLeaguePlayerCellTouchEnd(event, inputElem, leagueId, g, p) {
-            event.stopPropagation();
-            event.preventDefault();
-            inputElem.dataset.lastTouchTs = String(Date.now());
-            selectLeaguePlayer(inputElem, leagueId, g, p);
-        }
-
         function buildLeagueHTML(league) {
             let html = `<div id="league-container-${league.id}" class="mb-8 bg-white border-2 border-slate-200 rounded-2xl p-4 shadow-sm relative relative-container">
                 <div class="flex flex-wrap justify-between items-center mb-4 pb-2 border-b border-slate-100 gap-2">
                     <div class="flex items-center gap-2 flex-1 min-w-[200px]">
                         <span class="text-xl">🏆</span>
-                        <input type="text" id="league-title-${league.id}" value="${escapeHTML(league.title || '')}" placeholder="여기를 터치하여 대회명/그룹명 수정" class="text-lg font-extrabold text-slate-800 border-b-2 border-indigo-200 focus:border-indigo-500 outline-none w-full max-w-[250px] bg-transparent transition-colors px-1" oninput="updateLeagueTitle('${league.id}', this.value)" onkeydown="if(event.key === 'Enter') { event.preventDefault(); this.blur(); }">
-                        <input type="text" id="league-title-${league.id}" value="${escapeHTML(league.title || '')}" placeholder="여기를 터치하여 대회명/그룹명 수정" class="text-lg font-extrabold text-slate-800 border-b-2 border-indigo-200 focus:border-indigo-500 outline-none w-full max-w-[250px] bg-transparent transition-colors px-1" oninput="updateLeagueTitle(${league.id}, this.value)" onkeydown="if(event.key === 'Enter') { event.preventDefault(); this.blur(); }">
+                        <input type="text" id="league-title-${league.id}" value="${league.title}" placeholder="여기를 터치하여 대회명/그룹명 수정" class="text-lg font-extrabold text-slate-800 border-b-2 border-indigo-200 focus:border-indigo-500 outline-none w-full max-w-[250px] bg-transparent transition-colors px-1" onchange="updateLeagueTitle(${league.id}, this.value)" onkeydown="if(event.key === 'Enter') { event.preventDefault(); this.blur(); }">
                     </div>
                     <div class="flex gap-1.5 flex-wrap">
-                        <button onclick="calculateGroupRankings('${league.id}')" class="text-[11px] bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">🧮 자동순위</button>
-                        <button onclick="sortGroupPlayers('${league.id}')" class="text-[11px] bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">🔀 정렬</button>
-                        <button onclick="deleteLeague('${league.id}')" class="text-[11px] bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">🗑️ 삭제</button>
+                        <button onclick="calculateGroupRankings(${league.id})" class="text-[11px] bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">🧮 자동순위</button>
+                        <button onclick="sortGroupPlayers(${league.id})" class="text-[11px] bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">🔀 정렬</button>
+                        <button onclick="deleteLeague(${league.id})" class="text-[11px] bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">🗑️ 삭제</button>
                     </div>
                 </div>
                 <div class="flex flex-wrap gap-4 justify-center w-full">`;
@@ -2029,8 +1992,8 @@
                 html += `<div class="border-2 border-slate-800/80 rounded-xl overflow-hidden bg-white w-fit max-w-full shadow-sm mx-auto">
                     <div class="bg-slate-100 p-2 flex justify-end items-center gap-1.5 border-b border-slate-200">
                         <span class="text-xs font-bold text-slate-500 mr-auto ml-1">${g}조 관리</span>
-                        <button onclick="copyGroupTableImage('${league.id}', ${g})" id="btn-copy-${league.id}-g${g}" class="text-[10px] bg-emerald-500 hover:bg-emerald-400 text-white px-2 py-1 rounded font-bold transition-colors btn-press no-print shadow-sm flex items-center">📸 복사</button>
-                        <button onclick="openPrintModal('${league.id}', ${g})" class="text-[10px] bg-indigo-500 hover:bg-indigo-400 text-white px-2 py-1 rounded font-bold transition-colors btn-press no-print shadow-sm">🖨️ 인쇄</button>
+                        <button onclick="copyGroupTableImage(${league.id}, ${g})" id="btn-copy-${league.id}-g${g}" class="text-[10px] bg-emerald-500 hover:bg-emerald-400 text-white px-2 py-1 rounded font-bold transition-colors btn-press no-print shadow-sm flex items-center">📸 복사</button>
+                        <button onclick="openPrintModal(${league.id}, ${g})" class="text-[10px] bg-indigo-500 hover:bg-indigo-400 text-white px-2 py-1 rounded font-bold transition-colors btn-press no-print shadow-sm">🖨️ 인쇄</button>
                     </div>
                     <div id="table-container-${league.id}-g${g}" class="bg-white relative">
                         <div class="bg-slate-800 p-2.5 text-white flex items-center justify-between">
@@ -2059,10 +2022,8 @@
                     let placeholderVal = player ? displayVal : '터치👉';
 
                     html += `<tr class="border-b border-sky-100 hover:bg-sky-100/50">
-                        <td class="p-0 border-r border-sky-100 bg-sky-50 font-bold text-[11px] w-px whitespace-nowrap" id="td-${league.id}-g${g}-p${i}" onclick="handleLeaguePlayerCellClick(event, this.querySelector('input'), '${league.id}', ${g}, ${i})" ontouchend="handleLeaguePlayerCellTouchEnd(event, this.querySelector('input'), '${league.id}', ${g}, ${i})" onpointerup="handleLeaguePlayerCellPointerUp(event, this.querySelector('input'), '${league.id}', ${g}, ${i})">
-                            <input type="text" value="${displayVal}" class="w-full min-w-[60px] h-full text-center outline-none cursor-pointer hover:bg-indigo-50 font-bold text-[11px] text-slate-800 px-1 py-1 bg-transparent whitespace-nowrap" placeholder="터치👉" readonly onclick="handleLeaguePlayerCellClick(event, this, '${league.id}', ${g}, ${i})" onmousedown="event.stopPropagation()" onpointerdown="event.stopPropagation()" onpointerup="handleLeaguePlayerCellPointerUp(event, this, '${league.id}', ${g}, ${i})" ontouchstart="handleLeaguePlayerCellTouchStart(event)" ontouchend="handleLeaguePlayerCellTouchEnd(event, this, '${league.id}', ${g}, ${i})">
                         <td class="p-0 border-r border-sky-100 bg-sky-50 font-bold text-[11px] w-px whitespace-nowrap" id="td-${league.id}-g${g}-p${i}">
-                            <input type="text" value="${displayVal}" class="w-full min-w-[60px] h-full text-center outline-none cursor-pointer hover:bg-indigo-50 font-bold text-[11px] text-slate-800 px-1 py-1 bg-transparent whitespace-nowrap" placeholder="터치👉" readonly onclick="handleLeaguePlayerCellClick(event, this, ${league.id}, ${g}, ${i})" onmousedown="event.stopPropagation()" onpointerdown="event.stopPropagation()" ontouchstart="handleLeaguePlayerCellTouchStart(event)" ontouchend="handleLeaguePlayerCellTouchEnd(event, this, ${league.id}, ${g}, ${i})">
+                            <input type="text" value="${displayVal}" class="w-full min-w-[60px] h-full text-center outline-none cursor-pointer hover:bg-indigo-50 font-bold text-[11px] text-slate-800 px-1 py-1 bg-transparent whitespace-nowrap" placeholder="터치👉" readonly onclick="event.stopPropagation(); selectLeaguePlayer(this, ${league.id}, ${g}, ${i})">
                             <span class="capture-text font-bold text-[11px] text-slate-800 px-1 py-1 bg-sky-50 whitespace-nowrap truncate drop-shadow-none">${placeholderVal}</span>
                         </td>`;
 
@@ -2078,10 +2039,10 @@
 
                 html += `<div class="bg-white border-t border-sky-100 p-2.5 flex gap-1.5 items-center no-print">
                             <input type="text" id="bulk-score-${league.id}-g${g}" class="flex-1 text-[11px] font-bold text-slate-700 border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 transition-all placeholder-slate-400 text-center" placeholder="연속된 세트 스코어 입력 (예: 3111...)" autocomplete="off">
-                            <button onclick="fillScoresFromString('${league.id}', ${g})" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg font-bold transition-colors btn-press shadow-sm whitespace-nowrap">일괄 적용</button>
+                            <button onclick="fillScoresFromString(${league.id}, ${g})" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg font-bold transition-colors btn-press shadow-sm whitespace-nowrap">일괄 적용</button>
                         </div>`;
 
-                html += `</div><div class="bg-slate-50 border-t border-slate-200 text-[11px] text-left no-print"><div class="p-2.5 flex justify-between items-center cursor-pointer font-extrabold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors" onclick="toggleOrder('${league.id}', ${g})"><span>🔄 게임 순서 접기/펼치기</span><span id="order-icon-${league.id}-${g}" class="text-xs">▼</span></div><div id="order-content-${league.id}-${g}" class="hidden p-3 leading-loose break-keep bg-slate-50 shadow-inner"></div></div></div>`;
+                html += `</div><div class="bg-slate-50 border-t border-slate-200 text-[11px] text-left no-print"><div class="p-2.5 flex justify-between items-center cursor-pointer font-extrabold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors" onclick="toggleOrder(${league.id}, ${g})"><span>🔄 게임 순서 접기/펼치기</span><span id="order-icon-${league.id}-${g}" class="text-xs">▼</span></div><div id="order-content-${league.id}-${g}" class="hidden p-3 leading-loose break-keep bg-slate-50 shadow-inner"></div></div></div>`;
             }
             html += `</div></div>`;
             return html;
@@ -2133,6 +2094,7 @@
             const league = getLeagueById(leagueId);
             if (league) {
                 league.title = val;
+                saveDataToStorage();
             }
         }
 
@@ -2676,13 +2638,7 @@
 
                     // 다음 칸(p+1)으로 이동 시도
                     p++;
-                    // groupSizes 값이 비어있거나 잘못 저장된 경우를 대비해, 실제 표 헤더 개수로 최대 인원 보정
-                    const groupSizeFromState = Number(league.groupSizes[g]);
-                    const tableEl = document.getElementById(`table-${leagueId}-g${g}`);
-                    const headerCount = tableEl ? Math.max(0, tableEl.querySelectorAll('thead th[id^="th-"]').length) : 0;
-                    const maxPlayers = Number.isFinite(groupSizeFromState) && groupSizeFromState > 0
-                        ? groupSizeFromState
-                        : (headerCount || 4);
+                    const maxPlayers = league.groupSizes[g] || 4;
 
                     if (p <= maxPlayers) {
                         // 제목 갱신
@@ -3659,7 +3615,7 @@
                         subTextClass = 'text-slate-400';
                     }
 
-                    listEl.innerHTML += `<button type="button" onclick="${isSinglePickMode ? `window.singlePickCallback('${m.id}')` : `toggleSelect('${escapeHTML(m.name)}')`}" id="sel-btn-${escapeHTML(m.name)}" class="py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press ${bgClass}">${escapeHTML(m.name)} <span class="text-[9px] ${subTextClass} block mt-0.5 font-medium">${m.handicap}부</span></button>`;
+                    listEl.innerHTML += `<button onclick="${isSinglePickMode ? `window.singlePickCallback('${m.id}')` : `toggleSelect('${escapeHTML(m.name)}')`}" id="sel-btn-${escapeHTML(m.name)}" class="py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press ${bgClass}">${escapeHTML(m.name)} <span class="text-[9px] ${subTextClass} block mt-0.5 font-medium">${m.handicap}부</span></button>`;
                 });
             }
             return true;
