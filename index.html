@@ -1999,6 +1999,9 @@
 
         function handleLeaguePlayerCellTouchEnd(event, inputElem, leagueId, g, p) {
             event.stopPropagation();
+        function handleLeaguePlayerCellTouchEnd(event, inputElem, leagueId, g, p) {
+            event.stopPropagation();
+            event.preventDefault();
             inputElem.dataset.lastTouchTs = String(Date.now());
             selectLeaguePlayer(inputElem, leagueId, g, p);
         }
@@ -2009,6 +2012,7 @@
                     <div class="flex items-center gap-2 flex-1 min-w-[200px]">
                         <span class="text-xl">🏆</span>
                         <input type="text" id="league-title-${league.id}" value="${escapeHTML(league.title || '')}" placeholder="여기를 터치하여 대회명/그룹명 수정" class="text-lg font-extrabold text-slate-800 border-b-2 border-indigo-200 focus:border-indigo-500 outline-none w-full max-w-[250px] bg-transparent transition-colors px-1" oninput="updateLeagueTitle('${league.id}', this.value)" onkeydown="if(event.key === 'Enter') { event.preventDefault(); this.blur(); }">
+                        <input type="text" id="league-title-${league.id}" value="${escapeHTML(league.title || '')}" placeholder="여기를 터치하여 대회명/그룹명 수정" class="text-lg font-extrabold text-slate-800 border-b-2 border-indigo-200 focus:border-indigo-500 outline-none w-full max-w-[250px] bg-transparent transition-colors px-1" oninput="updateLeagueTitle(${league.id}, this.value)" onkeydown="if(event.key === 'Enter') { event.preventDefault(); this.blur(); }">
                     </div>
                     <div class="flex gap-1.5 flex-wrap">
                         <button onclick="calculateGroupRankings('${league.id}')" class="text-[11px] bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">🧮 자동순위</button>
@@ -2057,6 +2061,8 @@
                     html += `<tr class="border-b border-sky-100 hover:bg-sky-100/50">
                         <td class="p-0 border-r border-sky-100 bg-sky-50 font-bold text-[11px] w-px whitespace-nowrap" id="td-${league.id}-g${g}-p${i}" onclick="handleLeaguePlayerCellClick(event, this.querySelector('input'), '${league.id}', ${g}, ${i})" ontouchend="handleLeaguePlayerCellTouchEnd(event, this.querySelector('input'), '${league.id}', ${g}, ${i})" onpointerup="handleLeaguePlayerCellPointerUp(event, this.querySelector('input'), '${league.id}', ${g}, ${i})">
                             <input type="text" value="${displayVal}" class="w-full min-w-[60px] h-full text-center outline-none cursor-pointer hover:bg-indigo-50 font-bold text-[11px] text-slate-800 px-1 py-1 bg-transparent whitespace-nowrap" placeholder="터치👉" readonly onclick="handleLeaguePlayerCellClick(event, this, '${league.id}', ${g}, ${i})" onmousedown="event.stopPropagation()" onpointerdown="event.stopPropagation()" onpointerup="handleLeaguePlayerCellPointerUp(event, this, '${league.id}', ${g}, ${i})" ontouchstart="handleLeaguePlayerCellTouchStart(event)" ontouchend="handleLeaguePlayerCellTouchEnd(event, this, '${league.id}', ${g}, ${i})">
+                        <td class="p-0 border-r border-sky-100 bg-sky-50 font-bold text-[11px] w-px whitespace-nowrap" id="td-${league.id}-g${g}-p${i}">
+                            <input type="text" value="${displayVal}" class="w-full min-w-[60px] h-full text-center outline-none cursor-pointer hover:bg-indigo-50 font-bold text-[11px] text-slate-800 px-1 py-1 bg-transparent whitespace-nowrap" placeholder="터치👉" readonly onclick="handleLeaguePlayerCellClick(event, this, ${league.id}, ${g}, ${i})" onmousedown="event.stopPropagation()" onpointerdown="event.stopPropagation()" ontouchstart="handleLeaguePlayerCellTouchStart(event)" ontouchend="handleLeaguePlayerCellTouchEnd(event, this, ${league.id}, ${g}, ${i})">
                             <span class="capture-text font-bold text-[11px] text-slate-800 px-1 py-1 bg-sky-50 whitespace-nowrap truncate drop-shadow-none">${placeholderVal}</span>
                         </td>`;
 
