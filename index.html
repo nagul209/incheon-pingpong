@@ -1975,7 +1975,7 @@
                 <div class="flex flex-wrap justify-between items-center mb-4 pb-2 border-b border-slate-100 gap-2">
                     <div class="flex items-center gap-2 flex-1 min-w-[200px]">
                         <span class="text-xl">🏆</span>
-                        <input type="text" id="league-title-${league.id}" value="${league.title}" placeholder="여기를 터치하여 대회명/그룹명 수정" class="text-lg font-extrabold text-slate-800 border-b-2 border-indigo-200 focus:border-indigo-500 outline-none w-full max-w-[250px] bg-transparent transition-colors px-1" onchange="updateLeagueTitle(${league.id}, this.value)" onkeydown="if(event.key === 'Enter') { event.preventDefault(); this.blur(); }">
+                        <input type="text" id="league-title-${league.id}" value="${escapeHTML(league.title || '')}" placeholder="여기를 터치하여 대회명/그룹명 수정" class="text-lg font-extrabold text-slate-800 border-b-2 border-indigo-200 focus:border-indigo-500 outline-none w-full max-w-[250px] bg-transparent transition-colors px-1" onchange="updateLeagueTitle(${league.id}, this.value)" onkeydown="if(event.key === 'Enter') { event.preventDefault(); this.blur(); }">
                     </div>
                     <div class="flex gap-1.5 flex-wrap">
                         <button onclick="calculateGroupRankings(${league.id})" class="text-[11px] bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">🧮 자동순위</button>
@@ -2638,7 +2638,13 @@
 
                     // 다음 칸(p+1)으로 이동 시도
                     p++;
-                    const maxPlayers = league.groupSizes[g] || 4;
+                    // groupSizes 값이 비어있거나 잘못 저장된 경우를 대비해, 실제 표 헤더 개수로 최대 인원 보정
+                    const groupSizeFromState = Number(league.groupSizes[g]);
+                    const tableEl = document.getElementById(`table-${leagueId}-g${g}`);
+                    const headerCount = tableEl ? Math.max(0, tableEl.querySelectorAll('thead th[id^="th-"]').length) : 0;
+                    const maxPlayers = Number.isFinite(groupSizeFromState) && groupSizeFromState > 0
+                        ? groupSizeFromState
+                        : (headerCount || 4);
 
                     if (p <= maxPlayers) {
                         // 제목 갱신
@@ -3615,7 +3621,7 @@
                         subTextClass = 'text-slate-400';
                     }
 
-                    listEl.innerHTML += `<button onclick="${isSinglePickMode ? `window.singlePickCallback('${m.id}')` : `toggleSelect('${escapeHTML(m.name)}')`}" id="sel-btn-${escapeHTML(m.name)}" class="py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press ${bgClass}">${escapeHTML(m.name)} <span class="text-[9px] ${subTextClass} block mt-0.5 font-medium">${m.handicap}부</span></button>`;
+                    listEl.innerHTML += `<button type="button" onclick="${isSinglePickMode ? `window.singlePickCallback('${m.id}')` : `toggleSelect('${escapeHTML(m.name)}')`}" id="sel-btn-${escapeHTML(m.name)}" class="py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press ${bgClass}">${escapeHTML(m.name)} <span class="text-[9px] ${subTextClass} block mt-0.5 font-medium">${m.handicap}부</span></button>`;
                 });
             }
             return true;
