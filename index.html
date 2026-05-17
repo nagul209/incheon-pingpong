@@ -2638,7 +2638,13 @@
 
                     // 다음 칸(p+1)으로 이동 시도
                     p++;
-                    const maxPlayers = league.groupSizes[g] || 4;
+                    // groupSizes 값이 비어있거나 잘못 저장된 경우를 대비해, 실제 표 헤더 개수로 최대 인원 보정
+                    const groupSizeFromState = Number(league.groupSizes[g]);
+                    const tableEl = document.getElementById(`table-${leagueId}-g${g}`);
+                    const headerCount = tableEl ? Math.max(0, tableEl.querySelectorAll('thead th[id^="th-"]').length) : 0;
+                    const maxPlayers = Number.isFinite(groupSizeFromState) && groupSizeFromState > 0
+                        ? groupSizeFromState
+                        : (headerCount || 4);
 
                     if (p <= maxPlayers) {
                         // 제목 갱신
@@ -3615,7 +3621,7 @@
                         subTextClass = 'text-slate-400';
                     }
 
-                    listEl.innerHTML += `<button onclick="${isSinglePickMode ? `window.singlePickCallback('${m.id}')` : `toggleSelect('${escapeHTML(m.name)}')`}" id="sel-btn-${escapeHTML(m.name)}" class="py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press ${bgClass}">${escapeHTML(m.name)} <span class="text-[9px] ${subTextClass} block mt-0.5 font-medium">${m.handicap}부</span></button>`;
+                    listEl.innerHTML += `<button type="button" onclick="${isSinglePickMode ? `window.singlePickCallback('${m.id}')` : `toggleSelect('${escapeHTML(m.name)}')`}" id="sel-btn-${escapeHTML(m.name)}" class="py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press ${bgClass}">${escapeHTML(m.name)} <span class="text-[9px] ${subTextClass} block mt-0.5 font-medium">${m.handicap}부</span></button>`;
                 });
             }
             return true;
