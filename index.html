@@ -389,6 +389,9 @@
                             <button onclick="createLeague()"
                                 class="text-[11px] bg-indigo-600 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm btn-press mt-2 sm:mt-0">➕
                                 새 리그전 추가</button>
+                            <button onclick="deleteEmptyLeagues()"
+                                class="text-[11px] bg-rose-600 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm btn-press mt-2 sm:mt-0">🧹
+                                빈 리그전 삭제</button>
                         </div>
                     </div>
                 </div>
@@ -1938,6 +1941,7 @@
             const matchTypeEl = document.getElementById('op-match-type');
             const matchType = matchTypeEl ? matchTypeEl.value : 'individual';
             const leagueId = Date.now() + Math.floor(Math.random() * 1000);
+            const allowedSizes = getAllowedGroupSizes(count);
 
             const newLeague = {
                 id: leagueId,
@@ -1950,7 +1954,8 @@
 
             for (let g = 1; g <= count; g++) {
                 let sizeInput = document.getElementById(`op-group-size-${g}`);
-                newLeague.groupSizes[g] = sizeInput ? parseInt(sizeInput.value) : 4;
+                const requestedSize = sizeInput ? parseInt(sizeInput.value) : 4;
+                newLeague.groupSizes[g] = allowedSizes[g] || requestedSize || 4;
             }
 
             if (matchType === 'full_league') {
@@ -1984,6 +1989,72 @@
                 const tableEl = document.getElementById(`table-${leagueId}-g${g}`);
                 if (tableEl) updateMatchOrderDisplay(leagueId, g, tableEl.querySelectorAll('tbody tr').length);
             }
+        }
+
+        function getAllowedGroupSizes(groupCount) {
+            const attendees = formState.opAttend && formState.opAttend.length > 0 ? formState.opAttend : (formState.attend || []);
+            const attendeesCount = attendees.length;
+            const normalizedGroupCount = Math.max(1, parseInt(groupCount) || 1);
+            const allowed = {};
+
+            if (attendeesCount <= 0) {
+                for (let g = 1; g <= normalizedGroupCount; g++) allowed[g] = 4;
+                return allowed;
+            }
+
+            const baseSize = Math.floor(attendeesCount / normalizedGroupCount);
+            const remainder = attendeesCount % normalizedGroupCount;
+            for (let g = 1; g <= normalizedGroupCount; g++) {
+                allowed[g] = Math.max(2, baseSize + (g <= remainder ? 1 : 0));
+            }
+            return allowed;
+        }
+
+        function isLeagueEmpty(league) {
+            if (!league) return true;
+            const players = league.players || {};
+            const hasPlayer = Object.values(players).some(player => player && (player.name || player.display || player.id));
+            if (hasPlayer) return false;
+
+            const scores = league.scores || {};
+            for (const gScores of Object.values(scores)) {
+                if (!gScores || typeof gScores !== 'object') continue;
+                for (const row of Object.values(gScores)) {
+                    if (!row || typeof row !== 'object') continue;
+                    for (const [key, value] of Object.entries(row)) {
+                        if (key === 'wl' || key === 'diff' || key === 'rank') {
+                            if (String(value || '').trim()) return false;
+                        } else if (String(value || '').trim()) {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+
+        function deleteEmptyLeagues() {
+            if (!window.multiLeagues || window.multiLeagues.length === 0) {
+                alert("삭제할 리그전표가 없습니다.");
+                return;
+            }
+            const emptyLeagueIds = window.multiLeagues.filter(isLeagueEmpty).map(l => l.id);
+            if (emptyLeagueIds.length === 0) {
+                alert("빈 리그전표가 없습니다.");
+                return;
+            }
+            if (!confirm(`빈 리그전표 ${emptyLeagueIds.length}개를 삭제하시겠습니까?`)) return;
+
+            emptyLeagueIds.forEach(leagueId => {
+                const container = document.getElementById(`league-container-${leagueId}`);
+                if (container) container.remove();
+            });
+            window.multiLeagues = window.multiLeagues.filter(l => !emptyLeagueIds.includes(l.id));
+            saveDataToStorage();
+
+            const emptyContainer = document.getElementById('op-group-empty-msg');
+            if (emptyContainer) emptyContainer.style.display = window.multiLeagues.length === 0 ? 'block' : 'none';
+            alert(`✅ 빈 리그전표 ${emptyLeagueIds.length}개가 삭제되었습니다.`);
         }
 
         function buildLeagueHTML(league) {
@@ -2057,9 +2128,9 @@
                 }
                 html += `</tbody></table></div>`;
 
-                html += `<div class="bg-white border-t border-sky-100 p-2.5 flex gap-1.5 items-center no-print">
-                            <input type="text" id="bulk-score-${league.id}-g${g}" class="flex-1 text-[11px] font-bold text-slate-700 border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 transition-all placeholder-slate-400 text-center" placeholder="연속된 세트 스코어 입력 (예: 3111...)" autocomplete="off">
-                            <button onclick="fillScoresFromString(${league.id}, ${g})" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg font-bold transition-colors btn-press shadow-sm whitespace-nowrap">일괄 적용</button>
+                html += `<div class="bg-white border-t border-sky-100 p-2.5 flex gap-1.5 items-center no-print flex-nowrap">
+                            <input type="text" id="bulk-score-${league.id}-g${g}" class="flex-1 min-w-0 text-[10px] sm:text-[11px] font-bold text-slate-700 border border-slate-200 rounded-lg px-2 py-1.5 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 transition-all placeholder-slate-400 text-center" placeholder="연속된 세트 스코어 입력 (예: 3111...)" autocomplete="off">
+                            <button onclick="fillScoresFromString(${league.id}, ${g})" class="shrink-0 text-[10px] sm:text-[11px] bg-slate-800 hover:bg-slate-700 text-white px-2.5 sm:px-3 py-1.5 rounded-lg font-bold transition-colors btn-press shadow-sm whitespace-nowrap">일괄 적용</button>
                         </div>`;
 
                 html += `</div><div class="bg-slate-50 border-t border-slate-200 text-[11px] text-left no-print"><div class="p-2.5 flex justify-between items-center cursor-pointer font-extrabold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors" onclick="toggleOrder(${league.id}, ${g})"><span>🔄 게임 순서 접기/펼치기</span><span id="order-icon-${league.id}-${g}" class="text-xs">▼</span></div><div id="order-content-${league.id}-${g}" class="hidden p-3 leading-loose break-keep bg-slate-50 shadow-inner"></div></div></div>`;
@@ -2793,8 +2864,8 @@
             let blocks = pairs.map((pair, idx) => {
                 let p1Obj = league.players[`g${g}_p${pair[0]}`];
                 let p2Obj = league.players[`g${g}_p${pair[1]}`];
-                let n1 = p1Obj ? escapeHTML(p1Obj.name) : `${pair[0]}번`;
-                let n2 = p2Obj ? escapeHTML(p2Obj.name) : `${pair[1]}번`;
+                let n1 = p1Obj ? escapeHTML(p1Obj.display || p1Obj.name) : `선수 미지정`;
+                let n2 = p2Obj ? escapeHTML(p2Obj.display || p2Obj.name) : `선수 미지정`;
                 return `<span class="inline-flex items-center bg-white border border-slate-200 px-2 py-1 rounded shadow-sm mr-1.5 mb-1.5 font-bold text-slate-700 text-[11px]"><span class="text-indigo-600 bg-indigo-50 px-1 rounded mr-1.5">${idx + 1}경기</span> ${n1} <span class="text-slate-300 font-normal mx-1 text-[9px]">vs</span> ${n2}</span>`;
             });
             document.getElementById(`order-content-${leagueId}-${g}`).innerHTML = blocks.join('');
@@ -2830,8 +2901,8 @@
             let blocks = pairs.map((pair, idx) => {
                 let p1Obj = league.players[`g${g}_p${pair[0]}`];
                 let p2Obj = league.players[`g${g}_p${pair[1]}`];
-                let n1 = p1Obj ? escapeHTML(p1Obj.name) : `${pair[0]}번`;
-                let n2 = p2Obj ? escapeHTML(p2Obj.name) : `${pair[1]}번`;
+                let n1 = p1Obj ? escapeHTML(p1Obj.display || p1Obj.name) : `선수 미지정`;
+                let n2 = p2Obj ? escapeHTML(p2Obj.display || p2Obj.name) : `선수 미지정`;
                 return `<span style="display:inline-block; border:1px solid #94a3b8; padding:6px 10px; border-radius:6px; margin-right:10px; margin-bottom:10px; font-weight:bold; font-size:14px; background:#f8fafc;"><span style="color:#4f46e5; font-size:12px; margin-right:6px;">${idx + 1}경기</span> ${n1} <span style="font-weight:normal; color:#94a3b8; margin:0 6px;">vs</span> ${n2}</span>`;
             });
             orderHtml += blocks.join('') + `</div></div>`;
