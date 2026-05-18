@@ -2739,7 +2739,7 @@
             document.getElementById('selector-search').value = "";
             let excludedNames = [];
             for (let key in league.players) {
-                if (key !== `g${g}_p${p}` && league.players[key]) {
+                if (league.players[key]) {
                     const names = String(league.players[key].name).split(',').map(n => n.trim());
                     excludedNames.push(...names);
                 }
@@ -2766,7 +2766,7 @@
                 document.getElementById('selector-title').innerText = `${targetG}조 ${targetP}번 ${titleSuffix} 선택 (${limitText})`;
                 let newExcludedNames = [];
                 for (let key in league.players) {
-                    if (key !== `g${targetG}_p${targetP}` && league.players[key]) {
+                    if (league.players[key]) {
                         const names = String(league.players[key].name).split(',').map(n => n.trim());
                         newExcludedNames.push(...names);
                     }
