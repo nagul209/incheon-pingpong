@@ -1441,11 +1441,9 @@
                     회원이 없습니다.</p>
                 <div id="selector-list" class="grid grid-cols-3 gap-2.5"></div>
             </div>
-            <div class="p-4 border-t border-slate-100 bg-white flex gap-3 pb-6"><button onclick="confirmSelector()"
-                    id="btn-selector-confirm"
-                    class="flex-1 bg-indigo-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-indigo-200 btn-press text-lg">적용</button><button
+            <div class="p-4 border-t border-slate-100 bg-white pb-6"><button
                     onclick="closeSelector()"
-                    class="flex-1 bg-slate-100 text-slate-600 py-4 rounded-xl font-bold btn-press">취소</button></div>
+                    class="w-full bg-slate-100 text-slate-600 py-4 rounded-xl font-bold btn-press">닫기</button></div>
         </div>
     </div>
 
@@ -2066,7 +2064,8 @@
                     <div class="flex gap-1.5 flex-wrap">
                         <button onclick="calculateGroupRankings(${league.id})" class="text-[11px] bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">🧮 자동순위</button>
                         <button onclick="sortGroupPlayers(${league.id})" class="text-[11px] bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">🔀 정렬</button>
-                        <button onclick="resetLeagueInputs(${league.id})" class="text-[11px] bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">♻️ 초기화</button>
+                        <button onclick="resetLeaguePlayerNames(${league.id})" class="text-[11px] bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">👤 선수명 초기화</button>
+                        <button onclick="resetLeagueInputs(${league.id})" class="text-[11px] bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">♻️ 전체 초기화</button>
                         <button onclick="deleteLeague(${league.id})" class="text-[11px] bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">🗑️ 삭제</button>
                     </div>
                 </div>
@@ -2726,10 +2725,8 @@
 
             if (isSinglePickMode) {
                 document.getElementById('selector-count').classList.add('hidden');
-                document.getElementById('btn-selector-confirm').classList.remove('hidden');
             } else {
                 document.getElementById('selector-count').classList.remove('hidden');
-                document.getElementById('btn-selector-confirm').classList.remove('hidden');
             }
 
             let excludedNames = [];
@@ -2773,11 +2770,23 @@
             window.singlePickCallback = function (memberId) {
                 if (currentSelectorTarget !== 'league') return;
                 const m = members.find(x => x.id == memberId);
-                if (m) {
-                    tempSelectorList = [m.name];
-                    updateSelectorCount();
-                    renderLeagueSelectorForSlot(g, p);
+                if (!m) return;
+                tempSelectorList = [m.name];
+                if (window.leaguePickCallback && window.leaguePickCallback() === false) return;
+
+                const nextSlot = getNextSlot(g, p);
+                if (!nextSlot) {
+                    closeSelector();
+                    return;
                 }
+
+                const nextInput = document.getElementById(`td-${leagueId}-g${nextSlot.g}-p${nextSlot.p}`)?.querySelector('input');
+                if (!nextInput) {
+                    closeSelector();
+                    return;
+                }
+
+                selectLeaguePlayer(null, nextInput, leagueId, nextSlot.g, nextSlot.p);
             };
 
             window.leaguePickCallback = function () {
@@ -2809,6 +2818,33 @@
                 saveDataToStorage();
                 return true;
             };
+        }
+
+
+        function resetLeaguePlayerNames(leagueId) {
+            const league = getLeagueById(leagueId);
+            if (!league) return;
+            if (!confirm("이 예선 조별 리그전표의 선수명만 초기화하시겠습니까?\n(점수/순위 데이터는 유지됩니다.)")) return;
+
+            league.players = {};
+
+            for (let g = 1; g <= league.groupCount; g++) {
+                const size = (league.groupSizes && league.groupSizes[g]) || 4;
+                for (let p = 1; p <= size; p++) {
+                    const td = document.getElementById(`td-${leagueId}-g${g}-p${p}`);
+                    const input = td ? td.querySelector('input') : null;
+                    if (input) {
+                        input.value = '';
+                        if (input.nextElementSibling) input.nextElementSibling.innerText = '터치👉';
+                    }
+                    const th = document.getElementById(`th-${leagueId}-g${g}-p${p}`);
+                    if (th) th.innerText = `${p}번`;
+                }
+                updateMatchOrderDisplay(leagueId, g, size);
+            }
+
+            saveDataToStorage();
+            alert("✅ 조별 리그전표 선수명이 초기화되었습니다.");
         }
 
         function resetLeagueInputs(leagueId) {
@@ -3324,7 +3360,6 @@
             isSinglePickMode = true;
             document.getElementById('selector-title').innerText = "1라운드 진출자 수동 선택";
             document.getElementById('selector-count').classList.add('hidden');
-            document.getElementById('btn-selector-confirm').classList.add('hidden');
 
             let excludedNames = [];
             tournamentState.tree[0].forEach(cell => {
@@ -3595,8 +3630,6 @@
             if (titleEl) titleEl.innerText = type === 'p1' ? "승자 선택" : "패자 선택";
             const countEl = document.getElementById('selector-count');
             if (countEl) countEl.classList.add('hidden');
-            const confirmBtn = document.getElementById('btn-selector-confirm');
-            if (confirmBtn) confirmBtn.classList.add('hidden');
             
             renderSelectorList(true, 'rated');
             document.getElementById('member-selector-modal').classList.remove('hidden');
@@ -3793,7 +3826,6 @@
         function openSelector(target, title, onlyAttendees) {
             isSinglePickMode = false;
             document.getElementById('selector-count').classList.remove('hidden');
-            document.getElementById('btn-selector-confirm').classList.remove('hidden');
             currentSelectorTarget = target;
             document.getElementById('selector-title').innerText = title;
             tempSelectorList = [...(formState[target] || [])];
@@ -3835,9 +3867,8 @@
         function closeSelector() { document.getElementById('member-selector-modal').classList.add('hidden'); }
         function confirmSelector() {
             if (currentSelectorTarget === 'league') {
-                if (window.leaguePickCallback) {
-                    if (window.leaguePickCallback() === false) return;
-                }
+                closeSelector();
+                return;
             } else {
                 formState[currentSelectorTarget] = [...tempSelectorList];
                 if (currentSelectorTarget === 'attend' || currentSelectorTarget === 'opAttend') {
