@@ -1442,8 +1442,8 @@
                 <div id="selector-list" class="grid grid-cols-3 gap-2.5"></div>
             </div>
             <div class="p-4 border-t border-slate-100 bg-white pb-6"><button
-                    onclick="closeSelector()"
-                    class="w-full bg-slate-100 text-slate-600 py-4 rounded-xl font-bold btn-press">닫기</button></div>
+                    onclick="confirmSelector()"
+                    class="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold btn-press shadow-md border border-indigo-700">적용</button></div>
         </div>
     </div>
 
@@ -4061,7 +4061,14 @@
             }
 
             updateFormUI();
+            autoLoadQualifierResultsToTournament();
             alert(`✅ ${typeLabel} 1, 2, 3위 명단을 성공적으로 불러왔습니다.`);
+        }
+
+        function autoLoadQualifierResultsToTournament() {
+            if (!tournamentState || !tournamentState.tree || tournamentState.size === 0) return;
+            if (!window.multiLeagues || window.multiLeagues.length === 0) return;
+            loadQualifierResults();
         }
 
         function loadTournamentResults() {
