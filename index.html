@@ -2420,22 +2420,26 @@
                         let rankInput = document.getElementById(`rank-${league.id}-g${g}-p${p.id}`);
                         if (rankInput) { rankInput.value = p.finalRank; syncText(rankInput); }
 
+                        const playerObj = (league.players || {})[`g${g}_p${p.id}`];
+
                         let th = document.getElementById(`th-${league.id}-g${g}-p${p.id}`);
-                        if (th) {
-                            let playerObj = (league.players || {})[`g${g}_p${p.id}`];
-                            let name = playerObj ? escapeHTML(playerObj.name) : `${p.id}번`;
-                            th.innerText = name;
+                        if (th && playerObj) {
+                            th.innerText = escapeHTML(playerObj.name);
                         }
 
                         let tdInput = document.querySelector(`#td-${league.id}-g${g}-p${p.id} input`);
                         let tdSpan = document.querySelector(`#td-${league.id}-g${g}-p${p.id} span.capture-text`);
                         if (tdInput && tdSpan) {
-                            let playerObj = (league.players || {})[`g${g}_p${p.id}`];
-                            let display = playerObj ? escapeHTML(playerObj.display) : `${p.id}번`;
-                            let medal = p.finalRank === 1 ? '🥇' : (p.finalRank === 2 ? '🥈' : (p.finalRank === 3 ? '🥉' : ''));
-                            let finalDisplay = medal ? `${medal} ${display}` : display;
-                            tdInput.value = finalDisplay;
-                            tdSpan.innerText = finalDisplay;
+                            if (playerObj) {
+                                const display = escapeHTML(playerObj.display);
+                                const medal = p.finalRank === 1 ? '🥇' : (p.finalRank === 2 ? '🥈' : (p.finalRank === 3 ? '🥉' : ''));
+                                const finalDisplay = medal ? `${medal} ${display}` : display;
+                                tdInput.value = finalDisplay;
+                                tdSpan.innerText = finalDisplay;
+                            } else {
+                                // 선수가 미배정된 슬롯은 기존 입력값을 보존하고 번호로 덮어쓰지 않는다.
+                                tdSpan.innerText = tdInput.value || tdInput.placeholder || '';
+                            }
                         }
                     });
                 }
