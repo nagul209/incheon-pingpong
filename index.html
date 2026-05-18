@@ -1996,6 +1996,7 @@
                     <div class="flex gap-1.5 flex-wrap">
                         <button onclick="calculateGroupRankings(${league.id})" class="text-[11px] bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">🧮 자동순위</button>
                         <button onclick="sortGroupPlayers(${league.id})" class="text-[11px] bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">🔀 정렬</button>
+                        <button onclick="resetLeagueInputs(${league.id})" class="text-[11px] bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">♻️ 초기화</button>
                         <button onclick="deleteLeague(${league.id})" class="text-[11px] bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">🗑️ 삭제</button>
                     </div>
                 </div>
@@ -2640,6 +2641,26 @@
             document.getElementById('member-selector-modal').classList.remove('hidden');
             updateSelectorCount();
 
+            function getNextSlot(currentG, currentP) {
+                const currentSize = league.groupSizes[currentG] || 4;
+                if (currentP < currentSize) return { g: currentG, p: currentP + 1 };
+                if (currentG < league.groupCount) return { g: currentG + 1, p: 1 };
+                return null;
+            }
+
+            function renderLeagueSelectorForSlot(targetG, targetP) {
+                document.getElementById('selector-title').innerText = `${targetG}조 ${targetP}번 ${titleSuffix} 선택 (${limitText})`;
+                let newExcludedNames = [];
+                for (let key in league.players) {
+                    if (key !== `g${targetG}_p${targetP}` && league.players[key]) {
+                        const names = String(league.players[key].name).split(',').map(n => n.trim());
+                        newExcludedNames.push(...names);
+                    }
+                }
+                renderSelectorList(true, 'league', newExcludedNames);
+                updateSelectorCount();
+            }
+
             window.singlePickCallback = function (memberId) {
                 if (currentSelectorTarget !== 'league') return;
                 const m = members.find(x => x.id == memberId);
@@ -2658,34 +2679,15 @@
                     const th = document.getElementById(`th-${leagueId}-g${g}-p${p}`);
                     if (th) th.innerText = m.name;
 
-                    // 다음 칸(p+1)으로 이동 시도
-                    p++;
-                    const maxPlayers = league.groupSizes[g] || 4;
+                    updateMatchOrderDisplay(leagueId, g, document.getElementById(`table-${leagueId}-g${g}`).querySelectorAll('tbody tr').length);
+                    saveDataToStorage();
 
-                    if (p <= maxPlayers) {
-                        // 제목 갱신
-                        document.getElementById('selector-title').innerText = `${g}조 ${p}번 선수 선택 (${limitText})`;
-                        
-                        // 제외 명단 다시 계산 (선택된 선수 포함)
-                        let newExcludedNames = [];
-                        for (let key in league.players) {
-                            if (key !== `g${g}_p${p}` && league.players[key]) {
-                                const names = String(league.players[key].name).split(',').map(n => n.trim());
-                                newExcludedNames.push(...names);
-                            }
-                        }
-                        
-                        // 남은 명단으로 재렌더링 (모달 유지)
-                        renderSelectorList(true, 'league', newExcludedNames);
-                        updateSelectorCount();
-
-                        // 매치 순서 실시간 업데이트
-                        updateMatchOrderDisplay(leagueId, g, document.getElementById(`table-${leagueId}-g${g}`).querySelectorAll('tbody tr').length);
-                        saveDataToStorage();
+                    const nextSlot = getNextSlot(g, p);
+                    if (nextSlot) {
+                        g = nextSlot.g;
+                        p = nextSlot.p;
+                        renderLeagueSelectorForSlot(g, p);
                     } else {
-                        // 모든 슬롯이 다 찼으면 매치 순서 최종 업데이트 후 모달 닫기
-                        updateMatchOrderDisplay(leagueId, g, document.getElementById(`table-${leagueId}-g${g}`).querySelectorAll('tbody tr').length);
-                        saveDataToStorage();
                         closeSelector();
                     }
                 }
@@ -2723,6 +2725,53 @@
                 saveDataToStorage();
                 return true;
             };
+        }
+
+        function resetLeagueInputs(leagueId) {
+            const league = getLeagueById(leagueId);
+            if (!league) return;
+            if (!confirm("이 예선 조별 리그전표의 입력 데이터를 초기화하시겠습니까?")) return;
+
+            league.players = {};
+            league.scores = {};
+
+            for (let g = 1; g <= league.groupCount; g++) {
+                const size = (league.groupSizes && league.groupSizes[g]) || 4;
+                for (let p = 1; p <= size; p++) {
+                    const td = document.getElementById(`td-${leagueId}-g${g}-p${p}`);
+                    const input = td ? td.querySelector('input') : null;
+                    if (input) {
+                        input.value = '';
+                        if (input.nextElementSibling) input.nextElementSibling.innerText = '터치👉';
+                    }
+                    const th = document.getElementById(`th-${leagueId}-g${g}-p${p}`);
+                    if (th) th.innerText = `${p}번`;
+
+                    ['wl', 'diff', 'rank'].forEach(prefix => {
+                        const cell = document.getElementById(`${prefix}-${leagueId}-g${g}-p${p}`);
+                        if (cell) {
+                            cell.value = '';
+                            syncText(cell);
+                        }
+                    });
+
+                    for (let c = 1; c <= size; c++) {
+                        if (p === c) continue;
+                        const scoreCell = document.getElementById(`score-${leagueId}-g${g}-r${p}-c${c}`);
+                        if (scoreCell) {
+                            scoreCell.value = '';
+                            syncText(scoreCell);
+                        }
+                    }
+                }
+
+                const bulkInput = document.getElementById(`bulk-score-${leagueId}-g${g}`);
+                if (bulkInput) bulkInput.value = '';
+                updateMatchOrderDisplay(leagueId, g, size);
+            }
+
+            saveDataToStorage();
+            alert("✅ 조별 리그전표 입력 데이터가 초기화되었습니다.");
         }
 
         function toggleOrder(leagueId, g) {
