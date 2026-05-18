@@ -2925,6 +2925,8 @@
             rounds: 0,
             tree: [],
             visibleRound: 0,
+            groups: 0,
+            adv: 0,
             originalTemplate: []  // 예선 결과 재매칭을 위한 원본 템플릿 저장용
         };
         let isFullView = false;    // 전체 대진표 보기 모드
@@ -2942,6 +2944,8 @@
             tournamentState.size = size;
             tournamentState.rounds = Math.log2(size);
             tournamentState.visibleRound = 0;
+            tournamentState.groups = groups;
+            tournamentState.adv = adv;
 
             const infoBox = document.getElementById('op-tourn-info');
             infoBox.classList.remove('hidden');
@@ -3016,21 +3020,27 @@
                 return;
             }
 
+            // 예선 순위를 항상 최신 상태로 자동 계산 후 불러오기
+            calculateGroupRankings();
+
+            const targetGroups = tournamentState.groups || parseInt(document.getElementById('op-tourn-groups').value);
+            const targetAdv = tournamentState.adv || parseInt(document.getElementById('op-tourn-adv').value);
             let rankMap = {};
             let globalGroupIndex = 1; // [강력한 로직] 절대적 조 번호 부여
 
             if (window.multiLeagues && window.multiLeagues.length > 0) {
                 window.multiLeagues.forEach(league => {
                     for (let g = 1; g <= league.groupCount; g++) {
+                        const shouldUseGroup = globalGroupIndex <= targetGroups;
                         let size = league.groupSizes[g] || 4;
                         for (let p = 1; p <= size; p++) {
                             let playerObj = league.players[`g${g}_p${p}`];
                             let rankInput = document.getElementById(`rank-${league.id}-g${g}-p${p}`);
                             
-                            if (playerObj && rankInput && rankInput.value.trim() !== "") {
+                            if (shouldUseGroup && playerObj && rankInput && rankInput.value.trim() !== "") {
                                 // [강력한 로직] 유연한 순위 텍스트 추출 (숫자만 남김)
-                                let rankNum = rankInput.value.replace(/[^0-9]/g, '');
-                                if (rankNum) {
+                                let rankNum = parseInt(rankInput.value.replace(/[^0-9]/g, ''), 10);
+                                if (rankNum && rankNum <= targetAdv) {
                                     // ${globalGroupIndex}조${rankNum}위 형식의 키로 저장
                                     rankMap[`${globalGroupIndex}조${rankNum}위`] = playerObj.display;
                                 }
