@@ -2340,6 +2340,7 @@
                         if (wl && league.scores && league.scores[g] && league.scores[g][i]) { wl.value = league.scores[g][i].wl || ''; syncText(wl); }
                         if (diff && league.scores && league.scores[g] && league.scores[g][i]) { diff.value = league.scores[g][i].diff || ''; syncText(diff); }
                         if (rank && league.scores && league.scores[g] && league.scores[g][i]) { rank.value = league.scores[g][i].rank || ''; syncText(rank); }
+                        applyLeagueMedalDisplay(league, g, i);
                     }
                     const tableEl = document.getElementById(`table-${league.id}-g${g}`);
                     if (tableEl) updateMatchOrderDisplay(league.id, g, tableEl.querySelectorAll('tbody tr').length);
@@ -2419,28 +2420,7 @@
                     players.forEach(p => {
                         let rankInput = document.getElementById(`rank-${league.id}-g${g}-p${p.id}`);
                         if (rankInput) { rankInput.value = p.finalRank; syncText(rankInput); }
-
-                        const playerObj = (league.players || {})[`g${g}_p${p.id}`];
-
-                        let th = document.getElementById(`th-${league.id}-g${g}-p${p.id}`);
-                        if (th && playerObj) {
-                            th.innerText = escapeHTML(playerObj.name);
-                        }
-
-                        let tdInput = document.querySelector(`#td-${league.id}-g${g}-p${p.id} input`);
-                        let tdSpan = document.querySelector(`#td-${league.id}-g${g}-p${p.id} span.capture-text`);
-                        if (tdInput && tdSpan) {
-                            if (playerObj) {
-                                const display = escapeHTML(playerObj.display);
-                                const medal = p.finalRank === 1 ? '🥇' : (p.finalRank === 2 ? '🥈' : (p.finalRank === 3 ? '🥉' : ''));
-                                const finalDisplay = medal ? `${medal} ${display}` : display;
-                                tdInput.value = finalDisplay;
-                                tdSpan.innerText = finalDisplay;
-                            } else {
-                                // 선수가 미배정된 슬롯은 기존 입력값을 보존하고 번호로 덮어쓰지 않는다.
-                                tdSpan.innerText = tdInput.value || tdInput.placeholder || '';
-                            }
-                        }
+                        applyLeagueMedalDisplay(league, g, p.id, p.finalRank);
                     });
                 }
             });
@@ -2448,6 +2428,40 @@
             saveDataToStorage();
             // 매번 전체 결과를 취합하여 저장 (전체 버튼이든 개별 버튼이든)
             saveAllPreliminaryResults();
+        }
+
+        function getMedalEmojiByRank(rank) {
+            if (rank === 1) return '🥇';
+            if (rank === 2) return '🥈';
+            if (rank === 3) return '🥉';
+            return '';
+        }
+
+        function applyLeagueMedalDisplay(league, groupNo, playerNo, forcedRank = null) {
+            if (!league) return;
+            const playerObj = (league.players || {})[`g${groupNo}_p${playerNo}`];
+            const rankInput = document.getElementById(`rank-${league.id}-g${groupNo}-p${playerNo}`);
+            const rankVal = forcedRank || (rankInput ? parseInt(rankInput.value) : 0);
+            const medal = getMedalEmojiByRank(rankVal);
+
+            const th = document.getElementById(`th-${league.id}-g${groupNo}-p${playerNo}`);
+            const tdInput = document.querySelector(`#td-${league.id}-g${groupNo}-p${playerNo} input`);
+            const tdSpan = document.querySelector(`#td-${league.id}-g${groupNo}-p${playerNo} span.capture-text`);
+
+            if (!playerObj) {
+                if (th) th.innerText = `${playerNo}번`;
+                if (tdSpan && tdInput) tdSpan.innerText = tdInput.value || tdInput.placeholder || '';
+                return;
+            }
+
+            const nameText = playerObj.name || '';
+            const displayText = playerObj.display || '';
+            const nameWithMedal = medal ? `${medal} ${nameText}` : nameText;
+            const displayWithMedal = medal ? `${medal} ${displayText}` : displayText;
+
+            if (th) th.innerText = nameWithMedal;
+            if (tdInput) tdInput.value = displayWithMedal;
+            if (tdSpan) tdSpan.innerText = displayWithMedal;
         }
 
         function saveAllPreliminaryResults() {
@@ -2747,12 +2761,8 @@
                     // 현재 슬롯의 UI 업데이트 (input 및 span)
                     const currentTd = document.getElementById(`td-${leagueId}-g${g}-p${p}`);
                     const currentInput = currentTd ? currentTd.querySelector('input') : inputElem;
-                    if (currentInput) {
-                        currentInput.value = displayName;
-                        if (currentInput.nextElementSibling) currentInput.nextElementSibling.innerText = displayName;
-                    }
-                    const th = document.getElementById(`th-${leagueId}-g${g}-p${p}`);
-                    if (th) th.innerText = m.name;
+                    if (currentInput) currentInput.value = displayName;
+                    applyLeagueMedalDisplay(league, g, p);
 
                     updateMatchOrderDisplay(leagueId, g, document.getElementById(`table-${leagueId}-g${g}`).querySelectorAll('tbody tr').length);
                     saveDataToStorage();
@@ -2773,8 +2783,7 @@
                     league.players[`g${g}_p${p}`] = null;
                     inputElem.value = "";
                     if (inputElem.nextElementSibling) inputElem.nextElementSibling.innerText = "";
-                    const th = document.getElementById(`th-${leagueId}-g${g}-p${p}`);
-                    if (th) th.innerText = `${p}번`;
+                    applyLeagueMedalDisplay(league, g, p);
                 } else {
                     if (matchType === 'doubles' && tempSelectorList.length > 2) {
                         alert("복식전은 최대 2명까지만 선택 가능합니다.");
@@ -2792,9 +2801,7 @@
                         handicap: avgHandicap
                     };
                     inputElem.value = teamDisplay;
-                    if (inputElem.nextElementSibling) inputElem.nextElementSibling.innerText = teamDisplay;
-                    const th = document.getElementById(`th-${leagueId}-g${g}-p${p}`);
-                    if (th) th.innerText = teamName;
+                    applyLeagueMedalDisplay(league, g, p);
                 }
                 updateMatchOrderDisplay(leagueId, g, document.getElementById(`table-${leagueId}-g${g}`).querySelectorAll('tbody tr').length);
                 saveDataToStorage();
