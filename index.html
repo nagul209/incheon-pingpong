@@ -1816,15 +1816,18 @@
                 const localData = localStorage.getItem('pingpongLocalData');
                 if (localData) { applyParsedData(JSON.parse(localData)); }
                 else { renderAll(); }
-            } catch (e) { renderAll(); }
+                restoreTempTableFromWebStorage();
+            } catch (e) { renderAll(); restoreTempTableFromWebStorage(); }
         }
 
         function loadDataFromStorage() {
             if (isFirebaseActive && dbRef) {
                 dbRef.on('value', (snapshot) => {
                     const data = snapshot.val();
-                    if (data && (data.members || data.matchHistory)) { applyParsedData(data); }
-                    else { loadLocalFallback(); }
+                    if (data && (data.members || data.matchHistory)) {
+                        applyParsedData(data);
+                        restoreTempTableFromWebStorage();
+                    } else { loadLocalFallback(); }
                 }, (error) => { loadLocalFallback(); });
             } else {
                 loadLocalFallback();
@@ -2237,6 +2240,9 @@
             };
 
             try {
+                // 웹 임시저장 (새로고침 복구용)
+                localStorage.setItem('pingpongTempLeagueData', JSON.stringify(exportData));
+
                 const jsonString = JSON.stringify(exportData, null, 2);
                 const blob = new Blob([jsonString], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
@@ -2261,6 +2267,25 @@
             } catch (e) {
                 console.error(e);
                 alert('파일 저장 중 오류가 발생했습니다.');
+            }
+        }
+
+        function restoreTempTableFromWebStorage() {
+            try {
+                const tempDataStr = localStorage.getItem('pingpongTempLeagueData');
+                if (!tempDataStr) return;
+
+                const importedData = JSON.parse(tempDataStr);
+                if (importedData.opAttend) formState.opAttend = importedData.opAttend;
+                if (importedData.multiLeagues) window.multiLeagues = importedData.multiLeagues;
+                if (importedData.matchHistory) matchHistory = importedData.matchHistory;
+
+                updateFormUI();
+                generateGroupSizeInputs();
+                renderHistory();
+                renderOperationLeagues();
+            } catch (err) {
+                console.error('웹 임시저장 데이터 복구 실패:', err);
             }
         }
 
