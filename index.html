@@ -1436,20 +1436,16 @@
                     class="text-xs font-extrabold bg-indigo-100 text-indigo-600 px-3 py-1.5 rounded-full shadow-inner">0명
                     선택됨</span>
             </div>
-            <div class="px-4 py-2 bg-slate-50 border-b border-slate-200"><input type="text" id="selector-search"
-                    placeholder="🔍 이름 검색 (터치하여 입력)"
-                    class="w-full bg-white border border-slate-200 p-2.5 rounded-xl text-sm outline-none font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 shadow-sm"
-                    oninput="filterSelector(this.value)"></div>
             <div class="p-4 flex-1 overflow-y-auto bg-slate-50/50">
                 <p id="selector-empty-msg" class="hidden text-sm text-slate-400 text-center py-10 font-medium">선택 가능한
                     회원이 없습니다.</p>
                 <div id="selector-list" class="grid grid-cols-3 gap-2.5"></div>
             </div>
-            <div class="p-4 border-t border-slate-100 bg-white flex gap-3 pb-6"><button onclick="closeSelector()"
-                    class="flex-1 bg-slate-100 text-slate-600 py-4 rounded-xl font-bold btn-press">취소</button><button
-                    onclick="confirmSelector()" id="btn-selector-confirm"
-                    class="flex-[2] bg-indigo-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-indigo-200 btn-press text-lg">선택
-                    완료</button></div>
+            <div class="p-4 border-t border-slate-100 bg-white flex gap-3 pb-6"><button onclick="confirmSelector()"
+                    id="btn-selector-confirm"
+                    class="flex-1 bg-indigo-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-indigo-200 btn-press text-lg">적용</button><button
+                    onclick="closeSelector()"
+                    class="flex-1 bg-slate-100 text-slate-600 py-4 rounded-xl font-bold btn-press">취소</button></div>
         </div>
     </div>
 
@@ -2730,13 +2726,12 @@
 
             if (isSinglePickMode) {
                 document.getElementById('selector-count').classList.add('hidden');
-                document.getElementById('btn-selector-confirm').classList.add('hidden');
+                document.getElementById('btn-selector-confirm').classList.remove('hidden');
             } else {
                 document.getElementById('selector-count').classList.remove('hidden');
                 document.getElementById('btn-selector-confirm').classList.remove('hidden');
             }
 
-            document.getElementById('selector-search').value = "";
             let excludedNames = [];
             for (let key in league.players) {
                 if (league.players[key]) {
@@ -2779,27 +2774,9 @@
                 if (currentSelectorTarget !== 'league') return;
                 const m = members.find(x => x.id == memberId);
                 if (m) {
-                    const displayName = `${m.name}(${m.handicap})`;
-                    // 현재 슬롯(p)에 선수 데이터 할당
-                    league.players[`g${g}_p${p}`] = { id: m.id, name: m.name, display: displayName, handicap: m.handicap };
-                    
-                    // 현재 슬롯의 UI 업데이트 (input 및 span)
-                    const currentTd = document.getElementById(`td-${leagueId}-g${g}-p${p}`);
-                    const currentInput = currentTd ? currentTd.querySelector('input') : inputElem;
-                    if (currentInput) currentInput.value = displayName;
-                    applyLeagueMedalDisplay(league, g, p);
-
-                    updateMatchOrderDisplay(leagueId, g, document.getElementById(`table-${leagueId}-g${g}`).querySelectorAll('tbody tr').length);
-                    saveDataToStorage();
-
-                    const nextSlot = getNextSlot(g, p);
-                    if (nextSlot) {
-                        g = nextSlot.g;
-                        p = nextSlot.p;
-                        renderLeagueSelectorForSlot(g, p);
-                    } else {
-                        closeSelector();
-                    }
+                    tempSelectorList = [m.name];
+                    updateSelectorCount();
+                    renderLeagueSelectorForSlot(g, p);
                 }
             };
 
@@ -3348,7 +3325,6 @@
             document.getElementById('selector-title').innerText = "1라운드 진출자 수동 선택";
             document.getElementById('selector-count').classList.add('hidden');
             document.getElementById('btn-selector-confirm').classList.add('hidden');
-            document.getElementById('selector-search').value = "";
 
             let excludedNames = [];
             tournamentState.tree[0].forEach(cell => {
@@ -3718,8 +3694,6 @@
             });
         }
 
-        function filterSelector(keyword) { const btns = document.querySelectorAll('#selector-list button'); btns.forEach(b => { if (b.innerText.toLowerCase().includes(keyword.toLowerCase())) b.classList.remove('hidden'); else b.classList.add('hidden'); }); }
-
         function renderSelectorList(onlyAttendees, target, extraExcludedNames = []) {
             let candidates = [];
             let excludedNames = [];
@@ -3820,7 +3794,6 @@
             isSinglePickMode = false;
             document.getElementById('selector-count').classList.remove('hidden');
             document.getElementById('btn-selector-confirm').classList.remove('hidden');
-            document.getElementById('selector-search').value = "";
             currentSelectorTarget = target;
             document.getElementById('selector-title').innerText = title;
             tempSelectorList = [...(formState[target] || [])];
