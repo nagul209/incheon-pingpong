@@ -3479,57 +3479,94 @@
         }
 
         function createTraditionalTreeHTML() {
-            if (!tournamentState.tree) return "";
-            const size = tournamentState.size;
-            const rounds = tournamentState.rounds;
+            return createAlignedTournamentTreeHTML(tournamentState, {
+                columnWidth: 180,
+                rowHeight: 76,
+                cellMinHeight: 34,
+                outerClass: "flex items-stretch justify-center min-w-max p-10 bg-white gap-10",
+                enableClick: true,
+                showSwapHighlight: true,
+                borderColor: "border-slate-400"
+            });
+        }
 
-            let html = `<div id="op-tourn-scroll-area" class="flex items-center justify-center min-w-max p-10 bg-white">`;
+        function createAlignedTournamentTreeHTML(data, options = {}) {
+            if (!data || !data.tree) return "";
 
-            for (let r = 0; r <= rounds; r++) {
-                let numNodes = size / Math.pow(2, r);
-                let colClass = "flex flex-col justify-around h-full relative";
-                let colStyle = `width: 180px; min-height: ${Math.max(size * 40, 600)}px; margin-right: 40px;`;
+            const size = data.size || (data.tree[0] ? data.tree[0].length : 0);
+            const rounds = data.rounds || Math.log2(size);
+            if (!size || !Number.isFinite(rounds)) return "";
 
-                html += `<div class="${colClass}" style="${colStyle}">`;
+            const firstRoundMatches = Math.max(size / 2, 1);
+            const columnWidth = options.columnWidth || 160;
+            const rowHeight = options.rowHeight || 64;
+            const cellMinHeight = options.cellMinHeight || 30;
+            const outerClass = options.outerClass || "flex items-stretch min-w-max gap-8";
+            const enableClick = !!options.enableClick;
+            const showSwapHighlight = !!options.showSwapHighlight;
+            const borderColor = options.borderColor || "border-slate-300";
+            const getCellClick = (round, idx) => enableClick ? ` onclick="handleTournamentClick(${round}, ${idx})"` : "";
+            const getCellCursor = enableClick ? "cursor-pointer hover:border-indigo-400" : "";
+            const safeText = (text) => text ? escapeHTML(text) : "-";
 
-                for (let n = 0; n < numNodes; n++) {
-                    let player = tournamentState.tree[r][n] || "";
-                    let isBye = player === "부전승(BYE)";
-                    let isWinner = false;
+            let html = `<div id="op-tourn-scroll-area" class="${outerClass}">`;
 
-                    if (r < rounds && player && !isBye) {
-                        if (tournamentState.tree[r + 1][Math.floor(n / 2)] === player) isWinner = true;
-                    }
+            for (let r = 0; r < rounds; r++) {
+                const matches = size / Math.pow(2, r + 1);
+                const spanRows = Math.pow(2, r);
+                const roundSize = size / Math.pow(2, r);
+                const roundLabel = roundSize === 2 ? "결승" : roundSize === 4 ? "4강" : `${roundSize}강`;
 
-                    // [추가 요구사항] 전체 보기 모드에서도 스왑 강조 및 클릭 연동
-                    let highlightClass = "";
-                    if (isSwapMode && r === 0 && swapFirstPick === n) {
-                        highlightClass = "ring-4 ring-orange-500 border-orange-500 scale-105 z-20 shadow-md";
-                    }
+                html += `
+                    <div class="grid relative" style="width:${columnWidth}px; grid-template-rows: repeat(${firstRoundMatches}, minmax(${rowHeight}px, auto));">
+                        <div class="absolute -top-7 left-0 right-0 text-center text-[10px] font-black text-slate-400 tracking-widest">${roundLabel}</div>
+                `;
 
-                    // 커넥터 라인 로직
-                    let borderClass = "";
-                    if (r < rounds) {
-                        let isTop = n % 2 === 0;
-                        borderClass = isTop ? "border-r-2 border-b-2 rounded-br-lg" : "border-r-2 border-t-2 rounded-tr-lg";
-                    }
+                for (let m = 0; m < matches; m++) {
+                    const p1Idx = m * 2;
+                    const p2Idx = m * 2 + 1;
+                    const p1 = (data.tree[r] && data.tree[r][p1Idx]) || "";
+                    const p2 = (data.tree[r] && data.tree[r][p2Idx]) || "";
+                    const nextWinner = (data.tree[r + 1] && data.tree[r + 1][m]) || "";
+                    const rowStart = m * spanRows + 1;
+                    const isP1Bye = p1 === "부전승(BYE)";
+                    const isP2Bye = p2 === "부전승(BYE)";
+                    const isP1Winner = nextWinner && nextWinner === p1 && !isP1Bye;
+                    const isP2Winner = nextWinner && nextWinner === p2 && !isP2Bye;
+                    const p1Highlight = showSwapHighlight && isSwapMode && r === 0 && swapFirstPick === p1Idx;
+                    const p2Highlight = showSwapHighlight && isSwapMode && r === 0 && swapFirstPick === p2Idx;
+
+                    const cellHtml = (player, idx, isWinner, isBye, isHighlighted) => `
+                        <div${getCellClick(r, idx)}
+                             class="relative z-10 w-full border ${isWinner ? 'border-blue-500 bg-blue-50' : (isBye ? 'border-slate-200 bg-slate-100 opacity-60' : 'border-slate-300 bg-white')} rounded p-1.5 text-center shadow-sm transition-all ${getCellCursor} ${isHighlighted ? 'ring-4 ring-orange-500 border-orange-500 scale-105 shadow-md' : ''}"
+                             style="min-height:${cellMinHeight}px; display:flex; align-items:center; justify-content:center;">
+                            <span class="text-[10px] font-black ${isWinner ? 'text-blue-700' : 'text-slate-700'} tracking-tight break-all">${safeText(player)}</span>
+                        </div>`;
 
                     html += `
-                        <div class="flex-1 flex items-center relative py-2">
-                            <!-- 이름 박스 -->
-                            <div onclick="handleTournamentClick(${r}, ${n})"
-                                 class="relative z-10 w-full border-2 ${isWinner ? 'border-blue-600 bg-blue-50' : 'border-slate-300 bg-white'} rounded-md p-2 text-center shadow-sm cursor-pointer transition-all hover:border-indigo-400 ${highlightClass}">
-                                <span class="text-[11px] font-black ${isWinner ? 'text-blue-700' : 'text-slate-800'}">${player || (isBye ? 'BYE' : '-')}</span>
-                            </div>
-                            <!-- 연결선 -->
-                            ${r < rounds ? `
-                                <div class="absolute right-0 w-1/2 h-1/2 ${n % 2 === 0 ? 'bottom-0' : 'top-0'} ${borderClass} border-slate-400 z-0" style="right: -40px; width: 40px;"></div>
-                            ` : ''}
+                        <div class="relative flex flex-col justify-center gap-2 py-1" style="grid-row: ${rowStart} / span ${spanRows};">
+                            ${cellHtml(p1, p1Idx, isP1Winner, isP1Bye, p1Highlight)}
+                            ${cellHtml(p2, p2Idx, isP2Winner, isP2Bye, p2Highlight)}
+                            <div class="absolute top-1/2 -right-10 w-10 border-t-2 ${borderColor} z-0"></div>
                         </div>
                     `;
                 }
                 html += `</div>`;
             }
+
+            const champion = (data.tree[rounds] && data.tree[rounds][0]) || "";
+            html += `
+                <div class="grid relative" style="width:${columnWidth}px; grid-template-rows: repeat(${firstRoundMatches}, minmax(${rowHeight}px, auto));">
+                    <div class="absolute -top-7 left-0 right-0 text-center text-[10px] font-black text-amber-500 tracking-widest">우승</div>
+                    <div class="flex items-center justify-center" style="grid-row: 1 / span ${firstRoundMatches};">
+                        <div class="relative z-10 w-full border-2 ${champion && champion !== '부전승(BYE)' ? 'border-amber-400 bg-amber-50' : 'border-slate-300 bg-white'} rounded-lg p-2 text-center shadow-md">
+                            <div class="text-xl mb-1">🏆</div>
+                            <span class="text-[11px] font-black ${champion ? 'text-amber-700' : 'text-slate-500'} tracking-tight break-all">${safeText(champion || '결정 전')}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
             html += `</div>`;
             return html;
         }
@@ -5494,9 +5531,6 @@ function renderMembersList() {
                     }
                     if (!hasRealPlayers) return '';
 
-                    const size = data.size;
-                    const rounds = data.rounds;
-
                     const deleteBtn = isAdmin ? `<button onclick="deleteHistoryTournament(${matchId})" class="text-[10px] bg-red-50 text-red-500 border border-red-100 hover:bg-red-100 px-2 py-1 rounded font-bold transition-all btn-press shadow-sm ml-auto flex items-center gap-1">🗑️ 대진표 삭제</button>` : '';
 
                     let html = `
@@ -5506,42 +5540,17 @@ function renderMembersList() {
                         ${deleteBtn}
                     </div>
                 `;
-                    html += `<div class="bg-slate-50 border border-slate-200 rounded-xl overflow-x-auto p-3 shadow-inner"><div class="flex items-center min-w-max" style="zoom: 0.85;">`;
-
-                    for (let r = 0; r <= rounds; r++) {
-                        let numNodes = size / Math.pow(2, r);
-                        let colStyle = `width: 140px; min-height: ${Math.max(size * 32, 200)}px;`;
-                        html += `<div class="flex flex-col justify-around h-full relative" style="${colStyle}">`;
-
-                        for (let n = 0; n < numNodes; n++) {
-                            let player = data.tree[r][n] || "";
-                            let isBye = player === "부전승(BYE)";
-                            let isWinner = false;
-
-                            if (r < rounds && player && !isBye) {
-                                if (data.tree[r + 1][Math.floor(n / 2)] === player) isWinner = true;
-                            }
-
-                            let borderClass = "";
-                            if (r < rounds) {
-                                let isTop = n % 2 === 0;
-                                borderClass = isTop ? "border-r-2 border-b-2 rounded-br-md" : "border-r-2 border-t-2 rounded-tr-md";
-                            }
-
-                            html += `
-                            <div class="flex-1 flex items-center relative py-1.5">
-                                <div class="relative z-10 w-full border ${isWinner ? 'border-blue-400 bg-blue-50' : 'border-slate-300 bg-white'} rounded p-1 text-center shadow-sm mx-1">
-                                    <span class="text-[10px] font-bold ${isWinner ? 'text-blue-700' : 'text-slate-700'} tracking-tight">${player || (isBye ? 'BYE' : '-')}</span>
-                                </div>
-                                ${r < rounds ? `
-                                    <div class="absolute right-0 w-1/2 h-1/2 ${n % 2 === 0 ? 'bottom-0' : 'top-0'} ${borderClass} border-slate-300 z-0" style="right: -66px; width: 70px;"></div>
-                                ` : ''}
-                            </div>
-                        `;
-                        }
-                        html += `</div>`;
-                    }
-                    html += `</div></div></div>`;
+                    html += `<div class="bg-slate-50 border border-slate-200 rounded-xl overflow-x-auto p-3 shadow-inner">`;
+                    html += createAlignedTournamentTreeHTML(data, {
+                        columnWidth: 140,
+                        rowHeight: 58,
+                        cellMinHeight: 28,
+                        outerClass: "flex items-stretch min-w-max gap-8 py-8 px-2",
+                        enableClick: false,
+                        showSwapHighlight: false,
+                        borderColor: "border-slate-300"
+                    });
+                    html += `</div></div>`;
                     return html;
                 };
 
