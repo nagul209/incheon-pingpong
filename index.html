@@ -376,6 +376,44 @@
                 </div>
             </div>
 
+            <div
+                class="bg-white p-4 rounded-2xl border border-emerald-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6 relative overflow-hidden">
+                <div class="absolute -right-4 -top-4 text-6xl opacity-5">📋</div>
+                <div class="flex justify-between items-center mb-3 border-b border-emerald-50 pb-2 relative z-10 gap-2">
+                    <div>
+                        <h3 class="font-extrabold text-emerald-800 text-base">📋 참가예정 명단</h3>
+                        <p class="text-[10px] text-slate-500 font-medium mt-0.5">카드로 참가예정자를 선택하고, 성실/참가비 여부를 체크하세요.</p>
+                    </div>
+                    <div class="flex gap-1.5 shrink-0">
+                        <button onclick="openSelector('opPlanned', '참가예정자 선택', false)"
+                            class="text-[11px] bg-emerald-600 text-white px-3 py-2 rounded-lg font-bold shadow-md btn-press">명단
+                            선택</button>
+                        <button onclick="resetOperationInputs()"
+                            class="text-[11px] bg-rose-500 text-white px-3 py-2 rounded-lg font-bold shadow-md btn-press">운영
+                            초기화</button>
+                    </div>
+                </div>
+                <div id="op-planned-summary"
+                    class="min-h-[40px] bg-emerald-50/60 rounded-xl p-2.5 border border-emerald-100 cursor-pointer relative z-10 mb-3"
+                    onclick="openSelector('opPlanned', '참가예정자 선택', false)">
+                    <span class="name-chip-empty text-emerald-500">👆 버튼을 눌러 참가예정자를 선택하세요.</span>
+                </div>
+                <div class="overflow-x-auto relative z-10 rounded-xl border border-slate-100">
+                    <table class="w-full text-left text-slate-700">
+                        <thead class="bg-slate-50 text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">
+                            <tr>
+                                <th class="px-3 py-2">이름</th>
+                                <th class="px-3 py-2 text-center w-20">성실</th>
+                                <th class="px-3 py-2 text-center w-20">참가비</th>
+                            </tr>
+                        </thead>
+                        <tbody id="op-planned-table-body" class="divide-y divide-slate-50">
+                            <tr><td colspan="3" class="px-3 py-4 text-center text-xs text-slate-400 font-bold">참가예정자를 선택하면 표로 표시됩니다.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6">
                 <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
                     <div>
@@ -1624,7 +1662,7 @@
         let defaultScoreRules = { attend: 3.0, sincerity: 0.5, lg1: 2.5, lg2: 2.0, lg3: 1.5, tm1: 2.5, tm2: 2.0, tm3: 1.5, tn1: 2.5, tn2: 2.0, tn3: 1.5, utn1: 2.5, utn2: 2.0, utn3: 1.5, ltn1: 2.5, ltn2: 2.0, ltn3: 1.5, db1: 2.0, db2: 1.5, db3: 1.0, ev1: 2.0 };
         let appConfig = { ...defaultAppConfig }; let scoreRules = { ...defaultScoreRules }; let members = []; let matchHistory = []; let nextMemberId = 1; let nextMatchId = 1;
 
-        let formState = { attend: [], lazy: [], lg1: [], lg2: [], lg3: [], tm1: [], tm2: [], tm3: [], tn1: [], tn2: [], tn3: [], utn1: [], utn2: [], utn3: [], ltn1: [], ltn2: [], ltn3: [], db1: [], db2: [], db3: [], ev1: [], opAttend: [], ratedGames: [], isRatedMatch: false, kFactor: (appConfig.defaultKFactor || 32), autoExtractRated: true };
+        let formState = { attend: [], lazy: [], lg1: [], lg2: [], lg3: [], tm1: [], tm2: [], tm3: [], tn1: [], tn2: [], tn3: [], utn1: [], utn2: [], utn3: [], ltn1: [], ltn2: [], ltn3: [], db1: [], db2: [], db3: [], ev1: [], opAttend: [], opPlanned: [], opParticipantChecks: {}, ratedGames: [], isRatedMatch: false, kFactor: (appConfig.defaultKFactor || 32), autoExtractRated: true };
         let currentSelectorTarget = ''; let tempSelectorList = []; let isSinglePickMode = false;
         window.multiLeagues = [];
         function getLeagueById(id) { return window.multiLeagues.find(lg => lg.id === id); }
@@ -1837,6 +1875,9 @@
             scoreRules = { ...defaultScoreRules, ...(parsed.scoreRules || {}) };
             tournamentState = parsed.tournamentState || tournamentState;
             if (parsed.opAttend) formState.opAttend = parsed.opAttend;
+            if (parsed.opPlanned) formState.opPlanned = parsed.opPlanned;
+            formState.opParticipantChecks = parsed.opParticipantChecks || {};
+            normalizeOperationParticipantChecks();
             
             // Firebase는 빈 객체 {}rk null로 변환되므로 players/groupSizes를 항상 방어
             if (parsed.multiLeagues) window.multiLeagues = parsed.multiLeagues.map(lg => ({
@@ -1918,6 +1959,8 @@
                 nextMatchId, 
                 tournamentState,
                 opAttend: formState.opAttend,
+                opPlanned: formState.opPlanned,
+                opParticipantChecks: formState.opParticipantChecks,
                 multiLeagues: window.multiLeagues
             };
             try { localStorage.setItem('pingpongLocalData', JSON.stringify(dataToSave)); } catch (e) { }
@@ -2285,6 +2328,8 @@
             // 파일로 내보낼 데이터 객체 구성
             const exportData = {
                 opAttend: formState.opAttend || [],
+                opPlanned: formState.opPlanned || [],
+                opParticipantChecks: formState.opParticipantChecks || {},
                 multiLeagues: window.multiLeagues,
                 matchHistory: matchHistory
             };
@@ -2327,6 +2372,9 @@
 
                 const importedData = JSON.parse(tempDataStr);
                 if (importedData.opAttend) formState.opAttend = importedData.opAttend;
+                if (importedData.opPlanned) formState.opPlanned = importedData.opPlanned;
+                formState.opParticipantChecks = importedData.opParticipantChecks || formState.opParticipantChecks || {};
+                normalizeOperationParticipantChecks();
                 if (importedData.multiLeagues) window.multiLeagues = importedData.multiLeagues;
                 if (importedData.matchHistory) matchHistory = importedData.matchHistory;
 
@@ -2355,6 +2403,9 @@
                         
                         // 데이터 복구
                         if (importedData.opAttend) formState.opAttend = importedData.opAttend;
+                        if (importedData.opPlanned) formState.opPlanned = importedData.opPlanned;
+                        formState.opParticipantChecks = importedData.opParticipantChecks || formState.opParticipantChecks || {};
+                        normalizeOperationParticipantChecks();
                         if (importedData.multiLeagues) window.multiLeagues = importedData.multiLeagues;
                         if (importedData.matchHistory) matchHistory = importedData.matchHistory;
 
@@ -4147,10 +4198,14 @@
                 formState[currentSelectorTarget] = [...tempSelectorList];
                 if (currentSelectorTarget === 'attend' || currentSelectorTarget === 'opAttend') {
                     for (let key in formState) {
-                        if (key !== 'attend' && key !== 'opAttend' && Array.isArray(formState[key])) {
+                        if (key !== 'attend' && key !== 'opAttend' && key !== 'opPlanned' && Array.isArray(formState[key])) {
                             formState[key] = formState[key].filter(name => (formState[currentSelectorTarget] || []).includes(name));
                         }
                     }
+                }
+                if (currentSelectorTarget === 'opPlanned') {
+                    normalizeOperationParticipantChecks();
+                    saveDataToStorage();
                 }
                 updateFormUI();
                 if (currentSelectorTarget === 'opAttend') {
@@ -4164,7 +4219,7 @@
             for (let key in formState) {
                 if (key === 'isRatedMatch') formState[key] = false;
                 else if (key === 'kFactor') formState[key] = appConfig.defaultKFactor || 32;
-                else if (key !== 'opAttend') formState[key] = [];
+                else if (key !== 'opAttend' && key !== 'opPlanned' && key !== 'opParticipantChecks') formState[key] = [];
             }
             // UI 초기화
             const ratedPanel = document.getElementById('rated-config-panel');
@@ -4200,6 +4255,88 @@
             updateFormUI(); 
         }
 
+        function normalizeOperationParticipantChecks() {
+            if (!formState.opParticipantChecks || typeof formState.opParticipantChecks !== 'object' || Array.isArray(formState.opParticipantChecks)) {
+                formState.opParticipantChecks = {};
+            }
+            const planned = formState.opPlanned || [];
+            Object.keys(formState.opParticipantChecks).forEach(name => {
+                if (!planned.includes(name)) delete formState.opParticipantChecks[name];
+            });
+            planned.forEach(name => {
+                if (!formState.opParticipantChecks[name]) {
+                    formState.opParticipantChecks[name] = { sincere: false, fee: false };
+                }
+            });
+        }
+
+        function renderOperationPlannedTable() {
+            normalizeOperationParticipantChecks();
+
+            const summaryEl = document.getElementById('op-planned-summary');
+            const tableBody = document.getElementById('op-planned-table-body');
+            const planned = formState.opPlanned || [];
+
+            if (summaryEl) {
+                summaryEl.innerHTML = planned.length === 0
+                    ? '<span class="name-chip-empty text-emerald-500">👆 버튼을 눌러 참가예정자를 선택하세요.</span>'
+                    : planned.map(name => `<span class="name-chip shadow-sm bg-emerald-100 text-emerald-700">${escapeHTML(name)}</span>`).join('');
+            }
+
+            if (!tableBody) return;
+            if (planned.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="3" class="px-3 py-4 text-center text-xs text-slate-400 font-bold">참가예정자를 선택하면 표로 표시됩니다.</td></tr>';
+                return;
+            }
+
+            tableBody.innerHTML = planned.map((name, index) => {
+                const checks = formState.opParticipantChecks[name] || { sincere: false, fee: false };
+                return `<tr class="bg-white hover:bg-slate-50 transition-colors">
+                    <td class="px-3 py-2.5 text-sm font-extrabold text-slate-700">${index + 1}. ${escapeHTML(name)}</td>
+                    <td class="px-3 py-2.5 text-center">
+                        <input type="checkbox" data-name="${escapeHTML(name)}" ${checks.sincere ? 'checked' : ''} onchange="toggleOperationParticipantCheck(this.dataset.name, 'sincere', this.checked)" class="w-5 h-5 accent-emerald-600 rounded cursor-pointer">
+                    </td>
+                    <td class="px-3 py-2.5 text-center">
+                        <input type="checkbox" data-name="${escapeHTML(name)}" ${checks.fee ? 'checked' : ''} onchange="toggleOperationParticipantCheck(this.dataset.name, 'fee', this.checked)" class="w-5 h-5 accent-indigo-600 rounded cursor-pointer">
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function toggleOperationParticipantCheck(name, field, checked) {
+            normalizeOperationParticipantChecks();
+            if (!formState.opParticipantChecks[name]) formState.opParticipantChecks[name] = { sincere: false, fee: false };
+            formState.opParticipantChecks[name][field] = checked;
+            saveDataToStorage();
+        }
+
+        function resetOperationInputs() {
+            if (!isAdmin) return;
+            if (!confirm('운영 탭의 참석자/참가예정 명단, 리그전표, 대진표 입력값을 모두 초기화하시겠습니까?')) return;
+
+            formState.opAttend = [];
+            formState.opPlanned = [];
+            formState.opParticipantChecks = {};
+            window.multiLeagues = [];
+            tournamentState = { size: 0, rounds: 0, tree: [], visibleRound: 0, groups: 0, adv: 0, originalTemplate: [] };
+            localStorage.removeItem('pingpongTempLeagueData');
+            localStorage.removeItem('preliminaryResults');
+
+            renderOperationLeagues();
+            const tournFilterContainer = document.getElementById('tourn-filter-container');
+            if (tournFilterContainer) tournFilterContainer.classList.add('hidden');
+            const tournQuickNav = document.getElementById('tourn-quick-nav');
+            if (tournQuickNav) tournQuickNav.classList.add('hidden');
+            const tournInfo = document.getElementById('op-tourn-info');
+            if (tournInfo) tournInfo.classList.add('hidden');
+            const tournContainer = document.getElementById('op-tourn-container');
+            if (tournContainer) tournContainer.innerHTML = '<div class="text-center text-slate-400 text-xs py-8">조건을 선택하고 대진표 생성을 눌러주세요.</div>';
+            generateGroupSizeInputs();
+            updateFormUI();
+            saveDataToStorage();
+            alert('✅ 운영 탭 입력값이 초기화되었습니다.');
+        }
+
         function updateFormUI() { 
             for (let key in formState) { 
                 if (!Array.isArray(formState[key])) continue; 
@@ -4211,7 +4348,8 @@
                 } else {
                     el.innerHTML = formState[key].map(name => `<span class="name-chip shadow-sm">${escapeHTML(name)}</span>`).join(''); 
                 }
-            } 
+            }
+            renderOperationPlannedTable();
         }
 
         function downloadExcelTemplate() { try { const ws_data = [['구분', '부서', '등급', '직책', '직급', '이름(*필수)', '부수(*필수,숫자)', '성별', '상태(활동/휴면)', '연락처'], ['시', '체육진흥과', '연회원', '총무', '주무관', '홍길동', '5', '남', '활동', '010-0000-0000']]; const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws_data), "회원등록양식"); XLSX.writeFile(wb, "탁구리그_회원일괄등록_양식.xlsx"); } catch (e) { alert("다운로드 실패"); } }
