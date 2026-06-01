@@ -1950,7 +1950,17 @@
                         if (rank) nextScores[g][i].rank = rank.value;
                     }
                 }
-                league.scores = nextScores;
+                const hasRenderedScoreInputs = !!document.getElementById(`table-${league.id}-g1`);
+                if (hasRenderedScoreInputs) {
+                    league.scores = nextScores;
+                }
+
+                const bulkScores = { ...(league.bulkScores || {}) };
+                for (let g = 1; g <= league.groupCount; g++) {
+                    const bulkInput = document.getElementById(`bulk-score-${league.id}-g${g}`);
+                    if (bulkInput) bulkScores[g] = bulkInput.value;
+                }
+                league.bulkScores = bulkScores;
             });
         }
 
@@ -2232,7 +2242,7 @@
                 html += `</tbody></table></div>`;
 
                 html += `<div class="bg-white border-t border-sky-100 p-2.5 flex gap-1.5 items-center no-print flex-nowrap">
-                            <input type="text" id="bulk-score-${league.id}-g${g}" data-bulk-score-input="true" class="flex-1 min-w-0 text-[10px] sm:text-[11px] font-bold text-slate-700 border border-slate-200 rounded-lg px-2 py-1.5 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 transition-all placeholder-slate-400 text-center" placeholder="연속된 세트 스코어 입력 (예: 3111...)" autocomplete="off">
+                            <input type="text" id="bulk-score-${league.id}-g${g}" data-bulk-score-input="true" value="${escapeHTML(((league.bulkScores || {})[g] || (league.bulkScores || {})[String(g)] || ''))}" class="flex-1 min-w-0 text-[10px] sm:text-[11px] font-bold text-slate-700 border border-slate-200 rounded-lg px-2 py-1.5 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 transition-all placeholder-slate-400 text-center" placeholder="연속된 세트 스코어 입력 (예: 3111...)" autocomplete="off">
                             <button onclick="fillScoresFromString(this, ${league.id}, ${g})" class="shrink-0 text-[10px] sm:text-[11px] bg-slate-800 hover:bg-slate-700 text-white px-2.5 sm:px-3 py-1.5 rounded-lg font-bold transition-colors btn-press shadow-sm whitespace-nowrap">일괄 적용</button>
                         </div>`;
 
@@ -2256,6 +2266,8 @@
             if (!inputEl) return;
 
             const scoreString = inputEl.value.trim();
+            league.bulkScores = league.bulkScores || {};
+            league.bulkScores[g] = scoreString;
             const scoreDigits = scoreString.replace(/[^0-9]/g, '');
             if (!scoreDigits) {
                 alert("적용할 스코어 문자열을 입력해주세요.");
@@ -2499,25 +2511,50 @@
             });
         }
 
+        function getStoredScoreValue(league, g, rowNo, colNo) {
+            const groupScores = (league.scores || {})[g] || (league.scores || {})[String(g)] || {};
+            const rowScores = groupScores[rowNo] || groupScores[String(rowNo)] || {};
+            return rowScores[colNo] ?? rowScores[String(colNo)] ?? '';
+        }
+
+        function readScoreValue(league, g, rowNo, colNo) {
+            const input = document.getElementById(`score-${league.id}-g${g}-r${rowNo}-c${colNo}`);
+            return input ? input.value.trim() : String(getStoredScoreValue(league, g, rowNo, colNo) || '').trim();
+        }
+
+        function parseSetScore(value) {
+            const normalized = String(value ?? '').trim();
+            if (!/^\d+$/.test(normalized)) return null;
+            return parseInt(normalized, 10);
+        }
+
+        function writeLeagueScoreMeta(league, g, playerNo, key, value) {
+            league.scores = league.scores || {};
+            league.scores[g] = league.scores[g] || {};
+            league.scores[g][playerNo] = league.scores[g][playerNo] || {};
+            league.scores[g][playerNo][key] = String(value);
+        }
+
         function calculateGroupRankings(leagueId = null, options = {}) {
             const targetLeagues = leagueId ? [getLeagueById(leagueId)] : window.multiLeagues;
             if (!targetLeagues.length || !targetLeagues[0]) return alert("진행할 리그전표가 없습니다.");
 
             targetLeagues.forEach(league => {
                 for (let g = 1; g <= league.groupCount; g++) {
-                    let size = (league.groupSizes || {})[g] || 4;
+                    let size = (league.groupSizes || {})[g] || (league.groupSizes || {})[String(g)] || 4;
                     let players = [];
-                    for (let i = 1; i <= size; i++) players.push({ id: i, matchWins: 0, matchLosses: 0, setsWon: 0, setsLost: 0, matches: {} });
+                    for (let i = 1; i <= size; i++) players.push({ id: i, matchWins: 0, matchLosses: 0, setsWon: 0, setsLost: 0, matches: {}, finalRank: '' });
 
                     for (let i = 1; i <= size; i++) {
                         for (let j = i + 1; j <= size; j++) {
-                            let inputIJ = document.getElementById(`score-${league.id}-g${g}-r${i}-c${j}`);
-                            let inputJI = document.getElementById(`score-${league.id}-g${g}-r${j}-c${i}`);
-                            let valIJ = inputIJ ? inputIJ.value.trim() : "";
-                            let valJI = inputJI ? inputJI.value.trim() : "";
+                            let valIJ = readScoreValue(league, g, i, j);
+                            let valJI = readScoreValue(league, g, j, i);
+                            let w = parseSetScore(valIJ);
+                            let l = parseSetScore(valJI);
 
-                            if (valIJ !== "" || valJI !== "") {
-                                let w = parseInt(valIJ) || 0; let l = parseInt(valJI) || 0;
+                            // 양쪽 세트 스코어가 모두 입력된 경기만 승/패와 득/실에 반영한다.
+                            // 한 칸만 입력된 중간 상태를 0점 패로 오인하면 일괄 적용 중 순위가 흔들린다.
+                            if (w !== null && l !== null) {
                                 players[i - 1].setsWon += w; players[i - 1].setsLost += l; players[i - 1].matches[j] = { w: w, l: l };
                                 players[j - 1].setsWon += l; players[j - 1].setsLost += w; players[j - 1].matches[i] = { w: l, l: w };
                                 if (w > l) { players[i - 1].matchWins++; players[j - 1].matchLosses++; }
@@ -2528,11 +2565,18 @@
 
                     players.forEach(p => {
                         let wlInput = document.getElementById(`wl-${league.id}-g${g}-p${p.id}`); let diffInput = document.getElementById(`diff-${league.id}-g${g}-p${p.id}`);
-                        if (wlInput) { wlInput.value = `${p.matchWins}/${p.matchLosses}`; syncText(wlInput); }
-                        if (diffInput) { diffInput.value = `${p.setsWon}/${p.setsLost}`; syncText(diffInput); }
+                        const wlValue = `${p.matchWins}/${p.matchLosses}`;
+                        const diffValue = `${p.setsWon}/${p.setsLost}`;
+                        if (wlInput) { wlInput.value = wlValue; syncText(wlInput); }
+                        if (diffInput) { diffInput.value = diffValue; syncText(diffInput); }
+                        writeLeagueScoreMeta(league, g, p.id, 'wl', wlValue);
+                        writeLeagueScoreMeta(league, g, p.id, 'diff', diffValue);
                     });
 
-                    let sortedPlayers = [...players].sort((a, b) => b.matchWins - a.matchWins);
+                    let sortedPlayers = [...players].sort((a, b) => {
+                        if (b.matchWins !== a.matchWins) return b.matchWins - a.matchWins;
+                        return (b.setsWon - b.setsLost) - (a.setsWon - a.setsLost);
+                    });
                     let rank = 1; let idx = 0;
                     while (idx < sortedPlayers.length) {
                         let tied = [sortedPlayers[idx]]; let next = idx + 1;
@@ -2571,6 +2615,7 @@
                     players.forEach(p => {
                         let rankInput = document.getElementById(`rank-${league.id}-g${g}-p${p.id}`);
                         if (rankInput) { rankInput.value = p.finalRank; syncText(rankInput); }
+                        writeLeagueScoreMeta(league, g, p.id, 'rank', p.finalRank);
                         applyLeagueMedalDisplay(league, g, p.id, p.finalRank);
                     });
                 }
