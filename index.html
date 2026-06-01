@@ -4322,9 +4322,7 @@
                 return;
             }
 
-            const currentAttendees = formState.opAttend || [];
-            const movedNames = planned.filter(name => !currentAttendees.includes(name));
-            formState.opAttend = [...new Set([...currentAttendees, ...planned])];
+            formState.opAttend = [...new Set(planned)];
             formState.opPlanned = [];
             formState.opParticipantChecks = {};
 
@@ -4332,7 +4330,7 @@
             updateFormUI();
             saveDataToStorage();
 
-            alert(`✅ 참가예정자 ${planned.length}명을 오늘 경기 참석자 명단으로 이동했습니다.\n신규 추가: ${movedNames.length}명 / 전체 참석자: ${formState.opAttend.length}명`);
+            alert(`✅ 오늘 경기 참석자 명단을 초기화하고 참가예정자 ${formState.opAttend.length}명만 참석자로 선택했습니다.`);
         }
 
         function resetOperationInputs() {
