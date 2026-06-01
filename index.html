@@ -2177,7 +2177,7 @@
                 let currentSize = groupSizes[g] || 4;
                 if (isNaN(currentSize) || currentSize < 2) currentSize = 2;
 
-                html += `<div class="border-2 border-slate-800/80 rounded-xl overflow-hidden bg-white w-fit max-w-full shadow-sm mx-auto">
+                html += `<div class="border-2 border-slate-800/80 rounded-xl overflow-hidden bg-white w-fit max-w-full shadow-sm mx-auto" id="group-panel-${league.id}-g${g}" data-league-id="${league.id}" data-group-no="${g}">
                     <div class="bg-slate-100 p-2 flex justify-end items-center gap-1.5 border-b border-slate-200">
                         <span class="text-xs font-bold text-slate-500 mr-auto ml-1">${g}조 관리</span>
                         <button onclick="copyGroupTableImage(${league.id}, ${g})" id="btn-copy-${league.id}-g${g}" class="text-[10px] bg-emerald-500 hover:bg-emerald-400 text-white px-2 py-1 rounded font-bold transition-colors btn-press no-print shadow-sm flex items-center">📸 복사</button>
@@ -2228,8 +2228,8 @@
                 html += `</tbody></table></div>`;
 
                 html += `<div class="bg-white border-t border-sky-100 p-2.5 flex gap-1.5 items-center no-print flex-nowrap">
-                            <input type="text" id="bulk-score-${league.id}-g${g}" class="flex-1 min-w-0 text-[10px] sm:text-[11px] font-bold text-slate-700 border border-slate-200 rounded-lg px-2 py-1.5 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 transition-all placeholder-slate-400 text-center" placeholder="연속된 세트 스코어 입력 (예: 3111...)" autocomplete="off">
-                            <button onclick="fillScoresFromString(${league.id}, ${g})" class="shrink-0 text-[10px] sm:text-[11px] bg-slate-800 hover:bg-slate-700 text-white px-2.5 sm:px-3 py-1.5 rounded-lg font-bold transition-colors btn-press shadow-sm whitespace-nowrap">일괄 적용</button>
+                            <input type="text" id="bulk-score-${league.id}-g${g}" data-bulk-score-input="true" class="flex-1 min-w-0 text-[10px] sm:text-[11px] font-bold text-slate-700 border border-slate-200 rounded-lg px-2 py-1.5 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 transition-all placeholder-slate-400 text-center" placeholder="연속된 세트 스코어 입력 (예: 3111...)" autocomplete="off">
+                            <button onclick="fillScoresFromString(this, ${league.id}, ${g})" class="shrink-0 text-[10px] sm:text-[11px] bg-slate-800 hover:bg-slate-700 text-white px-2.5 sm:px-3 py-1.5 rounded-lg font-bold transition-colors btn-press shadow-sm whitespace-nowrap">일괄 적용</button>
                         </div>`;
 
                 html += `</div><div class="bg-slate-50 border-t border-slate-200 text-[11px] text-left no-print"><div class="p-2.5 flex justify-between items-center cursor-pointer font-extrabold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors" onclick="toggleOrder(${league.id}, ${g})"><span>🔄 게임 순서 접기/펼치기</span><span id="order-icon-${league.id}-${g}" class="text-xs">▼</span></div><div id="order-content-${league.id}-${g}" class="hidden p-3 leading-loose break-keep bg-slate-50 shadow-inner"></div></div></div>`;
@@ -2238,46 +2238,60 @@
             return html;
         }
 
-        function fillScoresFromString(leagueId, g) {
+        function fillScoresFromString(triggerOrLeagueId, fallbackLeagueId = null, fallbackGroupNo = null) {
+            const triggerEl = triggerOrLeagueId instanceof HTMLElement ? triggerOrLeagueId : null;
+            const groupPanel = triggerEl ? triggerEl.closest('[data-league-id][data-group-no]') : null;
+            const leagueId = groupPanel ? groupPanel.dataset.leagueId : (fallbackLeagueId || triggerOrLeagueId);
+            const g = parseInt(groupPanel ? groupPanel.dataset.groupNo : fallbackGroupNo);
             const league = getLeagueById(leagueId);
-            if (!league) return;
-            const inputEl = document.getElementById(`bulk-score-${leagueId}-g${g}`);
+            if (!league || !g) return;
+
+            const inputEl = groupPanel
+                ? groupPanel.querySelector('[data-bulk-score-input="true"]')
+                : document.getElementById(`bulk-score-${leagueId}-g${g}`);
             if (!inputEl) return;
 
             const scoreString = inputEl.value.trim();
-            if (!scoreString) {
+            const scoreDigits = scoreString.replace(/[^0-9]/g, '');
+            if (!scoreDigits) {
                 alert("적용할 스코어 문자열을 입력해주세요.");
                 return;
             }
 
-            const currentSize = league.groupSizes[g] || 4;
-            const totalRequired = currentSize * (currentSize - 1); // 대각선 자기 자신 제외
-
+            const currentSize = (league.groupSizes && league.groupSizes[g]) || 4;
+            const pairs = getRoundRobinPairs(currentSize);
+            const totalRequired = currentSize * (currentSize - 1); // 경기별 양방향 세트 스코어 수
             let idx = 0;
-            for (let i = 1; i <= currentSize; i++) {
-                for (let j = 1; j <= currentSize; j++) {
-                    if (i === j) continue; // 대각선 건너뜀
+            let appliedCount = 0;
 
-                    if (idx < scoreString.length) {
-                        const targetScore = scoreString[idx];
-                        const inputCell = document.getElementById(`score-${league.id}-g${g}-r${i}-c${j}`);
-                        if (inputCell) {
-                            inputCell.value = targetScore;
-                            syncText(inputCell);
-                        }
-                        idx++;
-                    }
-                }
-            }
+            const setScoreCell = (rowNo, colNo, value) => {
+                const inputCell = groupPanel
+                    ? groupPanel.querySelector(`#score-${league.id}-g${g}-r${rowNo}-c${colNo}`)
+                    : document.getElementById(`score-${league.id}-g${g}-r${rowNo}-c${colNo}`);
+                if (!inputCell) return false;
+                inputCell.value = value;
+                syncText(inputCell);
+                appliedCount++;
+                return true;
+            };
+
+            pairs.forEach(([p1, p2]) => {
+                if (idx < scoreDigits.length) setScoreCell(p1, p2, scoreDigits[idx++]);
+                if (idx < scoreDigits.length) setScoreCell(p2, p1, scoreDigits[idx++]);
+            });
 
             inputEl.value = ''; // 완료 후 초기화
 
-            if (idx < totalRequired || idx < scoreString.length) {
-                alert("입력된 숫자의 길이와 빈칸의 총 개수가 다릅니다. 채울 수 있는 부분까지만 적용되었습니다.\n입력숫자 길이: " + scoreString.length + "개, 필요 부분: " + totalRequired + "개");
+            if (scoreDigits.length !== totalRequired) {
+                alert("입력된 숫자의 길이와 빈칸의 총 개수가 다릅니다. 채울 수 있는 부분까지만 적용되었습니다.\n입력숫자 길이: " + scoreDigits.length + "개, 필요 부분: " + totalRequired + "개");
+            }
+            if (appliedCount === 0) {
+                alert("바로 위 리그표의 점수 칸을 찾지 못했습니다. 화면을 새로고침한 뒤 다시 시도해주세요.");
+                return;
             }
 
             // 실시간 순위 산출 즉시 호출 (자동순위 업데이트)
-            calculateGroupRankings(leagueId);
+            calculateGroupRankings(leagueId, { silent: true });
         }
 
         function updateLeagueTitle(leagueId, val) {
@@ -2477,7 +2491,7 @@
             });
         }
 
-        function calculateGroupRankings(leagueId = null) {
+        function calculateGroupRankings(leagueId = null, options = {}) {
             const targetLeagues = leagueId ? [getLeagueById(leagueId)] : window.multiLeagues;
             if (!targetLeagues.length || !targetLeagues[0]) return alert("진행할 리그전표가 없습니다.");
 
@@ -2553,7 +2567,7 @@
                     });
                 }
             });
-            alert("🧮 선택한/전체 리그 표의 자동 계산이 완료되었습니다.");
+            if (!options.silent) alert("🧮 선택한/전체 리그 표의 자동 계산이 완료되었습니다.");
             saveDataToStorage();
             // 매번 전체 결과를 취합하여 저장 (전체 버튼이든 개별 버튼이든)
             saveAllPreliminaryResults();
