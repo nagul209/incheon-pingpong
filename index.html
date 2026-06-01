@@ -2555,12 +2555,43 @@
             }
         }
 
+        function clearLeagueCalculatedFields(league) {
+            if (!league) return;
+            league.scores = league.scores || {};
+            for (let g = 1; g <= league.groupCount; g++) {
+                const size = (league.groupSizes || {})[g] || (league.groupSizes || {})[String(g)] || 4;
+                league.scores[g] = league.scores[g] || {};
+                for (let i = 1; i <= size; i++) {
+                    league.scores[g][i] = league.scores[g][i] || {};
+
+                    ['wl', 'diff', 'rank'].forEach(key => {
+                        const inputId = key === 'wl'
+                            ? `wl-${league.id}-g${g}-p${i}`
+                            : key === 'diff'
+                                ? `diff-${league.id}-g${g}-p${i}`
+                                : `rank-${league.id}-g${g}-p${i}`;
+                        const input = document.getElementById(inputId);
+                        if (input) {
+                            input.value = '';
+                            syncText(input);
+                        }
+                        league.scores[g][i][key] = '';
+                    });
+
+                    applyLeagueMedalDisplay(league, g, i, '');
+                }
+            }
+        }
+
         function recalculatePreliminaryTables(leagueId = null) {
-            const targetLeagues = leagueId ? [getLeagueById(leagueId)] : window.multiLeagues;
-            if (!targetLeagues.length || !targetLeagues[0]) return alert("재계산할 리그전표가 없습니다.");
-            targetLeagues.forEach(syncLeagueScoresFromInputs);
+            const targetLeagues = (leagueId ? [getLeagueById(leagueId)] : window.multiLeagues).filter(Boolean);
+            if (!targetLeagues.length) return alert("재계산할 리그전표가 없습니다.");
+            targetLeagues.forEach(league => {
+                syncLeagueScoresFromInputs(league);
+                clearLeagueCalculatedFields(league);
+            });
             calculateGroupRankings(leagueId, { silent: true });
-            alert("🔁 입력된 세트스코어 기준으로 승/패, 득/실, 순위를 재계산했습니다.");
+            alert("🔁 기존 승/패, 득/실, 순위를 초기화한 뒤 입력된 세트스코어 기준으로 재계산했습니다.");
         }
 
         function calculateGroupRankings(leagueId = null, options = {}) {
