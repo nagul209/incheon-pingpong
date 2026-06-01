@@ -470,6 +470,9 @@
                             <button onclick="calculateGroupRankings()"
                                 class="text-[11px] bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-2.5 py-1.5 rounded-lg font-extrabold shadow-sm btn-press">🧮
                                 전체 자동순위</button>
+                            <button onclick="recalculatePreliminaryTables()"
+                                class="text-[11px] bg-cyan-600 hover:bg-cyan-500 text-white px-2.5 py-1.5 rounded-lg font-extrabold shadow-sm btn-press">🔁
+                                재계산</button>
                             <button onclick="loadTempTable()"
                                 class="text-[11px] bg-amber-500 text-white px-2.5 py-1.5 rounded-lg font-bold shadow-sm btn-press">📂
                                 불러오기</button>
@@ -2535,11 +2538,37 @@
             league.scores[g][playerNo][key] = String(value);
         }
 
+        function syncLeagueScoresFromInputs(league) {
+            if (!league) return;
+            league.scores = league.scores || {};
+            for (let g = 1; g <= league.groupCount; g++) {
+                let size = (league.groupSizes || {})[g] || (league.groupSizes || {})[String(g)] || 4;
+                league.scores[g] = league.scores[g] || {};
+                for (let i = 1; i <= size; i++) {
+                    league.scores[g][i] = league.scores[g][i] || {};
+                    for (let j = 1; j <= size; j++) {
+                        if (i === j) continue;
+                        const input = document.getElementById(`score-${league.id}-g${g}-r${i}-c${j}`);
+                        if (input) league.scores[g][i][j] = input.value.trim();
+                    }
+                }
+            }
+        }
+
+        function recalculatePreliminaryTables(leagueId = null) {
+            const targetLeagues = leagueId ? [getLeagueById(leagueId)] : window.multiLeagues;
+            if (!targetLeagues.length || !targetLeagues[0]) return alert("재계산할 리그전표가 없습니다.");
+            targetLeagues.forEach(syncLeagueScoresFromInputs);
+            calculateGroupRankings(leagueId, { silent: true });
+            alert("🔁 입력된 세트스코어 기준으로 승/패, 득/실, 순위를 재계산했습니다.");
+        }
+
         function calculateGroupRankings(leagueId = null, options = {}) {
             const targetLeagues = leagueId ? [getLeagueById(leagueId)] : window.multiLeagues;
             if (!targetLeagues.length || !targetLeagues[0]) return alert("진행할 리그전표가 없습니다.");
 
             targetLeagues.forEach(league => {
+                syncLeagueScoresFromInputs(league);
                 for (let g = 1; g <= league.groupCount; g++) {
                     let size = (league.groupSizes || {})[g] || (league.groupSizes || {})[String(g)] || 4;
                     let players = [];
