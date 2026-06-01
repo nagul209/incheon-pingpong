@@ -1928,25 +1928,29 @@
         }
         function syncMultiLeaguesFromDOM() {
             window.multiLeagues.forEach(league => {
-                league.scores = {};
+                const previousScores = league.scores || {};
+                const nextScores = {};
                 for (let g = 1; g <= league.groupCount; g++) {
                     let size = (league.groupSizes || {})[g] || 4;
-                    league.scores[g] = {};
+                    const previousGroupScores = previousScores[g] || previousScores[String(g)] || {};
+                    nextScores[g] = {};
                     for (let i = 1; i <= size; i++) {
-                        league.scores[g][i] = {};
+                        const previousRowScores = previousGroupScores[i] || previousGroupScores[String(i)] || {};
+                        nextScores[g][i] = { ...previousRowScores };
                         for (let j = 1; j <= size; j++) {
                             if (i === j) continue;
                             let input = document.getElementById(`score-${league.id}-g${g}-r${i}-c${j}`);
-                            if (input) league.scores[g][i][j] = input.value;
+                            if (input) nextScores[g][i][j] = input.value;
                         }
                         let wl = document.getElementById(`wl-${league.id}-g${g}-p${i}`);
                         let diff = document.getElementById(`diff-${league.id}-g${g}-p${i}`);
                         let rank = document.getElementById(`rank-${league.id}-g${g}-p${i}`);
-                        league.scores[g][i].wl = wl ? wl.value : '';
-                        league.scores[g][i].diff = diff ? diff.value : '';
-                        league.scores[g][i].rank = rank ? rank.value : '';
+                        if (wl) nextScores[g][i].wl = wl.value;
+                        if (diff) nextScores[g][i].diff = diff.value;
+                        if (rank) nextScores[g][i].rank = rank.value;
                     }
                 }
+                league.scores = nextScores;
             });
         }
 
@@ -2271,6 +2275,10 @@
                 if (!inputCell) return false;
                 inputCell.value = value;
                 syncText(inputCell);
+                league.scores = league.scores || {};
+                league.scores[g] = league.scores[g] || {};
+                league.scores[g][rowNo] = league.scores[g][rowNo] || {};
+                league.scores[g][rowNo][colNo] = value;
                 appliedCount++;
                 return true;
             };
@@ -2280,7 +2288,7 @@
                 if (idx < scoreDigits.length) setScoreCell(p2, p1, scoreDigits[idx++]);
             });
 
-            inputEl.value = ''; // 완료 후 초기화
+            // 재시도/검산이 가능하도록 입력 문자열은 자동으로 지우지 않는다.
 
             if (scoreDigits.length !== totalRequired) {
                 alert("입력된 숫자의 길이와 빈칸의 총 개수가 다릅니다. 채울 수 있는 부분까지만 적용되었습니다.\n입력숫자 길이: " + scoreDigits.length + "개, 필요 부분: " + totalRequired + "개");
