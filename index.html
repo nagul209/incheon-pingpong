@@ -2183,10 +2183,12 @@
                         <button onclick="calculateGroupRankings(${league.id})" class="text-[11px] bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">🧮 자동순위</button>
                         <button onclick="sortGroupPlayers(${league.id})" class="text-[11px] bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">🔀 정렬</button>
                         <button onclick="resetLeaguePlayerNames(${league.id})" class="text-[11px] bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">👤 선수명 초기화</button>
+                        <button onclick="resetLeagueSetScores(${league.id})" class="text-[11px] bg-yellow-50 hover:bg-yellow-100 text-yellow-700 border border-yellow-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">🎯 세트스코어 초기화</button>
                         <button onclick="resetLeagueInputs(${league.id})" class="text-[11px] bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">♻️ 전체 초기화</button>
                         <button onclick="deleteLeague(${league.id})" class="text-[11px] bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">🗑️ 삭제</button>
                     </div>
                 </div>
+                <div id="league-reset-options-${league.id}" class="hidden mb-4 rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-slate-700 no-print"></div>
                 <div class="flex flex-wrap gap-4 justify-center w-full">`;
 
             for (let g = 1; g <= league.groupCount; g++) {
@@ -3057,15 +3059,82 @@
         }
 
 
-        function resetLeaguePlayerNames(leagueId) {
+        function getLeagueResetTargetGroups(league, groupNo = null) {
+            if (!league) return [];
+            if (groupNo) return [parseInt(groupNo)];
+            return Array.from({ length: league.groupCount }, (_, idx) => idx + 1);
+        }
+
+        function getLeagueResetTargetLabel(groupNo = null) {
+            return groupNo ? `${groupNo}조` : '전체 조';
+        }
+
+        function hideLeagueResetGroupChooser(leagueId) {
+            const panel = document.getElementById(`league-reset-options-${leagueId}`);
+            if (panel) {
+                panel.classList.add('hidden');
+                panel.innerHTML = '';
+            }
+        }
+
+        function openLeagueResetGroupChooser(leagueId, resetType) {
             const league = getLeagueById(leagueId);
             if (!league) return;
-            if (!confirm("이 예선 조별 리그전표의 선수명만 초기화하시겠습니까?\n(점수/순위 데이터는 유지됩니다.)")) return;
 
-            league.players = {};
+            if ((league.groupCount || 1) < 2) {
+                if (resetType === 'players') resetLeaguePlayerNames(leagueId, null, true);
+                else if (resetType === 'scores') resetLeagueSetScores(leagueId, null, true);
+                return;
+            }
 
+            const panel = document.getElementById(`league-reset-options-${leagueId}`);
+            if (!panel) return;
+
+            const title = resetType === 'players' ? '선수명을 초기화할 조를 선택하세요.' : '세트스코어를 초기화할 조를 선택하세요.';
+            const action = resetType === 'players' ? 'resetLeaguePlayerNames' : 'resetLeagueSetScores';
+            const accentClass = resetType === 'players'
+                ? 'bg-orange-500 hover:bg-orange-400'
+                : 'bg-yellow-500 hover:bg-yellow-400';
+
+            let buttons = `<button onclick="${action}(${leagueId}, null, true)" class="${accentClass} text-white px-3 py-1.5 rounded-lg font-extrabold btn-press shadow-sm">전체 조</button>`;
             for (let g = 1; g <= league.groupCount; g++) {
-                const size = (league.groupSizes && league.groupSizes[g]) || 4;
+                buttons += `<button onclick="${action}(${leagueId}, ${g}, true)" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3 py-1.5 rounded-lg font-bold btn-press">${g}조</button>`;
+            }
+
+            panel.innerHTML = `<div class="flex flex-col sm:flex-row sm:items-center gap-2 justify-between">
+                <div class="font-extrabold text-slate-700">👇 ${title}</div>
+                <div class="flex flex-wrap gap-1.5">
+                    ${buttons}
+                    <button onclick="hideLeagueResetGroupChooser(${leagueId})" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 rounded-lg font-bold btn-press">취소</button>
+                </div>
+            </div>`;
+            panel.classList.remove('hidden');
+            panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function resetLeaguePlayerNames(leagueId, groupNo = null, skipChooser = false) {
+            const league = getLeagueById(leagueId);
+            if (!league) return;
+            if ((league.groupCount || 1) >= 2 && !skipChooser) {
+                openLeagueResetGroupChooser(leagueId, 'players');
+                return;
+            }
+
+            const targetLabel = getLeagueResetTargetLabel(groupNo);
+            if (!confirm(`이 예선 조별 리그전표의 ${targetLabel} 선수명만 초기화하시겠습니까?\n(점수/순위 데이터는 유지됩니다.)`)) return;
+
+            const targetGroups = getLeagueResetTargetGroups(league, groupNo);
+            league.players = league.players || {};
+            if (groupNo) {
+                Object.keys(league.players).forEach(key => {
+                    if (key.startsWith(`g${groupNo}_p`)) delete league.players[key];
+                });
+            } else {
+                league.players = {};
+            }
+
+            targetGroups.forEach(g => {
+                const size = (league.groupSizes && (league.groupSizes[g] || league.groupSizes[String(g)])) || 4;
                 for (let p = 1; p <= size; p++) {
                     const td = document.getElementById(`td-${leagueId}-g${g}-p${p}`);
                     const input = td ? td.querySelector('input') : null;
@@ -3077,10 +3146,64 @@
                     if (th) th.innerText = `${p}번`;
                 }
                 updateMatchOrderDisplay(leagueId, g, size);
+            });
+
+            hideLeagueResetGroupChooser(leagueId);
+            saveDataToStorage();
+            alert(`✅ 조별 리그전표 ${targetLabel} 선수명이 초기화되었습니다.`);
+        }
+
+        function resetLeagueSetScores(leagueId, groupNo = null, skipChooser = false) {
+            const league = getLeagueById(leagueId);
+            if (!league) return;
+            if ((league.groupCount || 1) >= 2 && !skipChooser) {
+                openLeagueResetGroupChooser(leagueId, 'scores');
+                return;
             }
 
+            const targetLabel = getLeagueResetTargetLabel(groupNo);
+            if (!confirm(`이 예선 조별 리그전표의 ${targetLabel} 세트스코어를 초기화하시겠습니까?\n(승/패, 득/실, 순위도 함께 비워집니다.)`)) return;
+
+            const targetGroups = getLeagueResetTargetGroups(league, groupNo);
+            league.scores = league.scores || {};
+            league.bulkScores = league.bulkScores || {};
+
+            targetGroups.forEach(g => {
+                const size = (league.groupSizes && (league.groupSizes[g] || league.groupSizes[String(g)])) || 4;
+                league.scores[g] = {};
+
+                for (let p = 1; p <= size; p++) {
+                    league.scores[g][p] = { wl: '', diff: '', rank: '' };
+
+                    ['wl', 'diff', 'rank'].forEach(prefix => {
+                        const cell = document.getElementById(`${prefix}-${leagueId}-g${g}-p${p}`);
+                        if (cell) {
+                            cell.value = '';
+                            syncText(cell);
+                        }
+                    });
+
+                    for (let c = 1; c <= size; c++) {
+                        if (p === c) continue;
+                        league.scores[g][p][c] = '';
+                        const scoreCell = document.getElementById(`score-${leagueId}-g${g}-r${p}-c${c}`);
+                        if (scoreCell) {
+                            scoreCell.value = '';
+                            syncText(scoreCell);
+                        }
+                    }
+                    applyLeagueMedalDisplay(league, g, p, '');
+                }
+
+                league.bulkScores[g] = '';
+                const bulkInput = document.getElementById(`bulk-score-${leagueId}-g${g}`);
+                if (bulkInput) bulkInput.value = '';
+                updateMatchOrderDisplay(leagueId, g, size);
+            });
+
+            hideLeagueResetGroupChooser(leagueId);
             saveDataToStorage();
-            alert("✅ 조별 리그전표 선수명이 초기화되었습니다.");
+            alert(`✅ 조별 리그전표 ${targetLabel} 세트스코어가 초기화되었습니다.`);
         }
 
         function resetLeagueInputs(leagueId) {
