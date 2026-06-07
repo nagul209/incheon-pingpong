@@ -2051,6 +2051,35 @@
             return window.multiLeagues.find(l => l.id == leagueId);
         }
 
+        function getMemberDetailDisplayName(m, fallbackName = '') {
+            if (!m) return fallbackName;
+            let detailInfo = [];
+            if (m.grip) detailInfo.push(m.grip);
+            if (m.frontRubber) detailInfo.push(m.frontRubber);
+            if (m.backRubber) detailInfo.push(m.backRubber);
+
+            let detailString = detailInfo.length > 0 ? `(${detailInfo.join(', ')})` : '';
+            return `${m.name || fallbackName}${detailString}`;
+        }
+
+        function getLeaguePlayerDisplayName(player) {
+            if (!player) return '';
+            const playerName = player.name || '';
+            const names = String(playerName).split(',').map(n => n.trim()).filter(Boolean);
+
+            if (names.length === 0) return player.display || '';
+
+            return names.map(name => {
+                const member = members.find(m => (names.length === 1 && player.id && m.id == player.id) || m.name === name);
+                return getMemberDetailDisplayName(member || {
+                    name: name,
+                    grip: player.grip,
+                    frontRubber: player.frontRubber,
+                    backRubber: player.backRubber
+                }, name);
+            }).join(', ');
+        }
+
         function createLeague() {
             const count = parseInt(document.getElementById('op-group-count').value) || 2;
             const matchTypeEl = document.getElementById('op-match-type');
@@ -2082,7 +2111,7 @@
                     attendees.forEach(name => {
                         const m = members.find(x => x.name === name);
                         if (m) {
-                            newLeague.players[`g1_p${pIdx}`] = { id: m.id, name: m.name, display: `${m.name}(${m.handicap})`, handicap: m.handicap };
+                            newLeague.players[`g1_p${pIdx}`] = { id: m.id, name: m.name, display: getMemberDetailDisplayName(m), handicap: m.handicap, grip: m.grip, frontRubber: m.frontRubber, backRubber: m.backRubber };
                             pIdx++;
                         }
                     });
@@ -2227,7 +2256,7 @@
                 for (let i = 1; i <= currentSize; i++) {
                     let players = league.players || {};
                     let player = players[`g${g}_p${i}`];
-                    let displayVal = player ? escapeHTML(player.display) : '';
+                    let displayVal = player ? escapeHTML(getLeaguePlayerDisplayName(player)) : '';
                     let placeholderVal = player ? displayVal : '터치👉';
 
                     html += `<tr class="border-b border-sky-100 hover:bg-sky-100/50">
@@ -2764,25 +2793,29 @@
                         let player = league.players[`g${g}_p${p}`];
                         if (player) groupPlayers.push(player);
                     }
+
+                    // 💡 핵심 수정: 부수(grade, handicap) 비교 로직을 삭제하고 이름순으로 안전하게 정렬
                     groupPlayers.sort((a, b) => {
-                        if (a.handicap !== b.handicap) return a.handicap - b.handicap;
+                        if (!a || !b || !a.name || !b.name) return 0;
                         return a.name.localeCompare(b.name);
                     });
+
                     for (let p = 1; p <= currentSize; p++) {
                         league.players[`g${g}_p${p}`] = groupPlayers[p - 1] || null;
                     }
                 }
+
                 saveDataToStorage();
                 // 특정 리그만 다시 그려주기
                 const oldContainer = document.getElementById(`league-container-${league.id}`);
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = buildLeagueHTML(league);
-                const newContainer = tempDiv.firstElementChild;
                 if (oldContainer) {
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = buildLeagueHTML(league);
+                    const newContainer = tempDiv.firstElementChild;
                     oldContainer.parentNode.replaceChild(newContainer, oldContainer);
                     for (let g = 1; g <= league.groupCount; g++) {
                         const tableEl = document.getElementById(`table-${league.id}-g${g}`);
-                        if (tableEl) { updateMatchOrderDisplay(league.id, g, tableEl.querySelectorAll('tbody tr').length); }
+                        if (tableEl) updateMatchOrderDisplay(league.id, g, tableEl.querySelectorAll('tbody tr').length);
                     }
                 }
             });
@@ -3040,14 +3073,17 @@
                     }
                     const selectedMembers = tempSelectorList.map(name => members.find(m => m.name === name)).filter(Boolean);
                     const teamName = selectedMembers.map(m => m.name).join(', ');
-                    const teamDisplay = selectedMembers.map(m => `${m.name}(${m.handicap})`).join(', ');
+                    const teamDisplay = selectedMembers.map(m => getMemberDetailDisplayName(m)).join(', ');
                     const avgHandicap = selectedMembers.length > 0 ? Math.round(selectedMembers.reduce((sum, m) => sum + m.handicap, 0) / selectedMembers.length) : 0;
 
                     league.players[`g${g}_p${p}`] = {
-                        id: 'team_' + Date.now(),
+                        id: selectedMembers.length === 1 ? selectedMembers[0].id : 'team_' + Date.now(),
                         name: teamName,
                         display: teamDisplay,
-                        handicap: avgHandicap
+                        handicap: avgHandicap,
+                        grip: selectedMembers.length === 1 ? selectedMembers[0].grip : '',
+                        frontRubber: selectedMembers.length === 1 ? selectedMembers[0].frontRubber : '',
+                        backRubber: selectedMembers.length === 1 ? selectedMembers[0].backRubber : ''
                     };
                     inputElem.value = teamDisplay;
                     applyLeagueMedalDisplay(league, g, p);
@@ -6625,14 +6661,17 @@ function renderMembersList() {
                 const p = index + 1;
                 // 기존 회원 중에서 찾기
                 const m = members.find(x => x.name === playerName);
-                let displayName = m ? `${m.name}(${m.handicap})` : playerName;
+                let displayName = m ? getMemberDetailDisplayName(m) : playerName;
                 let handicap = m ? m.handicap : 5;
 
                 targetLeague.players[`g${g}_p${p}`] = {
                     id: m ? m.id : 'ai_' + Date.now() + p,
                     name: playerName,
                     display: displayName,
-                    handicap: handicap
+                    handicap: handicap,
+                    grip: m ? m.grip : '',
+                    frontRubber: m ? m.frontRubber : '',
+                    backRubber: m ? m.backRubber : ''
                 };
             });
 
