@@ -1639,6 +1639,16 @@
             return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
         }
 
+        function escapeInlineJSString(value) {
+            return escapeHTML(String(value ?? '')
+                .replace(/\\/g, '\\\\')
+                .replace(/'/g, "\\'")
+                .replace(/\r/g, '\\r')
+                .replace(/\n/g, '\\n')
+                .replace(/\u2028/g, '\\u2028')
+                .replace(/\u2029/g, '\\u2029'));
+        }
+
         const ROUND_ROBIN_ORDERS = {
             2: [[1, 2]], 3: [[2, 3], [1, 3], [1, 2]], 4: [[1, 4], [2, 3], [1, 3], [4, 2], [1, 2], [3, 4]],
             5: [[2, 5], [3, 4], [1, 5], [2, 3], [1, 4], [5, 3], [1, 3], [4, 2], [1, 2], [4, 5]],
@@ -3066,9 +3076,28 @@
                 return null;
             }
 
-            window.singlePickCallback = function (memberId) {
+            function hasAvailableCandidateForSlot(targetG, targetP) {
+                const attendList = (formState.opAttend && formState.opAttend.length > 0) ? formState.opAttend : formState.attend;
+                if (!attendList || attendList.length === 0) return false;
+                const excluded = getLeagueSlotExcludedNames(targetG, targetP);
+                return members.some(m => attendList.includes(m.name) && !excluded.includes(m.name));
+            }
+
+            function getNextEmptySlotWithCandidate(currentG, currentP) {
+                let nextSlot = getNextSlot(currentG, currentP);
+                while (nextSlot) {
+                    if (!league.players[`g${nextSlot.g}_p${nextSlot.p}`] && hasAvailableCandidateForSlot(nextSlot.g, nextSlot.p)) {
+                        return nextSlot;
+                    }
+                    nextSlot = getNextSlot(nextSlot.g, nextSlot.p);
+                }
+                return null;
+            }
+
+            window.singlePickCallback = function (memberId, memberName) {
                 if (currentSelectorTarget !== 'league') return;
-                const m = members.find(x => x.id == memberId);
+                const memberIdText = String(memberId ?? '');
+                const m = members.find(x => memberIdText && String(x.id) === memberIdText) || members.find(x => x.name === memberName);
                 if (!m) return;
                 tempSelectorList = [m.name];
                 if (window.leaguePickCallback && window.leaguePickCallback() === false) return;
@@ -4459,7 +4488,12 @@
                         subTextClass = 'text-slate-400';
                     }
 
-                    listEl.innerHTML += `<button onclick="${isSinglePickMode ? `window.singlePickCallback('${m.id}')` : `toggleSelect('${escapeHTML(m.name)}')`}" id="sel-btn-${escapeHTML(m.name)}" class="py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press ${bgClass}">${escapeHTML(m.name)} <span class="text-[9px] ${subTextClass} block mt-0.5 font-medium">${m.handicap}부</span></button>`;
+                    const memberIdArg = escapeInlineJSString(m.id);
+                    const memberNameArg = escapeInlineJSString(m.name);
+                    const clickHandler = isSinglePickMode
+                        ? `window.singlePickCallback('${memberIdArg}', '${memberNameArg}')`
+                        : `toggleSelect('${memberNameArg}')`;
+                    listEl.innerHTML += `<button onclick="${clickHandler}" id="sel-btn-${escapeHTML(m.name)}" class="py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press ${bgClass}">${escapeHTML(m.name)} <span class="text-[9px] ${subTextClass} block mt-0.5 font-medium">${m.handicap}부</span></button>`;
                 });
             }
             return true;
