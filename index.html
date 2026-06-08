@@ -3024,24 +3024,46 @@
             document.getElementById('member-selector-modal').classList.remove('hidden');
             updateSelectorCount();
 
+            function getGroupSize(groupNo) {
+                const groupSizes = league.groupSizes || {};
+                const size = groupSizes[groupNo] || groupSizes[String(groupNo)] || 4;
+                return Math.max(2, parseInt(size) || 4);
+            }
+
             function getNextSlot(currentG, currentP) {
-                const currentSize = league.groupSizes[currentG] || 4;
+                const currentSize = getGroupSize(currentG);
                 if (currentP < currentSize) return { g: currentG, p: currentP + 1 };
                 if (currentG < league.groupCount) return { g: currentG + 1, p: 1 };
                 return null;
             }
 
-            function renderLeagueSelectorForSlot(targetG, targetP) {
-                document.getElementById('selector-title').innerText = `${targetG}조 ${targetP}번 ${titleSuffix} 선택 (${limitText})`;
-                let newExcludedNames = [];
+            function getLeagueSlotExcludedNames(targetG, targetP) {
+                let excluded = [];
                 for (let key in league.players) {
                     if (key !== `g${targetG}_p${targetP}` && league.players[key]) {
-                        const names = String(league.players[key].name).split(',').map(n => n.trim());
-                        newExcludedNames.push(...names);
+                        const names = String(league.players[key].name).split(',').map(n => n.trim()).filter(Boolean);
+                        excluded.push(...names);
                     }
                 }
-                renderSelectorList(true, 'league', newExcludedNames);
-                updateSelectorCount();
+                return excluded;
+            }
+
+            function hasAvailableCandidateForSlot(targetG, targetP) {
+                const attendList = (formState.opAttend && formState.opAttend.length > 0) ? formState.opAttend : formState.attend;
+                if (!attendList || attendList.length === 0) return false;
+                const excluded = getLeagueSlotExcludedNames(targetG, targetP);
+                return members.some(m => attendList.includes(m.name) && !excluded.includes(m.name));
+            }
+
+            function getNextEmptySlotWithCandidate(currentG, currentP) {
+                let nextSlot = getNextSlot(currentG, currentP);
+                while (nextSlot) {
+                    if (!league.players[`g${nextSlot.g}_p${nextSlot.p}`] && hasAvailableCandidateForSlot(nextSlot.g, nextSlot.p)) {
+                        return nextSlot;
+                    }
+                    nextSlot = getNextSlot(nextSlot.g, nextSlot.p);
+                }
+                return null;
             }
 
             window.singlePickCallback = function (memberId) {
@@ -3051,7 +3073,7 @@
                 tempSelectorList = [m.name];
                 if (window.leaguePickCallback && window.leaguePickCallback() === false) return;
 
-                const nextSlot = getNextSlot(g, p);
+                const nextSlot = getNextEmptySlotWithCandidate(g, p);
                 if (!nextSlot) {
                     closeSelector();
                     return;
