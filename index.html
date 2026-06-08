@@ -3131,10 +3131,10 @@
                 return members.some(m => attendList.includes(m.name) && !excluded.includes(m.name));
             }
 
-            function getNextEmptySlotWithCandidate(currentG, currentP) {
+            function getNextSlotWithCandidate(currentG, currentP) {
                 let nextSlot = getNextSlot(currentG, currentP);
                 while (nextSlot) {
-                    if (!league.players[`g${nextSlot.g}_p${nextSlot.p}`] && hasAvailableCandidateForSlot(nextSlot.g, nextSlot.p)) {
+                    if (hasAvailableCandidateForSlot(nextSlot.g, nextSlot.p)) {
                         return nextSlot;
                     }
                     nextSlot = getNextSlot(nextSlot.g, nextSlot.p);
@@ -3160,7 +3160,7 @@
 
                 if (window.leaguePickCallback && window.leaguePickCallback() === false) return;
 
-                const nextSlot = getNextEmptySlotWithCandidate(g, p);
+                const nextSlot = getNextSlotWithCandidate(g, p);
                 if (!nextSlot) {
                     window.setTimeout(finishLeagueSinglePickFlow, 180);
                     return;
