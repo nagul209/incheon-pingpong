@@ -1541,7 +1541,7 @@
                 <div id="selector-list" class="grid grid-cols-3 gap-2.5"></div>
             </div>
             <div class="p-4 border-t border-slate-100 bg-white pb-6"><button
-                    onclick="confirmSelector()"
+                    onclick="confirmSelector()" id="btn-selector-confirm"
                     class="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold btn-press shadow-md border border-indigo-700">적용</button></div>
         </div>
     </div>
@@ -2099,7 +2099,7 @@
             for (let g = 1; g <= count; g++) {
                 let sizeInput = document.getElementById(`op-group-size-${g}`);
                 const requestedSize = sizeInput ? parseInt(sizeInput.value) : 4;
-                newLeague.groupSizes[g] = allowedSizes[g] || requestedSize || 4;
+                newLeague.groupSizes[g] = requestedSize || allowedSizes[g] || 4;
             }
 
             if (matchType === 'full_league') {
@@ -2119,7 +2119,6 @@
             }
 
             window.multiLeagues.push(newLeague);
-            saveDataToStorage();
 
             const emptyContainer = document.getElementById('op-group-empty-msg');
             if (emptyContainer) {
@@ -2133,6 +2132,7 @@
                 const tableEl = document.getElementById(`table-${leagueId}-g${g}`);
                 if (tableEl) updateMatchOrderDisplay(leagueId, g, tableEl.querySelectorAll('tbody tr').length);
             }
+            saveDataToStorage();
         }
 
         function getAllowedGroupSizes(groupCount) {
@@ -2287,7 +2287,7 @@
         }
 
         function fillScoresFromString(triggerOrLeagueId, fallbackLeagueId = null, fallbackGroupNo = null) {
-            const triggerEl = triggerOrLeagueId instanceof HTMLElement ? triggerOrLeagueId : null;
+            const triggerEl = (typeof HTMLElement !== 'undefined' && triggerOrLeagueId instanceof HTMLElement) ? triggerOrLeagueId : null;
             const groupPanel = triggerEl ? triggerEl.closest('[data-league-id][data-group-no]') : null;
             const leagueId = groupPanel ? groupPanel.dataset.leagueId : (fallbackLeagueId || triggerOrLeagueId);
             const g = parseInt(groupPanel ? groupPanel.dataset.groupNo : fallbackGroupNo);
@@ -2302,15 +2302,15 @@
             const scoreString = inputEl.value.trim();
             league.bulkScores = league.bulkScores || {};
             league.bulkScores[g] = scoreString;
+
             const scoreDigits = scoreString.replace(/[^0-9]/g, '');
             if (!scoreDigits) {
                 alert("적용할 스코어 문자열을 입력해주세요.");
                 return;
             }
 
-            const currentSize = (league.groupSizes && league.groupSizes[g]) || 4;
-            const pairs = getRoundRobinPairs(currentSize);
-            const totalRequired = currentSize * (currentSize - 1); // 경기별 양방향 세트 스코어 수
+            const currentSize = (league.groupSizes && (league.groupSizes[g] || league.groupSizes[String(g)])) || 4;
+            const totalRequired = currentSize * (currentSize - 1); // 대각선 자기 자신 제외
             let idx = 0;
             let appliedCount = 0;
 
@@ -2329,12 +2329,13 @@
                 return true;
             };
 
-            pairs.forEach(([p1, p2]) => {
-                if (idx < scoreDigits.length) setScoreCell(p1, p2, scoreDigits[idx++]);
-                if (idx < scoreDigits.length) setScoreCell(p2, p1, scoreDigits[idx++]);
-            });
-
-            // 재시도/검산이 가능하도록 입력 문자열은 자동으로 지우지 않는다.
+            // 과거코드와 동일하게 표의 좌상단부터 행 기준으로 순서대로 채운다.
+            for (let i = 1; i <= currentSize; i++) {
+                for (let j = 1; j <= currentSize; j++) {
+                    if (i === j) continue;
+                    if (idx < scoreDigits.length) setScoreCell(i, j, scoreDigits[idx++]);
+                }
+            }
 
             if (scoreDigits.length !== totalRequired) {
                 alert("입력된 숫자의 길이와 빈칸의 총 개수가 다릅니다. 채울 수 있는 부분까지만 적용되었습니다.\n입력숫자 길이: " + scoreDigits.length + "개, 필요 부분: " + totalRequired + "개");
@@ -2344,7 +2345,6 @@
                 return;
             }
 
-            // 실시간 순위 산출 즉시 호출 (자동순위 업데이트)
             calculateGroupRankings(leagueId, { silent: true });
         }
 
@@ -2643,9 +2643,10 @@
                             let w = parseSetScore(valIJ);
                             let l = parseSetScore(valJI);
 
-                            // 양쪽 세트 스코어가 모두 입력된 경기만 승/패와 득/실에 반영한다.
-                            // 한 칸만 입력된 중간 상태를 0점 패로 오인하면 일괄 적용 중 순위가 흔들린다.
-                            if (w !== null && l !== null) {
+                            // 과거코드 호환: 한쪽 칸만 입력된 경우에도 누락된 반대편을 0으로 보고 계산한다.
+                            if (w !== null || l !== null) {
+                                if (w === null) w = 0;
+                                if (l === null) l = 0;
                                 players[i - 1].setsWon += w; players[i - 1].setsLost += l; players[i - 1].matches[j] = { w: w, l: l };
                                 players[j - 1].setsWon += l; players[j - 1].setsLost += w; players[j - 1].matches[i] = { w: l, l: w };
                                 if (w > l) { players[i - 1].matchWins++; players[j - 1].matchLosses++; }
@@ -2794,10 +2795,12 @@
                         if (player) groupPlayers.push(player);
                     }
 
-                    // 💡 핵심 수정: 부수(grade, handicap) 비교 로직을 삭제하고 이름순으로 안전하게 정렬
+                    // 과거코드 호환: 부수 낮은 순 → 이름순으로 정렬
                     groupPlayers.sort((a, b) => {
-                        if (!a || !b || !a.name || !b.name) return 0;
-                        return a.name.localeCompare(b.name);
+                        const ah = parseInt(a && a.handicap, 10) || 999;
+                        const bh = parseInt(b && b.handicap, 10) || 999;
+                        if (ah !== bh) return ah - bh;
+                        return String((a && a.name) || '').localeCompare(String((b && b.name) || ''));
                     });
 
                     for (let p = 1; p <= currentSize; p++) {
@@ -2994,15 +2997,18 @@
             const limitText = (matchType === 'individual' || matchType === 'full_league') ? '1명' : (matchType === 'doubles' ? '2명' : '무제한');
             document.getElementById('selector-title').innerText = `${g}조 ${p}번 ${titleSuffix} 선택 (${limitText})`;
 
+            const selectorConfirmBtn = document.getElementById('btn-selector-confirm');
             if (isSinglePickMode) {
                 document.getElementById('selector-count').classList.add('hidden');
+                if (selectorConfirmBtn) selectorConfirmBtn.classList.add('hidden');
             } else {
                 document.getElementById('selector-count').classList.remove('hidden');
+                if (selectorConfirmBtn) selectorConfirmBtn.classList.remove('hidden');
             }
 
             let excludedNames = [];
             for (let key in league.players) {
-                if (league.players[key]) {
+                if (key !== `g${g}_p${p}` && league.players[key]) {
                     const names = String(league.players[key].name).split(',').map(n => n.trim());
                     excludedNames.push(...names);
                 }
@@ -3029,7 +3035,7 @@
                 document.getElementById('selector-title').innerText = `${targetG}조 ${targetP}번 ${titleSuffix} 선택 (${limitText})`;
                 let newExcludedNames = [];
                 for (let key in league.players) {
-                    if (league.players[key]) {
+                    if (key !== `g${targetG}_p${targetP}` && league.players[key]) {
                         const names = String(league.players[key].name).split(',').map(n => n.trim());
                         newExcludedNames.push(...names);
                     }
@@ -3461,7 +3467,7 @@
             }
 
             // 예선 순위를 항상 최신 상태로 자동 계산 후 불러오기
-            calculateGroupRankings();
+            calculateGroupRankings(null, { silent: true });
 
             const targetGroups = tournamentState.groups || parseInt(document.getElementById('op-tourn-groups').value);
             const targetAdv = tournamentState.adv || parseInt(document.getElementById('op-tourn-adv').value);
@@ -4440,6 +4446,8 @@
         function openSelector(target, title, onlyAttendees) {
             isSinglePickMode = false;
             document.getElementById('selector-count').classList.remove('hidden');
+            const selectorConfirmBtn = document.getElementById('btn-selector-confirm');
+            if (selectorConfirmBtn) selectorConfirmBtn.classList.remove('hidden');
             currentSelectorTarget = target;
             document.getElementById('selector-title').innerText = title;
             tempSelectorList = [...(formState[target] || [])];
@@ -4481,8 +4489,9 @@
         function closeSelector() { document.getElementById('member-selector-modal').classList.add('hidden'); }
         function confirmSelector() {
             if (currentSelectorTarget === 'league') {
-                closeSelector();
-                return;
+                if (window.leaguePickCallback) {
+                    if (window.leaguePickCallback() === false) return;
+                }
             } else {
                 formState[currentSelectorTarget] = [...tempSelectorList];
                 if (currentSelectorTarget === 'attend' || currentSelectorTarget === 'opAttend') {
