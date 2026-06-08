@@ -2993,7 +2993,7 @@
             }
         }
 
-        function selectLeaguePlayer(event, inputElem, leagueId, g, p) {
+        function selectLeaguePlayer(event, inputElem, leagueId, g, p, previousSelectionNotice = '') {
             if (event) event.stopPropagation();
             const league = getLeagueById(leagueId);
             if (!league) return;
@@ -3005,7 +3005,9 @@
             isSinglePickMode = (limit === 1);
             const titleSuffix = (matchType === 'individual' || matchType === 'full_league') ? '선수' : (matchType === 'doubles' ? '복식팀' : '팀');
             const limitText = (matchType === 'individual' || matchType === 'full_league') ? '1명' : (matchType === 'doubles' ? '2명' : '무제한');
-            document.getElementById('selector-title').innerText = `${g}조 ${p}번 ${titleSuffix} 선택 (${limitText})`;
+            document.getElementById('selector-title').innerText = previousSelectionNotice
+                ? `${previousSelectionNotice} · 다음: ${g}조 ${p}번 ${titleSuffix} 선택 (${limitText})`
+                : `${g}조 ${p}번 ${titleSuffix} 선택 (${limitText})`;
 
             const selectorConfirmBtn = document.getElementById('btn-selector-confirm');
             if (isSinglePickMode) {
@@ -3094,21 +3096,26 @@
                 if (!m) return;
 
                 tempSelectorList = [m.name];
+                renderSelectorList(true, 'league', getLeagueSlotExcludedNames(g, p));
+                updateSelectorCount();
+                document.getElementById('selector-title').innerText = `${g}조 ${p}번 ${m.name} 선택 완료`;
+
                 if (window.leaguePickCallback && window.leaguePickCallback() === false) return;
 
                 const nextSlot = getNextEmptySlotWithCandidate(g, p);
                 if (!nextSlot) {
-                    finishLeagueSinglePickFlow();
+                    window.setTimeout(finishLeagueSinglePickFlow, 180);
                     return;
                 }
 
                 const nextInput = document.getElementById(`td-${leagueId}-g${nextSlot.g}-p${nextSlot.p}`)?.querySelector('input');
                 if (!nextInput) {
-                    finishLeagueSinglePickFlow();
+                    window.setTimeout(finishLeagueSinglePickFlow, 180);
                     return;
                 }
 
-                selectLeaguePlayer(null, nextInput, leagueId, nextSlot.g, nextSlot.p);
+                const previousSelectionNotice = `${g}조 ${p}번 ${m.name} 선택 완료`;
+                window.setTimeout(() => selectLeaguePlayer(null, nextInput, leagueId, nextSlot.g, nextSlot.p, previousSelectionNotice), 180);
             }
 
             window.singlePickCallback = function (memberId, memberName) {
@@ -4466,7 +4473,7 @@
                     // 4순위: 이름 가나다순 (위 순위가 모두 동일할 경우)
                     return a.name.localeCompare(b.name);
                 }).forEach(m => {
-                    const isSelected = !isSinglePickMode && tempSelectorList.includes(m.name);
+                    const isSelected = tempSelectorList.includes(m.name);
 
                     let bgClass = '';
                     let subTextClass = '';
