@@ -2508,6 +2508,90 @@
             fileInput.click();
         }
 
+        function syncLeagueStateFromDOM(league) {
+            if (!league) return;
+            const previousScores = league.scores || {};
+            const nextScores = {};
+
+            for (let g = 1; g <= league.groupCount; g++) {
+                const size = (league.groupSizes || {})[g] || (league.groupSizes || {})[String(g)] || 4;
+                const previousGroupScores = previousScores[g] || previousScores[String(g)] || {};
+                nextScores[g] = {};
+
+                for (let i = 1; i <= size; i++) {
+                    const previousRowScores = previousGroupScores[i] || previousGroupScores[String(i)] || {};
+                    nextScores[g][i] = { ...previousRowScores };
+
+                    for (let j = 1; j <= size; j++) {
+                        if (i === j) continue;
+                        const input = document.getElementById(`score-${league.id}-g${g}-r${i}-c${j}`);
+                        if (input) nextScores[g][i][j] = input.value;
+                    }
+
+                    const wl = document.getElementById(`wl-${league.id}-g${g}-p${i}`);
+                    const diff = document.getElementById(`diff-${league.id}-g${g}-p${i}`);
+                    const rank = document.getElementById(`rank-${league.id}-g${g}-p${i}`);
+                    if (wl) nextScores[g][i].wl = wl.value;
+                    if (diff) nextScores[g][i].diff = diff.value;
+                    if (rank) nextScores[g][i].rank = rank.value;
+                }
+            }
+
+            if (document.getElementById(`table-${league.id}-g1`)) league.scores = nextScores;
+
+            const bulkScores = { ...(league.bulkScores || {}) };
+            for (let g = 1; g <= league.groupCount; g++) {
+                const bulkInput = document.getElementById(`bulk-score-${league.id}-g${g}`);
+                if (bulkInput) bulkScores[g] = bulkInput.value;
+            }
+            league.bulkScores = bulkScores;
+        }
+
+        function restoreLeagueInputsAndDecorations(league) {
+            if (!league) return;
+
+            for (let g = 1; g <= league.groupCount; g++) {
+                const size = (league.groupSizes || {})[g] || (league.groupSizes || {})[String(g)] || 4;
+                const groupScores = (league.scores || {})[g] || (league.scores || {})[String(g)] || {};
+
+                for (let i = 1; i <= size; i++) {
+                    const rowScores = groupScores[i] || groupScores[String(i)] || {};
+                    for (let j = 1; j <= size; j++) {
+                        if (i === j) continue;
+                        const input = document.getElementById(`score-${league.id}-g${g}-r${i}-c${j}`);
+                        if (input) {
+                            input.value = rowScores[j] ?? rowScores[String(j)] ?? '';
+                            syncText(input);
+                        }
+                    }
+
+                    const wl = document.getElementById(`wl-${league.id}-g${g}-p${i}`);
+                    const diff = document.getElementById(`diff-${league.id}-g${g}-p${i}`);
+                    const rank = document.getElementById(`rank-${league.id}-g${g}-p${i}`);
+                    if (wl) { wl.value = rowScores.wl || ''; syncText(wl); }
+                    if (diff) { diff.value = rowScores.diff || ''; syncText(diff); }
+                    if (rank) { rank.value = rowScores.rank || ''; syncText(rank); }
+                    applyLeagueMedalDisplay(league, g, i);
+                }
+
+                const tableEl = document.getElementById(`table-${league.id}-g${g}`);
+                if (tableEl) updateMatchOrderDisplay(league.id, g, tableEl.querySelectorAll('tbody tr').length);
+            }
+        }
+
+        function rerenderLeagueContainer(league) {
+            if (!league) return false;
+            const oldContainer = document.getElementById(`league-container-${league.id}`);
+            if (!oldContainer) return false;
+
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = buildLeagueHTML(league);
+            const newContainer = tempDiv.firstElementChild;
+            oldContainer.parentNode.replaceChild(newContainer, oldContainer);
+            restoreLeagueInputsAndDecorations(league);
+            return true;
+        }
+
         function renderOperationLeagues() {
             const container = document.getElementById('op-group-container');
             const emptyMsg = document.getElementById('op-group-empty-msg');
@@ -2528,30 +2612,7 @@
             window.multiLeagues.forEach(league => {
                 const html = buildLeagueHTML(league);
                 container.insertAdjacentHTML('beforeend', html);
-
-                // 점수 및 순위 복원
-                for (let g = 1; g <= league.groupCount; g++) {
-                    let size = (league.groupSizes || {})[g] || 4;
-                    for (let i = 1; i <= size; i++) {
-                        for (let j = 1; j <= size; j++) {
-                            if (i === j) continue;
-                            let input = document.getElementById(`score-${league.id}-g${g}-r${i}-c${j}`);
-                            if (input && league.scores && league.scores[g] && league.scores[g][i]) {
-                                input.value = league.scores[g][i][j] || ''; 
-                                syncText(input);
-                            }
-                        }
-                        let wl = document.getElementById(`wl-${league.id}-g${g}-p${i}`);
-                        let diff = document.getElementById(`diff-${league.id}-g${g}-p${i}`);
-                        let rank = document.getElementById(`rank-${league.id}-g${g}-p${i}`);
-                        if (wl && league.scores && league.scores[g] && league.scores[g][i]) { wl.value = league.scores[g][i].wl || ''; syncText(wl); }
-                        if (diff && league.scores && league.scores[g] && league.scores[g][i]) { diff.value = league.scores[g][i].diff || ''; syncText(diff); }
-                        if (rank && league.scores && league.scores[g] && league.scores[g][i]) { rank.value = league.scores[g][i].rank || ''; syncText(rank); }
-                        applyLeagueMedalDisplay(league, g, i);
-                    }
-                    const tableEl = document.getElementById(`table-${league.id}-g${g}`);
-                    if (tableEl) updateMatchOrderDisplay(league.id, g, tableEl.querySelectorAll('tbody tr').length);
-                }
+                restoreLeagueInputsAndDecorations(league);
             });
         }
 
@@ -3116,11 +3177,10 @@
             };
 
             window.leaguePickCallback = function () {
+                syncLeagueStateFromDOM(league);
+
                 if (tempSelectorList.length === 0) {
                     league.players[`g${g}_p${p}`] = null;
-                    inputElem.value = "";
-                    if (inputElem.nextElementSibling) inputElem.nextElementSibling.innerText = "";
-                    applyLeagueMedalDisplay(league, g, p);
                 } else {
                     if (matchType === 'doubles' && tempSelectorList.length > 2) {
                         alert("복식전은 최대 2명까지만 선택 가능합니다.");
@@ -3140,10 +3200,19 @@
                         frontRubber: selectedMembers.length === 1 ? selectedMembers[0].frontRubber : '',
                         backRubber: selectedMembers.length === 1 ? selectedMembers[0].backRubber : ''
                     };
-                    inputElem.value = teamDisplay;
-                    applyLeagueMedalDisplay(league, g, p);
                 }
-                updateMatchOrderDisplay(leagueId, g, document.getElementById(`table-${leagueId}-g${g}`).querySelectorAll('tbody tr').length);
+
+                if (!rerenderLeagueContainer(league)) {
+                    const targetInput = document.querySelector(`#td-${leagueId}-g${g}-p${p} input`) || inputElem;
+                    if (targetInput && tempSelectorList.length === 0) {
+                        targetInput.value = '';
+                        syncText(targetInput);
+                    }
+                    applyLeagueMedalDisplay(league, g, p);
+                    const tableEl = document.getElementById(`table-${leagueId}-g${g}`);
+                    if (tableEl) updateMatchOrderDisplay(leagueId, g, tableEl.querySelectorAll('tbody tr').length);
+                }
+
                 saveDataToStorage();
                 return true;
             };
