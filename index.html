@@ -3076,6 +3076,24 @@
                 return null;
             }
 
+            function hasAvailableCandidateForSlot(targetG, targetP) {
+                const attendList = (formState.opAttend && formState.opAttend.length > 0) ? formState.opAttend : formState.attend;
+                if (!attendList || attendList.length === 0) return false;
+                const excluded = getLeagueSlotExcludedNames(targetG, targetP);
+                return members.some(m => attendList.includes(m.name) && !excluded.includes(m.name));
+            }
+
+            function getNextEmptySlotWithCandidate(currentG, currentP) {
+                let nextSlot = getNextSlot(currentG, currentP);
+                while (nextSlot) {
+                    if (!league.players[`g${nextSlot.g}_p${nextSlot.p}`] && hasAvailableCandidateForSlot(nextSlot.g, nextSlot.p)) {
+                        return nextSlot;
+                    }
+                    nextSlot = getNextSlot(nextSlot.g, nextSlot.p);
+                }
+                return null;
+            }
+
             window.singlePickCallback = function (memberId, memberName) {
                 if (currentSelectorTarget !== 'league') return;
                 const memberIdText = String(memberId ?? '');
