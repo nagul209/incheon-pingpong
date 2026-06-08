@@ -3030,7 +3030,10 @@
             }
 
             currentSelectorTarget = 'league';
-            if (renderSelectorList(true, 'league', excludedNames) === false) return;
+            if (renderSelectorList(true, 'league', excludedNames) === false) {
+                resetSelectorState({ leagueOnly: true });
+                return;
+            }
             document.getElementById('member-selector-modal').classList.remove('hidden');
             updateSelectorCount();
 
@@ -3075,16 +3078,8 @@
                 return null;
             }
 
-            function resetLeagueSinglePickState() {
-                currentSelectorTarget = null;
-                tempSelectorList = [];
-                window.singlePickCallback = null;
-                window.leaguePickCallback = null;
-            }
-
             function finishLeagueSinglePickFlow() {
-                closeSelector();
-                resetLeagueSinglePickState();
+                closeLeagueSelector();
             }
 
             function applyLeagueSinglePick(memberId, memberName, league, leagueId, g, p, inputElem) {
@@ -4540,7 +4535,33 @@
         function updateSelectorCount() {
             document.getElementById('selector-count').innerText = `${tempSelectorList.length}명 선택됨`;
         }
-        function closeSelector() { document.getElementById('member-selector-modal').classList.add('hidden'); }
+
+        function hideSelectorModal() {
+            document.getElementById('member-selector-modal').classList.add('hidden');
+        }
+
+        function resetSelectorState({ leagueOnly = false } = {}) {
+            if (leagueOnly && currentSelectorTarget !== 'league') return;
+            currentSelectorTarget = null;
+            tempSelectorList = [];
+            window.singlePickCallback = null;
+            window.leaguePickCallback = null;
+            isSinglePickMode = false;
+        }
+
+        function closeLeagueSelector() {
+            hideSelectorModal();
+            resetSelectorState({ leagueOnly: true });
+        }
+
+        function closeSelector() {
+            if (currentSelectorTarget === 'league') {
+                closeLeagueSelector();
+                return;
+            }
+            hideSelectorModal();
+        }
+
         function confirmSelector() {
             if (currentSelectorTarget === 'league') {
                 if (window.leaguePickCallback) {
