@@ -3109,6 +3109,7 @@
             function getNextSlot(currentG, currentP) {
                 const currentSize = getGroupSize(currentG);
                 if (currentP < currentSize) return { g: currentG, p: currentP + 1 };
+                if (currentG < league.groupCount) return { g: currentG + 1, p: 1 };
                 return null;
             }
 
@@ -3152,7 +3153,8 @@
                 if (!m) return;
 
                 tempSelectorList = [m.name];
-                renderSelectorList(true, 'league', getLeagueSlotExcludedNames(g, p));
+                const selectedCard = document.getElementById(`sel-btn-${m.name}`);
+                if (selectedCard) selectedCard.remove();
                 updateSelectorCount();
                 document.getElementById('selector-title').innerText = `${g}조 ${p}번 ${m.name} 선택 완료`;
 
