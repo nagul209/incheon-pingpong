@@ -3043,7 +3043,6 @@
             function getNextSlot(currentG, currentP) {
                 const currentSize = getGroupSize(currentG);
                 if (currentP < currentSize) return { g: currentG, p: currentP + 1 };
-                if (currentG < league.groupCount) return { g: currentG + 1, p: 1 };
                 return null;
             }
 
@@ -3076,45 +3075,44 @@
                 return null;
             }
 
-            function hasAvailableCandidateForSlot(targetG, targetP) {
-                const attendList = (formState.opAttend && formState.opAttend.length > 0) ? formState.opAttend : formState.attend;
-                if (!attendList || attendList.length === 0) return false;
-                const excluded = getLeagueSlotExcludedNames(targetG, targetP);
-                return members.some(m => attendList.includes(m.name) && !excluded.includes(m.name));
+            function resetLeagueSinglePickState() {
+                currentSelectorTarget = null;
+                tempSelectorList = [];
+                window.singlePickCallback = null;
+                window.leaguePickCallback = null;
             }
 
-            function getNextEmptySlotWithCandidate(currentG, currentP) {
-                let nextSlot = getNextSlot(currentG, currentP);
-                while (nextSlot) {
-                    if (!league.players[`g${nextSlot.g}_p${nextSlot.p}`] && hasAvailableCandidateForSlot(nextSlot.g, nextSlot.p)) {
-                        return nextSlot;
-                    }
-                    nextSlot = getNextSlot(nextSlot.g, nextSlot.p);
-                }
-                return null;
+            function finishLeagueSinglePickFlow() {
+                closeSelector();
+                resetLeagueSinglePickState();
             }
 
-            window.singlePickCallback = function (memberId, memberName) {
+            function applyLeagueSinglePick(memberId, memberName, league, leagueId, g, p, inputElem) {
                 if (currentSelectorTarget !== 'league') return;
                 const memberIdText = String(memberId ?? '');
                 const m = members.find(x => memberIdText && String(x.id) === memberIdText) || members.find(x => x.name === memberName);
                 if (!m) return;
+
                 tempSelectorList = [m.name];
                 if (window.leaguePickCallback && window.leaguePickCallback() === false) return;
 
                 const nextSlot = getNextEmptySlotWithCandidate(g, p);
                 if (!nextSlot) {
-                    closeSelector();
+                    finishLeagueSinglePickFlow();
                     return;
                 }
 
                 const nextInput = document.getElementById(`td-${leagueId}-g${nextSlot.g}-p${nextSlot.p}`)?.querySelector('input');
                 if (!nextInput) {
-                    closeSelector();
+                    finishLeagueSinglePickFlow();
                     return;
                 }
 
                 selectLeaguePlayer(null, nextInput, leagueId, nextSlot.g, nextSlot.p);
+            }
+
+            window.singlePickCallback = function (memberId, memberName) {
+                applyLeagueSinglePick(memberId, memberName, league, leagueId, g, p, inputElem);
             };
 
             window.leaguePickCallback = function () {
