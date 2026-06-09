@@ -2070,20 +2070,24 @@
             }
 
             window.multiLeagues.push(newLeague);
-            saveDataToStorage();
 
             const emptyContainer = document.getElementById('op-group-empty-msg');
             if (emptyContainer) {
                 emptyContainer.style.display = 'none';
             }
 
-            const html = buildLeagueHTML(newLeague);
-            document.getElementById('op-group-container').insertAdjacentHTML('beforeend', html);
+            const leagueContainerId = `league-container-${leagueId}`;
+            if (!document.getElementById(leagueContainerId)) {
+                const html = buildLeagueHTML(newLeague);
+                document.getElementById('op-group-container').insertAdjacentHTML('beforeend', html);
+            }
 
             for (let g = 1; g <= newLeague.groupCount; g++) {
                 const tableEl = document.getElementById(`table-${leagueId}-g${g}`);
                 if (tableEl) updateMatchOrderDisplay(leagueId, g, tableEl.querySelectorAll('tbody tr').length);
             }
+
+            saveDataToStorage();
         }
 
         function getAllowedGroupSizes(groupCount) {
