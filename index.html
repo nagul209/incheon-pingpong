@@ -2801,6 +2801,18 @@
             return '';
         }
 
+        function stripLeagueMedalPrefix(value) {
+            return String(value || '').replace(/^\s*[🥇🥈🥉]\s*/, '').trim();
+        }
+
+        function getLeagueSlotDomDisplay(leagueId, groupNo, playerNo) {
+            const tdInput = document.querySelector(`#td-${leagueId}-g${groupNo}-p${playerNo} input`);
+            const tdSpan = document.querySelector(`#td-${leagueId}-g${groupNo}-p${playerNo} span.capture-text`);
+            const rawText = (tdInput && tdInput.value) || (tdSpan && tdSpan.innerText) || '';
+            const displayText = stripLeagueMedalPrefix(rawText);
+            return displayText && displayText !== '터치👉' ? displayText : '';
+        }
+
         function applyLeagueMedalDisplay(league, groupNo, playerNo, forcedRank = null) {
             if (!league) return;
             const playerObj = (league.players || {})[`g${groupNo}_p${playerNo}`];
@@ -2811,15 +2823,18 @@
             const th = document.getElementById(`th-${league.id}-g${groupNo}-p${playerNo}`);
             const tdInput = document.querySelector(`#td-${league.id}-g${groupNo}-p${playerNo} input`);
             const tdSpan = document.querySelector(`#td-${league.id}-g${groupNo}-p${playerNo} span.capture-text`);
+            const fallbackDisplay = getLeagueSlotDomDisplay(league.id, groupNo, playerNo);
 
-            if (!playerObj) {
+            if (!playerObj && !fallbackDisplay) {
                 if (th) th.innerText = `${playerNo}번`;
                 if (tdSpan && tdInput) tdSpan.innerText = tdInput.value || tdInput.placeholder || '';
                 return;
             }
 
-            const nameText = playerObj.name || '';
-            const displayText = getLeaguePlayerDisplayName(playerObj) || playerObj.display || nameText;
+            const nameText = playerObj ? (playerObj.name || '') : '';
+            const displayText = playerObj
+                ? (getLeaguePlayerDisplayName(playerObj) || playerObj.display || nameText)
+                : fallbackDisplay;
             const displayWithMedal = medal ? `${medal} ${displayText}` : displayText;
 
             if (th) th.innerText = displayWithMedal;
