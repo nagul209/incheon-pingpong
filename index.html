@@ -3646,6 +3646,7 @@
                     const isP1Winner = nextWinner && nextWinner === p1 && p1 !== "부전승(BYE)";
                     const isP2Winner = nextWinner && nextWinner === p2 && p2 !== "부전승(BYE)";
                     const isBye = p2 === "부전승(BYE)";
+                    const winnerBadge = '<span class="absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-md border-2 border-white">승</span>';
 
                     const isP1Selected = isSwapMode && vRound === 0 && swapFirstPick === p1Idx;
                     const isP2Selected = isSwapMode && vRound === 0 && swapFirstPick === p2Idx;
@@ -3654,7 +3655,8 @@
                         <div class="bg-white rounded-2xl shadow-sm p-4 border border-slate-100 transition-all ${isSwapMode && vRound === 0 ? 'ring-2 ring-orange-200' : ''}">
                             <div class="flex items-center justify-between gap-3 relative">
                                 <div onclick="handleTournamentClick(${vRound}, ${p1Idx})" 
-                                     class="flex-1 p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-center min-h-[60px] ${isP1Selected ? 'bg-orange-100 border-orange-500 shadow-inner' : (isP1Winner ? 'bg-blue-100 border-blue-500 shadow-sm' : 'bg-slate-50 border-transparent')}">
+                                     class="relative flex-1 p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-center min-h-[60px] ${isP1Selected ? 'bg-orange-100 border-orange-500 shadow-inner' : (isP1Winner ? 'bg-blue-100 border-blue-500 shadow-sm' : 'bg-slate-50 border-transparent')}">
+                                    ${isP1Winner ? winnerBadge : ''}
                                     <span class="text-xs font-black break-all whitespace-normal text-center ${isP1Winner ? 'text-blue-800' : (isP1Selected ? 'text-orange-800' : 'text-slate-700')}">${p1 || (vRound === 0 ? '터치선택' : '대기중')}</span>
                                 </div>
                                 <div class="flex flex-col items-center px-1">
@@ -3662,7 +3664,8 @@
                                     ${isBye ? '<span class="text-[8px] font-bold text-indigo-500 mt-1">BYE</span>' : ''}
                                 </div>
                                 <div onclick="handleTournamentClick(${vRound}, ${p2Idx})" 
-                                     class="flex-1 p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-center min-h-[60px] ${isP2Selected ? 'bg-orange-100 border-orange-500 shadow-inner' : (isP2Winner ? 'bg-blue-100 border-blue-500 shadow-sm' : (isBye ? 'bg-slate-100 border-slate-200 opacity-50' : 'bg-slate-50 border-transparent'))}">
+                                     class="relative flex-1 p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-center min-h-[60px] ${isP2Selected ? 'bg-orange-100 border-orange-500 shadow-inner' : (isP2Winner ? 'bg-blue-100 border-blue-500 shadow-sm' : (isBye ? 'bg-slate-100 border-slate-200 opacity-50' : 'bg-slate-50 border-transparent'))}">
+                                    ${isP2Winner ? winnerBadge : ''}
                                     <span class="text-xs font-black break-all whitespace-normal text-center ${isP2Winner ? 'text-blue-800' : (isP2Selected ? 'text-orange-800' : 'text-slate-700')}">${p2 || (vRound === 0 ? '터치선택' : '대기중')}</span>
                                 </div>
                             </div>
@@ -3920,6 +3923,7 @@
                         <div${getCellClick(r, idx)}
                              class="relative z-10 w-full border ${isWinner ? 'border-blue-500 bg-blue-50' : (isBye ? 'border-slate-200 bg-slate-100 opacity-60' : 'border-slate-300 bg-white')} rounded p-1.5 text-center shadow-sm transition-all ${getCellCursor} ${isHighlighted ? 'ring-4 ring-orange-500 border-orange-500 scale-105 shadow-md' : ''}"
                              style="min-height:${cellMinHeight}px; display:flex; align-items:center; justify-content:center;">
+                            ${isWinner ? '<span class="absolute -top-2 -right-2 bg-blue-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shadow border border-white">승</span>' : ''}
                             <span class="text-[10px] font-black ${isWinner ? 'text-blue-700' : 'text-slate-700'} tracking-tight break-all">${safeText(player)}</span>
                         </div>`;
 
