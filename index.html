@@ -1530,6 +1530,14 @@
                     선택됨</span>
             </div>
             <div class="p-4 flex-1 overflow-y-auto bg-slate-50/50">
+                <div id="selector-sort-panel" class="hidden mb-3 bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
+                    <label for="selector-sort-select" class="block text-[11px] font-extrabold text-slate-500 mb-1.5">정렬 기준</label>
+                    <select id="selector-sort-select" onchange="handleSelectorSortChange()"
+                        class="w-full text-xs border border-slate-200 rounded-xl p-2.5 font-extrabold text-indigo-700 bg-white outline-none focus:ring-2 focus:ring-indigo-400">
+                        <option value="handicap" selected>부수별 오름차순(기본)</option>
+                        <option value="score_rank">토요리그 점수(순위 오름차순)</option>
+                    </select>
+                </div>
                 <p id="selector-empty-msg" class="hidden text-sm text-slate-400 text-center py-10 font-medium">선택 가능한
                     회원이 없습니다.</p>
                 <div id="selector-list" class="grid grid-cols-3 gap-2.5"></div>
@@ -1664,6 +1672,8 @@
 
         let formState = { attend: [], lazy: [], lg1: [], lg2: [], lg3: [], tm1: [], tm2: [], tm3: [], tn1: [], tn2: [], tn3: [], utn1: [], utn2: [], utn3: [], ltn1: [], ltn2: [], ltn3: [], db1: [], db2: [], db3: [], ev1: [], opAttend: [], opPlanned: [], opParticipantChecks: {}, ratedGames: [], isRatedMatch: false, kFactor: (appConfig.defaultKFactor || 32), autoExtractRated: true };
         let currentSelectorTarget = ''; let tempSelectorList = []; let isSinglePickMode = false;
+        let currentSelectorOnlyAttendees = false;
+        let selectorSortMode = { opAttend: 'handicap' };
         window.multiLeagues = [];
         function getLeagueById(id) { return window.multiLeagues.find(lg => lg.id === id); }
 
@@ -4087,7 +4097,81 @@
             });
         }
 
+        function getSelectorMemberRank(member) {
+            const rank = Number(member.currentRank);
+            return Number.isFinite(rank) ? rank : Infinity;
+        }
+
+        function compareSelectorMembers(a, b, target) {
+            if (target === 'opAttend') {
+                const sortMode = selectorSortMode.opAttend || 'handicap';
+                if (sortMode === 'score_rank') {
+                    const rankDiff = getSelectorMemberRank(a) - getSelectorMemberRank(b);
+                    if (rankDiff !== 0) return rankDiff;
+
+                    const scoreDiff = (Number(b.score) || 0) - (Number(a.score) || 0);
+                    if (scoreDiff !== 0) return scoreDiff;
+                }
+
+                if (a.handicap !== b.handicap) return a.handicap - b.handicap;
+                return a.name.localeCompare(b.name, 'ko');
+            }
+
+            // 조별리그(league)인 경우 부수 낮은 순을 최우선으로 적용
+            if (target === 'league' && a.handicap !== b.handicap) return a.handicap - b.handicap;
+
+            // 1순위: 참석 횟수(attendCount) 내림차순 (많이 참석한 순서)
+            const aAttend = a.attendCount || 0;
+            const bAttend = b.attendCount || 0;
+            if (aAttend !== bAttend) return bAttend - aAttend;
+
+            // 2순위: 부수(handicap) 오름차순 (낮은 부수 우선)
+            if (a.handicap !== b.handicap) return a.handicap - b.handicap;
+
+            // 3순위: 등급(type)이 '연회원'인 회원을 먼저 배치
+            const aIsYearly = a.type === '연회원' ? 1 : 0;
+            const bIsYearly = b.type === '연회원' ? 1 : 0;
+            if (aIsYearly !== bIsYearly) return bIsYearly - aIsYearly;
+
+            // 4순위: 이름 가나다순 (위 순위가 모두 동일할 경우)
+            return a.name.localeCompare(b.name, 'ko');
+        }
+
+        function sortSelectorNames(names, target) {
+            const memberByName = new Map(members.map(m => [m.name, m]));
+            return [...names].sort((aName, bName) => {
+                const a = memberByName.get(aName);
+                const b = memberByName.get(bName);
+                if (a && b) return compareSelectorMembers(a, b, target);
+                if (a) return -1;
+                if (b) return 1;
+                return aName.localeCompare(bName, 'ko');
+            });
+        }
+
+        function updateSelectorSortPanel(target) {
+            const panel = document.getElementById('selector-sort-panel');
+            const select = document.getElementById('selector-sort-select');
+            if (!panel || !select) return;
+
+            if (target === 'opAttend') {
+                panel.classList.remove('hidden');
+                select.value = selectorSortMode.opAttend || 'handicap';
+            } else {
+                panel.classList.add('hidden');
+            }
+        }
+
+        function handleSelectorSortChange() {
+            const select = document.getElementById('selector-sort-select');
+            if (!select || currentSelectorTarget !== 'opAttend') return;
+
+            selectorSortMode.opAttend = select.value;
+            renderSelectorList(currentSelectorOnlyAttendees, currentSelectorTarget);
+        }
+
         function renderSelectorList(onlyAttendees, target, extraExcludedNames = []) {
+            updateSelectorSortPanel(target);
             let candidates = [];
             let excludedNames = [];
             if (target === 'opAttend') {
@@ -4135,28 +4219,7 @@
                 emptyMsg.classList.add('hidden');
 
                 // 정렬 기준 적용
-                candidates.sort((a, b) => {
-                    // 조별리그(league)인 경우 부수 낮은 순을 최우선으로 적용
-                    if (target === 'league') {
-                        if (a.handicap !== b.handicap) return a.handicap - b.handicap;
-                    }
-
-                    // 1순위: 참석 횟수(attendCount) 내림차순 (많이 참석한 순서)
-                    const aAttend = a.attendCount || 0;
-                    const bAttend = b.attendCount || 0;
-                    if (aAttend !== bAttend) return bAttend - aAttend;
-
-                    // 2순위: 부수(handicap) 오름차순 (낮은 부수 우선)
-                    if (a.handicap !== b.handicap) return a.handicap - b.handicap;
-
-                    // 3순위: 등급(type)이 '연회원'인 회원을 먼저 배치
-                    const aIsYearly = a.type === '연회원' ? 1 : 0;
-                    const bIsYearly = b.type === '연회원' ? 1 : 0;
-                    if (aIsYearly !== bIsYearly) return bIsYearly - aIsYearly;
-
-                    // 4순위: 이름 가나다순 (위 순위가 모두 동일할 경우)
-                    return a.name.localeCompare(b.name);
-                }).forEach(m => {
+                candidates.sort((a, b) => compareSelectorMembers(a, b, target)).forEach(m => {
                     const isSelected = !isSinglePickMode && tempSelectorList.includes(m.name);
 
                     let bgClass = '';
@@ -4187,6 +4250,8 @@
             isSinglePickMode = false;
             document.getElementById('selector-count').classList.remove('hidden');
             currentSelectorTarget = target;
+            currentSelectorOnlyAttendees = onlyAttendees;
+            updateSelectorSortPanel(target);
             document.getElementById('selector-title').innerText = title;
             tempSelectorList = [...(formState[target] || [])];
             if (renderSelectorList(onlyAttendees, target) !== false) {
@@ -4230,7 +4295,7 @@
                 closeSelector();
                 return;
             } else {
-                formState[currentSelectorTarget] = [...tempSelectorList];
+                formState[currentSelectorTarget] = currentSelectorTarget === 'opAttend' ? sortSelectorNames(tempSelectorList, currentSelectorTarget) : [...tempSelectorList];
                 if (currentSelectorTarget === 'attend' || currentSelectorTarget === 'opAttend') {
                     for (let key in formState) {
                         if (key !== 'attend' && key !== 'opAttend' && key !== 'opPlanned' && Array.isArray(formState[key])) {
