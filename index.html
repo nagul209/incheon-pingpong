@@ -328,8 +328,7 @@
                     </button>
                 </div>
             </div>
-            <div class="mb-2 px-1 flex justify-between items-center">
-                <span id="ranking-reference-date" class="text-[10px] text-slate-500 font-bold tracking-tight bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100 shadow-sm">기준일(기록 없음)</span>
+            <div class="mb-2 px-1 text-right">
                 <span id="ranking-instruction"
                     class="text-[11px] text-indigo-600 font-bold bg-white/80 backdrop-blur-sm px-2.5 py-1.5 rounded-lg border border-indigo-100 shadow-sm transition-all">👆
                     이름을 터치하면 상세기록</span>
@@ -380,18 +379,15 @@
             <div
                 class="bg-white p-4 rounded-2xl border border-emerald-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6 relative overflow-hidden">
                 <div class="absolute -right-4 -top-4 text-6xl opacity-5">📋</div>
-                <div class="mb-3 border-b border-emerald-50 pb-2 relative z-10">
+                <div class="flex justify-between items-center mb-3 border-b border-emerald-50 pb-2 relative z-10 gap-2">
                     <div>
                         <h3 class="font-extrabold text-emerald-800 text-base">📋 참가예정 명단</h3>
                         <p class="text-[10px] text-slate-500 font-medium mt-0.5">카드로 참가예정자를 선택하고, 성실/참가비 여부를 체크하세요.</p>
                     </div>
-                    <div class="flex flex-wrap gap-1.5 mt-2">
+                    <div class="flex gap-1.5 shrink-0">
                         <button onclick="openSelector('opPlanned', '참가예정자 선택', false)"
                             class="text-[11px] bg-emerald-600 text-white px-3 py-2 rounded-lg font-bold shadow-md btn-press">명단
                             선택</button>
-                        <button onclick="movePlannedToOperationAttendees()"
-                            class="text-[11px] bg-indigo-600 text-white px-3 py-2 rounded-lg font-bold shadow-md btn-press">참석자로
-                            이동</button>
                         <button onclick="resetOperationInputs()"
                             class="text-[11px] bg-rose-500 text-white px-3 py-2 rounded-lg font-bold shadow-md btn-press">운영
                             초기화</button>
@@ -471,9 +467,6 @@
                             <button onclick="calculateGroupRankings()"
                                 class="text-[11px] bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-2.5 py-1.5 rounded-lg font-extrabold shadow-sm btn-press">🧮
                                 전체 자동순위</button>
-                            <button onclick="recalculatePreliminaryTables()"
-                                class="text-[11px] bg-cyan-600 hover:bg-cyan-500 text-white px-2.5 py-1.5 rounded-lg font-extrabold shadow-sm btn-press">🔁
-                                재계산</button>
                             <button onclick="loadTempTable()"
                                 class="text-[11px] bg-amber-500 text-white px-2.5 py-1.5 rounded-lg font-bold shadow-sm btn-press">📂
                                 불러오기</button>
@@ -1542,7 +1535,7 @@
                 <div id="selector-list" class="grid grid-cols-3 gap-2.5"></div>
             </div>
             <div class="p-4 border-t border-slate-100 bg-white pb-6"><button
-                    onclick="confirmSelector()" id="btn-selector-confirm"
+                    onclick="confirmSelector()"
                     class="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold btn-press shadow-md border border-indigo-700">적용</button></div>
         </div>
     </div>
@@ -1640,16 +1633,6 @@
             return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
         }
 
-        function escapeInlineJSString(value) {
-            return escapeHTML(String(value ?? '')
-                .replace(/\\/g, '\\\\')
-                .replace(/'/g, "\\'")
-                .replace(/\r/g, '\\r')
-                .replace(/\n/g, '\\n')
-                .replace(/\u2028/g, '\\u2028')
-                .replace(/\u2029/g, '\\u2029'));
-        }
-
         const ROUND_ROBIN_ORDERS = {
             2: [[1, 2]], 3: [[2, 3], [1, 3], [1, 2]], 4: [[1, 4], [2, 3], [1, 3], [4, 2], [1, 2], [3, 4]],
             5: [[2, 5], [3, 4], [1, 5], [2, 3], [1, 4], [5, 3], [1, 3], [4, 2], [1, 2], [4, 5]],
@@ -1682,7 +1665,7 @@
         let formState = { attend: [], lazy: [], lg1: [], lg2: [], lg3: [], tm1: [], tm2: [], tm3: [], tn1: [], tn2: [], tn3: [], utn1: [], utn2: [], utn3: [], ltn1: [], ltn2: [], ltn3: [], db1: [], db2: [], db3: [], ev1: [], opAttend: [], opPlanned: [], opParticipantChecks: {}, ratedGames: [], isRatedMatch: false, kFactor: (appConfig.defaultKFactor || 32), autoExtractRated: true };
         let currentSelectorTarget = ''; let tempSelectorList = []; let isSinglePickMode = false;
         window.multiLeagues = [];
-        function getLeagueById(id) { return (window.multiLeagues || []).find(lg => String(lg.id) === String(id)); }
+        function getLeagueById(id) { return window.multiLeagues.find(lg => lg.id === id); }
 
         let isPcMode = sessionStorage.getItem('isPcMode') === 'true';
         function applyViewMode() {
@@ -1942,39 +1925,25 @@
         }
         function syncMultiLeaguesFromDOM() {
             window.multiLeagues.forEach(league => {
-                const previousScores = league.scores || {};
-                const nextScores = {};
+                league.scores = {};
                 for (let g = 1; g <= league.groupCount; g++) {
                     let size = (league.groupSizes || {})[g] || 4;
-                    const previousGroupScores = previousScores[g] || previousScores[String(g)] || {};
-                    nextScores[g] = {};
+                    league.scores[g] = {};
                     for (let i = 1; i <= size; i++) {
-                        const previousRowScores = previousGroupScores[i] || previousGroupScores[String(i)] || {};
-                        nextScores[g][i] = { ...previousRowScores };
+                        league.scores[g][i] = {};
                         for (let j = 1; j <= size; j++) {
                             if (i === j) continue;
                             let input = document.getElementById(`score-${league.id}-g${g}-r${i}-c${j}`);
-                            if (input) nextScores[g][i][j] = input.value;
+                            if (input) league.scores[g][i][j] = input.value;
                         }
                         let wl = document.getElementById(`wl-${league.id}-g${g}-p${i}`);
                         let diff = document.getElementById(`diff-${league.id}-g${g}-p${i}`);
                         let rank = document.getElementById(`rank-${league.id}-g${g}-p${i}`);
-                        if (wl) nextScores[g][i].wl = wl.value;
-                        if (diff) nextScores[g][i].diff = diff.value;
-                        if (rank) nextScores[g][i].rank = rank.value;
+                        league.scores[g][i].wl = wl ? wl.value : '';
+                        league.scores[g][i].diff = diff ? diff.value : '';
+                        league.scores[g][i].rank = rank ? rank.value : '';
                     }
                 }
-                const hasRenderedScoreInputs = !!document.getElementById(`table-${league.id}-g1`);
-                if (hasRenderedScoreInputs) {
-                    league.scores = nextScores;
-                }
-
-                const bulkScores = { ...(league.bulkScores || {}) };
-                for (let g = 1; g <= league.groupCount; g++) {
-                    const bulkInput = document.getElementById(`bulk-score-${league.id}-g${g}`);
-                    if (bulkInput) bulkScores[g] = bulkInput.value;
-                }
-                league.bulkScores = bulkScores;
             });
         }
 
@@ -2059,40 +2028,7 @@
         }
 
         function getLeagueById(leagueId) {
-            return (window.multiLeagues || []).find(l => String(l.id) === String(leagueId));
-        }
-
-        function getMemberDetailDisplayName(m, fallbackName = '') {
-            if (!m) return fallbackName;
-            let detailInfo = [];
-            if (m.grip) detailInfo.push(m.grip);
-            if (m.frontRubber) detailInfo.push(m.frontRubber);
-            if (m.backRubber) detailInfo.push(m.backRubber);
-
-            let detailString = detailInfo.length > 0 ? `(${detailInfo.join(', ')})` : '';
-            return `${m.name || fallbackName}${detailString}`;
-        }
-
-        function getLeaguePlayerDisplayName(player) {
-            if (!player) return '';
-            const playerName = player.name || '';
-            const names = String(playerName).split(',').map(n => n.trim()).filter(Boolean);
-
-            if (names.length === 0) return player.display || '';
-
-            return names.map(name => {
-                const member = members.find(m => (names.length === 1 && player.id && m.id == player.id) || m.name === name);
-                return getMemberDetailDisplayName(member || {
-                    name: name,
-                    grip: player.grip,
-                    frontRubber: player.frontRubber,
-                    backRubber: player.backRubber
-                }, name);
-            }).join(', ');
-        }
-
-        function getLeagueMatchType(league) {
-            return (league && league.matchType) || (document.getElementById('op-match-type') ? document.getElementById('op-match-type').value : 'individual') || 'individual';
+            return window.multiLeagues.find(l => l.id == leagueId);
         }
 
         function createLeague() {
@@ -2114,7 +2050,7 @@
             for (let g = 1; g <= count; g++) {
                 let sizeInput = document.getElementById(`op-group-size-${g}`);
                 const requestedSize = sizeInput ? parseInt(sizeInput.value) : 4;
-                newLeague.groupSizes[g] = requestedSize || allowedSizes[g] || 4;
+                newLeague.groupSizes[g] = allowedSizes[g] || requestedSize || 4;
             }
 
             if (matchType === 'full_league') {
@@ -2126,7 +2062,7 @@
                     attendees.forEach(name => {
                         const m = members.find(x => x.name === name);
                         if (m) {
-                            newLeague.players[`g1_p${pIdx}`] = { id: m.id, name: m.name, display: getMemberDetailDisplayName(m), handicap: m.handicap, grip: m.grip, frontRubber: m.frontRubber, backRubber: m.backRubber };
+                            newLeague.players[`g1_p${pIdx}`] = { id: m.id, name: m.name, display: `${m.name}(${m.handicap})`, handicap: m.handicap };
                             pIdx++;
                         }
                     });
@@ -2134,6 +2070,7 @@
             }
 
             window.multiLeagues.push(newLeague);
+            saveDataToStorage();
 
             const emptyContainer = document.getElementById('op-group-empty-msg');
             if (emptyContainer) {
@@ -2147,7 +2084,6 @@
                 const tableEl = document.getElementById(`table-${leagueId}-g${g}`);
                 if (tableEl) updateMatchOrderDisplay(leagueId, g, tableEl.querySelectorAll('tbody tr').length);
             }
-            saveDataToStorage();
         }
 
         function getAllowedGroupSizes(groupCount) {
@@ -2221,18 +2157,16 @@
                 <div class="flex flex-wrap justify-between items-center mb-4 pb-2 border-b border-slate-100 gap-2">
                     <div class="flex items-center gap-2 flex-1 min-w-[200px]">
                         <span class="text-xl">🏆</span>
-                        <input type="text" id="league-title-${league.id}" value="${league.title}" placeholder="여기를 터치하여 대회명/그룹명 수정" class="text-lg font-extrabold text-slate-800 border-b-2 border-indigo-200 focus:border-indigo-500 outline-none w-full max-w-[250px] bg-transparent transition-colors px-1" oninput="updateLeagueTitle(${league.id}, this.value)" onkeydown="if(event.key === 'Enter') { event.preventDefault(); this.blur(); }">
+                        <input type="text" id="league-title-${league.id}" value="${league.title}" placeholder="여기를 터치하여 대회명/그룹명 수정" class="text-lg font-extrabold text-slate-800 border-b-2 border-indigo-200 focus:border-indigo-500 outline-none w-full max-w-[250px] bg-transparent transition-colors px-1" onchange="updateLeagueTitle(${league.id}, this.value)" onkeydown="if(event.key === 'Enter') { event.preventDefault(); this.blur(); }">
                     </div>
                     <div class="flex gap-1.5 flex-wrap">
                         <button onclick="calculateGroupRankings(${league.id})" class="text-[11px] bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">🧮 자동순위</button>
                         <button onclick="sortGroupPlayers(${league.id})" class="text-[11px] bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">🔀 정렬</button>
                         <button onclick="resetLeaguePlayerNames(${league.id})" class="text-[11px] bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">👤 선수명 초기화</button>
-                        <button onclick="resetLeagueSetScores(${league.id})" class="text-[11px] bg-yellow-50 hover:bg-yellow-100 text-yellow-700 border border-yellow-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">🎯 세트스코어 초기화</button>
                         <button onclick="resetLeagueInputs(${league.id})" class="text-[11px] bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">♻️ 전체 초기화</button>
                         <button onclick="deleteLeague(${league.id})" class="text-[11px] bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">🗑️ 삭제</button>
                     </div>
                 </div>
-                <div id="league-reset-options-${league.id}" class="hidden mb-4 rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-slate-700 no-print"></div>
                 <div class="flex flex-wrap gap-4 justify-center w-full">`;
 
             for (let g = 1; g <= league.groupCount; g++) {
@@ -2240,7 +2174,7 @@
                 let currentSize = groupSizes[g] || 4;
                 if (isNaN(currentSize) || currentSize < 2) currentSize = 2;
 
-                html += `<div class="border-2 border-slate-800/80 rounded-xl overflow-hidden bg-white w-fit max-w-full shadow-sm mx-auto" id="group-panel-${league.id}-g${g}" data-league-id="${league.id}" data-group-no="${g}">
+                html += `<div class="border-2 border-slate-800/80 rounded-xl overflow-hidden bg-white w-fit max-w-full shadow-sm mx-auto">
                     <div class="bg-slate-100 p-2 flex justify-end items-center gap-1.5 border-b border-slate-200">
                         <span class="text-xs font-bold text-slate-500 mr-auto ml-1">${g}조 관리</span>
                         <button onclick="copyGroupTableImage(${league.id}, ${g})" id="btn-copy-${league.id}-g${g}" class="text-[10px] bg-emerald-500 hover:bg-emerald-400 text-white px-2 py-1 rounded font-bold transition-colors btn-press no-print shadow-sm flex items-center">📸 복사</button>
@@ -2262,7 +2196,7 @@
                 for (let i = 1; i <= currentSize; i++) {
                     let players = league.players || {};
                     let player = players[`g${g}_p${i}`];
-                    let headerName = player ? escapeHTML(getLeaguePlayerDisplayName(player)) : `${i}번`;
+                    let headerName = player ? escapeHTML(player.name) : `${i}번`;
                     html += `<th class="px-1 py-1 border-r border-sky-100 font-bold text-[11px] whitespace-nowrap w-px text-sky-900 cursor-pointer hover:bg-sky-200" id="th-${league.id}-g${g}-p${i}" onclick="selectLeaguePlayer(event, document.getElementById('td-${league.id}-g${g}-p${i}').querySelector('input'), ${league.id}, ${g}, ${i})">${headerName}</th>`;
                 }
 
@@ -2271,7 +2205,7 @@
                 for (let i = 1; i <= currentSize; i++) {
                     let players = league.players || {};
                     let player = players[`g${g}_p${i}`];
-                    let displayVal = player ? escapeHTML(getLeaguePlayerDisplayName(player)) : '';
+                    let displayVal = player ? escapeHTML(player.display) : '';
                     let placeholderVal = player ? displayVal : '터치👉';
 
                     html += `<tr class="border-b border-sky-100 hover:bg-sky-100/50">
@@ -2286,13 +2220,13 @@
                     }
                     html += `<td class="border-r border-sky-100 p-0 w-px"><input type="text" id="wl-${league.id}-g${g}-p${i}" class="w-full min-w-[40px] h-full px-1.5 py-1 text-center outline-none font-bold text-slate-700 bg-transparent drop-shadow-none" placeholder="/" oninput="syncText(this)"><span class="capture-text font-bold text-slate-700 px-1.5 py-1 bg-sky-50 drop-shadow-none">/</span></td>
                     <td class="border-r border-sky-100 p-0 w-px"><input type="text" id="diff-${league.id}-g${g}-p${i}" class="w-full min-w-[36px] h-full px-1.5 py-1 text-center outline-none font-bold text-slate-700 bg-transparent drop-shadow-none" placeholder="/" oninput="syncText(this)"><span class="capture-text font-bold text-slate-700 px-1.5 py-1 bg-sky-50 drop-shadow-none">/</span></td>
-                    <td class="bg-sky-100/50 p-0 w-px"><input type="text" id="rank-${league.id}-g${g}-p${i}" class="w-full min-w-[36px] h-full px-1.5 py-1 text-center outline-none font-black text-sky-600 text-sm bg-transparent border-0 drop-shadow-none" placeholder="" oninput="syncText(this); applyLeagueMedalDisplay(getLeagueById(${league.id}), ${g}, ${i})"><span class="capture-text font-black text-sky-600 px-1.5 py-1 bg-sky-100 drop-shadow-none"></span></td></tr>`;
+                    <td class="bg-sky-100/50 p-0 w-px"><input type="text" id="rank-${league.id}-g${g}-p${i}" class="w-full min-w-[36px] h-full px-1.5 py-1 text-center outline-none font-black text-sky-600 text-sm bg-transparent border-0 drop-shadow-none" placeholder="" oninput="syncText(this)"><span class="capture-text font-black text-sky-600 px-1.5 py-1 bg-sky-100 drop-shadow-none"></span></td></tr>`;
                 }
                 html += `</tbody></table></div>`;
 
                 html += `<div class="bg-white border-t border-sky-100 p-2.5 flex gap-1.5 items-center no-print flex-nowrap">
-                            <input type="text" id="bulk-score-${league.id}-g${g}" data-bulk-score-input="true" value="${escapeHTML(((league.bulkScores || {})[g] || (league.bulkScores || {})[String(g)] || ''))}" class="flex-1 min-w-0 text-[10px] sm:text-[11px] font-bold text-slate-700 border border-slate-200 rounded-lg px-2 py-1.5 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 transition-all placeholder-slate-400 text-center" placeholder="연속된 세트 스코어 입력 (예: 3111...)" autocomplete="off">
-                            <button onclick="fillScoresFromString(this, ${league.id}, ${g})" class="shrink-0 text-[10px] sm:text-[11px] bg-slate-800 hover:bg-slate-700 text-white px-2.5 sm:px-3 py-1.5 rounded-lg font-bold transition-colors btn-press shadow-sm whitespace-nowrap">일괄 적용</button>
+                            <input type="text" id="bulk-score-${league.id}-g${g}" class="flex-1 min-w-0 text-[10px] sm:text-[11px] font-bold text-slate-700 border border-slate-200 rounded-lg px-2 py-1.5 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 transition-all placeholder-slate-400 text-center" placeholder="연속된 세트 스코어 입력 (예: 3111...)" autocomplete="off">
+                            <button onclick="fillScoresFromString(${league.id}, ${g})" class="shrink-0 text-[10px] sm:text-[11px] bg-slate-800 hover:bg-slate-700 text-white px-2.5 sm:px-3 py-1.5 rounded-lg font-bold transition-colors btn-press shadow-sm whitespace-nowrap">일괄 적용</button>
                         </div>`;
 
                 html += `</div><div class="bg-slate-50 border-t border-slate-200 text-[11px] text-left no-print"><div class="p-2.5 flex justify-between items-center cursor-pointer font-extrabold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors" onclick="toggleOrder(${league.id}, ${g})"><span>🔄 게임 순서 접기/펼치기</span><span id="order-icon-${league.id}-${g}" class="text-xs">▼</span></div><div id="order-content-${league.id}-${g}" class="hidden p-3 leading-loose break-keep bg-slate-50 shadow-inner"></div></div></div>`;
@@ -2301,66 +2235,46 @@
             return html;
         }
 
-        function fillScoresFromString(triggerOrLeagueId, fallbackLeagueId = null, fallbackGroupNo = null) {
-            const triggerEl = (typeof HTMLElement !== 'undefined' && triggerOrLeagueId instanceof HTMLElement) ? triggerOrLeagueId : null;
-            const groupPanel = triggerEl ? triggerEl.closest('[data-league-id][data-group-no]') : null;
-            const leagueId = groupPanel ? groupPanel.dataset.leagueId : (fallbackLeagueId || triggerOrLeagueId);
-            const g = parseInt(groupPanel ? groupPanel.dataset.groupNo : fallbackGroupNo);
+        function fillScoresFromString(leagueId, g) {
             const league = getLeagueById(leagueId);
-            if (!league || !g) return;
-
-            const inputEl = groupPanel
-                ? groupPanel.querySelector('[data-bulk-score-input="true"]')
-                : document.getElementById(`bulk-score-${leagueId}-g${g}`);
+            if (!league) return;
+            const inputEl = document.getElementById(`bulk-score-${leagueId}-g${g}`);
             if (!inputEl) return;
 
             const scoreString = inputEl.value.trim();
-            league.bulkScores = league.bulkScores || {};
-            league.bulkScores[g] = scoreString;
-
-            const scoreDigits = scoreString.replace(/[^0-9]/g, '');
-            if (!scoreDigits) {
+            if (!scoreString) {
                 alert("적용할 스코어 문자열을 입력해주세요.");
                 return;
             }
 
-            const currentSize = (league.groupSizes && (league.groupSizes[g] || league.groupSizes[String(g)])) || 4;
+            const currentSize = league.groupSizes[g] || 4;
             const totalRequired = currentSize * (currentSize - 1); // 대각선 자기 자신 제외
+
             let idx = 0;
-            let appliedCount = 0;
-
-            const setScoreCell = (rowNo, colNo, value) => {
-                const inputCell = groupPanel
-                    ? groupPanel.querySelector(`#score-${league.id}-g${g}-r${rowNo}-c${colNo}`)
-                    : document.getElementById(`score-${league.id}-g${g}-r${rowNo}-c${colNo}`);
-                if (!inputCell) return false;
-                inputCell.value = value;
-                syncText(inputCell);
-                league.scores = league.scores || {};
-                league.scores[g] = league.scores[g] || {};
-                league.scores[g][rowNo] = league.scores[g][rowNo] || {};
-                league.scores[g][rowNo][colNo] = value;
-                appliedCount++;
-                return true;
-            };
-
-            // 과거코드와 동일하게 표의 좌상단부터 행 기준으로 순서대로 채운다.
             for (let i = 1; i <= currentSize; i++) {
                 for (let j = 1; j <= currentSize; j++) {
-                    if (i === j) continue;
-                    if (idx < scoreDigits.length) setScoreCell(i, j, scoreDigits[idx++]);
+                    if (i === j) continue; // 대각선 건너뜀
+
+                    if (idx < scoreString.length) {
+                        const targetScore = scoreString[idx];
+                        const inputCell = document.getElementById(`score-${league.id}-g${g}-r${i}-c${j}`);
+                        if (inputCell) {
+                            inputCell.value = targetScore;
+                            syncText(inputCell);
+                        }
+                        idx++;
+                    }
                 }
             }
 
-            if (scoreDigits.length !== totalRequired) {
-                alert("입력된 숫자의 길이와 빈칸의 총 개수가 다릅니다. 채울 수 있는 부분까지만 적용되었습니다.\n입력숫자 길이: " + scoreDigits.length + "개, 필요 부분: " + totalRequired + "개");
-            }
-            if (appliedCount === 0) {
-                alert("바로 위 리그표의 점수 칸을 찾지 못했습니다. 화면을 새로고침한 뒤 다시 시도해주세요.");
-                return;
+            inputEl.value = ''; // 완료 후 초기화
+
+            if (idx < totalRequired || idx < scoreString.length) {
+                alert("입력된 숫자의 길이와 빈칸의 총 개수가 다릅니다. 채울 수 있는 부분까지만 적용되었습니다.\n입력숫자 길이: " + scoreString.length + "개, 필요 부분: " + totalRequired + "개");
             }
 
-            calculateGroupRankings(leagueId, { silent: true });
+            // 실시간 순위 산출 즉시 호출 (자동순위 업데이트)
+            calculateGroupRankings(leagueId);
         }
 
         function updateLeagueTitle(leagueId, val) {
@@ -2513,90 +2427,6 @@
             fileInput.click();
         }
 
-        function syncLeagueStateFromDOM(league) {
-            if (!league) return;
-            const previousScores = league.scores || {};
-            const nextScores = {};
-
-            for (let g = 1; g <= league.groupCount; g++) {
-                const size = (league.groupSizes || {})[g] || (league.groupSizes || {})[String(g)] || 4;
-                const previousGroupScores = previousScores[g] || previousScores[String(g)] || {};
-                nextScores[g] = {};
-
-                for (let i = 1; i <= size; i++) {
-                    const previousRowScores = previousGroupScores[i] || previousGroupScores[String(i)] || {};
-                    nextScores[g][i] = { ...previousRowScores };
-
-                    for (let j = 1; j <= size; j++) {
-                        if (i === j) continue;
-                        const input = document.getElementById(`score-${league.id}-g${g}-r${i}-c${j}`);
-                        if (input) nextScores[g][i][j] = input.value;
-                    }
-
-                    const wl = document.getElementById(`wl-${league.id}-g${g}-p${i}`);
-                    const diff = document.getElementById(`diff-${league.id}-g${g}-p${i}`);
-                    const rank = document.getElementById(`rank-${league.id}-g${g}-p${i}`);
-                    if (wl) nextScores[g][i].wl = wl.value;
-                    if (diff) nextScores[g][i].diff = diff.value;
-                    if (rank) nextScores[g][i].rank = rank.value;
-                }
-            }
-
-            if (document.getElementById(`table-${league.id}-g1`)) league.scores = nextScores;
-
-            const bulkScores = { ...(league.bulkScores || {}) };
-            for (let g = 1; g <= league.groupCount; g++) {
-                const bulkInput = document.getElementById(`bulk-score-${league.id}-g${g}`);
-                if (bulkInput) bulkScores[g] = bulkInput.value;
-            }
-            league.bulkScores = bulkScores;
-        }
-
-        function restoreLeagueInputsAndDecorations(league) {
-            if (!league) return;
-
-            for (let g = 1; g <= league.groupCount; g++) {
-                const size = (league.groupSizes || {})[g] || (league.groupSizes || {})[String(g)] || 4;
-                const groupScores = (league.scores || {})[g] || (league.scores || {})[String(g)] || {};
-
-                for (let i = 1; i <= size; i++) {
-                    const rowScores = groupScores[i] || groupScores[String(i)] || {};
-                    for (let j = 1; j <= size; j++) {
-                        if (i === j) continue;
-                        const input = document.getElementById(`score-${league.id}-g${g}-r${i}-c${j}`);
-                        if (input) {
-                            input.value = rowScores[j] ?? rowScores[String(j)] ?? '';
-                            syncText(input);
-                        }
-                    }
-
-                    const wl = document.getElementById(`wl-${league.id}-g${g}-p${i}`);
-                    const diff = document.getElementById(`diff-${league.id}-g${g}-p${i}`);
-                    const rank = document.getElementById(`rank-${league.id}-g${g}-p${i}`);
-                    if (wl) { wl.value = rowScores.wl || ''; syncText(wl); }
-                    if (diff) { diff.value = rowScores.diff || ''; syncText(diff); }
-                    if (rank) { rank.value = rowScores.rank || ''; syncText(rank); }
-                    applyLeagueMedalDisplay(league, g, i);
-                }
-
-                const tableEl = document.getElementById(`table-${league.id}-g${g}`);
-                if (tableEl) updateMatchOrderDisplay(league.id, g, tableEl.querySelectorAll('tbody tr').length);
-            }
-        }
-
-        function rerenderLeagueContainer(league) {
-            if (!league) return false;
-            const oldContainer = document.getElementById(`league-container-${league.id}`);
-            if (!oldContainer) return false;
-
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = buildLeagueHTML(league);
-            const newContainer = tempDiv.firstElementChild;
-            oldContainer.parentNode.replaceChild(newContainer, oldContainer);
-            restoreLeagueInputsAndDecorations(league);
-            return true;
-        }
-
         function renderOperationLeagues() {
             const container = document.getElementById('op-group-container');
             const emptyMsg = document.getElementById('op-group-empty-msg');
@@ -2617,112 +2447,52 @@
             window.multiLeagues.forEach(league => {
                 const html = buildLeagueHTML(league);
                 container.insertAdjacentHTML('beforeend', html);
-                restoreLeagueInputsAndDecorations(league);
-            });
-        }
 
-        function getStoredScoreValue(league, g, rowNo, colNo) {
-            const groupScores = (league.scores || {})[g] || (league.scores || {})[String(g)] || {};
-            const rowScores = groupScores[rowNo] || groupScores[String(rowNo)] || {};
-            return rowScores[colNo] ?? rowScores[String(colNo)] ?? '';
-        }
-
-        function readScoreValue(league, g, rowNo, colNo) {
-            const input = document.getElementById(`score-${league.id}-g${g}-r${rowNo}-c${colNo}`);
-            return input ? input.value.trim() : String(getStoredScoreValue(league, g, rowNo, colNo) || '').trim();
-        }
-
-        function parseSetScore(value) {
-            const normalized = String(value ?? '').trim();
-            if (!/^\d+$/.test(normalized)) return null;
-            return parseInt(normalized, 10);
-        }
-
-        function writeLeagueScoreMeta(league, g, playerNo, key, value) {
-            league.scores = league.scores || {};
-            league.scores[g] = league.scores[g] || {};
-            league.scores[g][playerNo] = league.scores[g][playerNo] || {};
-            league.scores[g][playerNo][key] = String(value);
-        }
-
-        function syncLeagueScoresFromInputs(league) {
-            if (!league) return;
-            league.scores = league.scores || {};
-            for (let g = 1; g <= league.groupCount; g++) {
-                let size = (league.groupSizes || {})[g] || (league.groupSizes || {})[String(g)] || 4;
-                league.scores[g] = league.scores[g] || {};
-                for (let i = 1; i <= size; i++) {
-                    league.scores[g][i] = league.scores[g][i] || {};
-                    for (let j = 1; j <= size; j++) {
-                        if (i === j) continue;
-                        const input = document.getElementById(`score-${league.id}-g${g}-r${i}-c${j}`);
-                        if (input) league.scores[g][i][j] = input.value.trim();
-                    }
-                }
-            }
-        }
-
-        function clearLeagueCalculatedFields(league) {
-            if (!league) return;
-            league.scores = league.scores || {};
-            for (let g = 1; g <= league.groupCount; g++) {
-                const size = (league.groupSizes || {})[g] || (league.groupSizes || {})[String(g)] || 4;
-                league.scores[g] = league.scores[g] || {};
-                for (let i = 1; i <= size; i++) {
-                    league.scores[g][i] = league.scores[g][i] || {};
-
-                    ['wl', 'diff', 'rank'].forEach(key => {
-                        const inputId = key === 'wl'
-                            ? `wl-${league.id}-g${g}-p${i}`
-                            : key === 'diff'
-                                ? `diff-${league.id}-g${g}-p${i}`
-                                : `rank-${league.id}-g${g}-p${i}`;
-                        const input = document.getElementById(inputId);
-                        if (input) {
-                            input.value = '';
-                            syncText(input);
+                // 점수 및 순위 복원
+                for (let g = 1; g <= league.groupCount; g++) {
+                    let size = (league.groupSizes || {})[g] || 4;
+                    for (let i = 1; i <= size; i++) {
+                        for (let j = 1; j <= size; j++) {
+                            if (i === j) continue;
+                            let input = document.getElementById(`score-${league.id}-g${g}-r${i}-c${j}`);
+                            if (input && league.scores && league.scores[g] && league.scores[g][i]) {
+                                input.value = league.scores[g][i][j] || ''; 
+                                syncText(input);
+                            }
                         }
-                        league.scores[g][i][key] = '';
-                    });
-
-                    applyLeagueMedalDisplay(league, g, i, '');
+                        let wl = document.getElementById(`wl-${league.id}-g${g}-p${i}`);
+                        let diff = document.getElementById(`diff-${league.id}-g${g}-p${i}`);
+                        let rank = document.getElementById(`rank-${league.id}-g${g}-p${i}`);
+                        if (wl && league.scores && league.scores[g] && league.scores[g][i]) { wl.value = league.scores[g][i].wl || ''; syncText(wl); }
+                        if (diff && league.scores && league.scores[g] && league.scores[g][i]) { diff.value = league.scores[g][i].diff || ''; syncText(diff); }
+                        if (rank && league.scores && league.scores[g] && league.scores[g][i]) { rank.value = league.scores[g][i].rank || ''; syncText(rank); }
+                        applyLeagueMedalDisplay(league, g, i);
+                    }
+                    const tableEl = document.getElementById(`table-${league.id}-g${g}`);
+                    if (tableEl) updateMatchOrderDisplay(league.id, g, tableEl.querySelectorAll('tbody tr').length);
                 }
-            }
-        }
-
-        function recalculatePreliminaryTables(leagueId = null) {
-            const targetLeagues = (leagueId ? [getLeagueById(leagueId)] : window.multiLeagues).filter(Boolean);
-            if (!targetLeagues.length) return alert("재계산할 리그전표가 없습니다.");
-            targetLeagues.forEach(league => {
-                syncLeagueScoresFromInputs(league);
-                clearLeagueCalculatedFields(league);
             });
-            calculateGroupRankings(leagueId, { silent: true });
-            alert("🔁 기존 승/패, 득/실, 순위를 초기화한 뒤 입력된 세트스코어 기준으로 재계산했습니다.");
         }
 
-        function calculateGroupRankings(leagueId = null, options = {}) {
+        function calculateGroupRankings(leagueId = null) {
             const targetLeagues = leagueId ? [getLeagueById(leagueId)] : window.multiLeagues;
             if (!targetLeagues.length || !targetLeagues[0]) return alert("진행할 리그전표가 없습니다.");
 
             targetLeagues.forEach(league => {
-                syncLeagueScoresFromInputs(league);
                 for (let g = 1; g <= league.groupCount; g++) {
-                    let size = (league.groupSizes || {})[g] || (league.groupSizes || {})[String(g)] || 4;
+                    let size = (league.groupSizes || {})[g] || 4;
                     let players = [];
-                    for (let i = 1; i <= size; i++) players.push({ id: i, matchWins: 0, matchLosses: 0, setsWon: 0, setsLost: 0, matches: {}, finalRank: '' });
+                    for (let i = 1; i <= size; i++) players.push({ id: i, matchWins: 0, matchLosses: 0, setsWon: 0, setsLost: 0, matches: {} });
 
                     for (let i = 1; i <= size; i++) {
                         for (let j = i + 1; j <= size; j++) {
-                            let valIJ = readScoreValue(league, g, i, j);
-                            let valJI = readScoreValue(league, g, j, i);
-                            let w = parseSetScore(valIJ);
-                            let l = parseSetScore(valJI);
+                            let inputIJ = document.getElementById(`score-${league.id}-g${g}-r${i}-c${j}`);
+                            let inputJI = document.getElementById(`score-${league.id}-g${g}-r${j}-c${i}`);
+                            let valIJ = inputIJ ? inputIJ.value.trim() : "";
+                            let valJI = inputJI ? inputJI.value.trim() : "";
 
-                            // 과거코드 호환: 한쪽 칸만 입력된 경우에도 누락된 반대편을 0으로 보고 계산한다.
-                            if (w !== null || l !== null) {
-                                if (w === null) w = 0;
-                                if (l === null) l = 0;
+                            if (valIJ !== "" || valJI !== "") {
+                                let w = parseInt(valIJ) || 0; let l = parseInt(valJI) || 0;
                                 players[i - 1].setsWon += w; players[i - 1].setsLost += l; players[i - 1].matches[j] = { w: w, l: l };
                                 players[j - 1].setsWon += l; players[j - 1].setsLost += w; players[j - 1].matches[i] = { w: l, l: w };
                                 if (w > l) { players[i - 1].matchWins++; players[j - 1].matchLosses++; }
@@ -2733,18 +2503,11 @@
 
                     players.forEach(p => {
                         let wlInput = document.getElementById(`wl-${league.id}-g${g}-p${p.id}`); let diffInput = document.getElementById(`diff-${league.id}-g${g}-p${p.id}`);
-                        const wlValue = `${p.matchWins}/${p.matchLosses}`;
-                        const diffValue = `${p.setsWon}/${p.setsLost}`;
-                        if (wlInput) { wlInput.value = wlValue; syncText(wlInput); }
-                        if (diffInput) { diffInput.value = diffValue; syncText(diffInput); }
-                        writeLeagueScoreMeta(league, g, p.id, 'wl', wlValue);
-                        writeLeagueScoreMeta(league, g, p.id, 'diff', diffValue);
+                        if (wlInput) { wlInput.value = `${p.matchWins}/${p.matchLosses}`; syncText(wlInput); }
+                        if (diffInput) { diffInput.value = `${p.setsWon}/${p.setsLost}`; syncText(diffInput); }
                     });
 
-                    let sortedPlayers = [...players].sort((a, b) => {
-                        if (b.matchWins !== a.matchWins) return b.matchWins - a.matchWins;
-                        return (b.setsWon - b.setsLost) - (a.setsWon - a.setsLost);
-                    });
+                    let sortedPlayers = [...players].sort((a, b) => b.matchWins - a.matchWins);
                     let rank = 1; let idx = 0;
                     while (idx < sortedPlayers.length) {
                         let tied = [sortedPlayers[idx]]; let next = idx + 1;
@@ -2783,12 +2546,11 @@
                     players.forEach(p => {
                         let rankInput = document.getElementById(`rank-${league.id}-g${g}-p${p.id}`);
                         if (rankInput) { rankInput.value = p.finalRank; syncText(rankInput); }
-                        writeLeagueScoreMeta(league, g, p.id, 'rank', p.finalRank);
                         applyLeagueMedalDisplay(league, g, p.id, p.finalRank);
                     });
                 }
             });
-            if (!options.silent) alert("🧮 선택한/전체 리그 표의 자동 계산이 완료되었습니다.");
+            alert("🧮 선택한/전체 리그 표의 자동 계산이 완료되었습니다.");
             saveDataToStorage();
             // 매번 전체 결과를 취합하여 저장 (전체 버튼이든 개별 버튼이든)
             saveAllPreliminaryResults();
@@ -2801,18 +2563,6 @@
             return '';
         }
 
-        function stripLeagueMedalPrefix(value) {
-            return String(value || '').replace(/^\s*[🥇🥈🥉]\s*/, '').trim();
-        }
-
-        function getLeagueSlotDomDisplay(leagueId, groupNo, playerNo) {
-            const tdInput = document.querySelector(`#td-${leagueId}-g${groupNo}-p${playerNo} input`);
-            const tdSpan = document.querySelector(`#td-${leagueId}-g${groupNo}-p${playerNo} span.capture-text`);
-            const rawText = (tdInput && tdInput.value) || (tdSpan && tdSpan.innerText) || '';
-            const displayText = stripLeagueMedalPrefix(rawText);
-            return displayText && displayText !== '터치👉' ? displayText : '';
-        }
-
         function applyLeagueMedalDisplay(league, groupNo, playerNo, forcedRank = null) {
             if (!league) return;
             const playerObj = (league.players || {})[`g${groupNo}_p${playerNo}`];
@@ -2823,21 +2573,19 @@
             const th = document.getElementById(`th-${league.id}-g${groupNo}-p${playerNo}`);
             const tdInput = document.querySelector(`#td-${league.id}-g${groupNo}-p${playerNo} input`);
             const tdSpan = document.querySelector(`#td-${league.id}-g${groupNo}-p${playerNo} span.capture-text`);
-            const fallbackDisplay = getLeagueSlotDomDisplay(league.id, groupNo, playerNo);
 
-            if (!playerObj && !fallbackDisplay) {
+            if (!playerObj) {
                 if (th) th.innerText = `${playerNo}번`;
                 if (tdSpan && tdInput) tdSpan.innerText = tdInput.value || tdInput.placeholder || '';
                 return;
             }
 
-            const nameText = playerObj ? (playerObj.name || '') : '';
-            const displayText = playerObj
-                ? (getLeaguePlayerDisplayName(playerObj) || playerObj.display || nameText)
-                : fallbackDisplay;
+            const nameText = playerObj.name || '';
+            const displayText = playerObj.display || '';
+            const nameWithMedal = medal ? `${medal} ${nameText}` : nameText;
             const displayWithMedal = medal ? `${medal} ${displayText}` : displayText;
 
-            if (th) th.innerText = displayWithMedal;
+            if (th) th.innerText = nameWithMedal;
             if (tdInput) tdInput.value = displayWithMedal;
             if (tdSpan) tdSpan.innerText = displayWithMedal;
         }
@@ -2884,41 +2632,31 @@
                         let player = league.players[`g${g}_p${p}`];
                         if (player) groupPlayers.push(player);
                     }
-
-                    // 과거코드 호환: 부수 낮은 순 → 이름순으로 정렬
                     groupPlayers.sort((a, b) => {
-                        const ah = parseInt(a && a.handicap, 10) || 999;
-                        const bh = parseInt(b && b.handicap, 10) || 999;
-                        if (ah !== bh) return ah - bh;
-                        return String((a && a.name) || '').localeCompare(String((b && b.name) || ''));
+                        if (a.handicap !== b.handicap) return a.handicap - b.handicap;
+                        return a.name.localeCompare(b.name);
                     });
-
                     for (let p = 1; p <= currentSize; p++) {
                         league.players[`g${g}_p${p}`] = groupPlayers[p - 1] || null;
                     }
                 }
-
                 saveDataToStorage();
                 // 특정 리그만 다시 그려주기
                 const oldContainer = document.getElementById(`league-container-${league.id}`);
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = buildLeagueHTML(league);
+                const newContainer = tempDiv.firstElementChild;
                 if (oldContainer) {
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = buildLeagueHTML(league);
-                    const newContainer = tempDiv.firstElementChild;
                     oldContainer.parentNode.replaceChild(newContainer, oldContainer);
                     for (let g = 1; g <= league.groupCount; g++) {
                         const tableEl = document.getElementById(`table-${league.id}-g${g}`);
-                        if (tableEl) updateMatchOrderDisplay(league.id, g, tableEl.querySelectorAll('tbody tr').length);
+                        if (tableEl) { updateMatchOrderDisplay(league.id, g, tableEl.querySelectorAll('tbody tr').length); }
                     }
                 }
             });
         }
 
-        function syncText(inputElem) {
-            if (inputElem && inputElem.nextElementSibling) {
-                inputElem.nextElementSibling.innerText = inputElem.value || inputElem.placeholder;
-            }
-        }
+        function syncText(inputElem) { inputElem.nextElementSibling.innerText = inputElem.value || inputElem.placeholder; }
 
         async function copyGroupTableImage(leagueId, g) {
             const containerId = `table-container-${leagueId}-g${g}`;
@@ -3077,286 +2815,127 @@
             }
         }
 
-        function updateLeaguePlayerSlotDOM(league, leagueId, g, p) {
-            if (!league) return;
-            const player = (league.players || {})[`g${g}_p${p}`];
-            const displayVal = player ? getLeaguePlayerDisplayName(player) : '';
-            const headerName = player ? displayVal : `${p}번`;
-
-            const td = document.getElementById(`td-${leagueId}-g${g}-p${p}`);
-            const input = td ? td.querySelector('input') : null;
-            if (input) {
-                input.value = displayVal;
-                syncText(input);
-            }
-
-            const captureText = td ? td.querySelector('.capture-text') : null;
-            if (captureText) captureText.innerText = displayVal || '터치👉';
-
-            const th = document.getElementById(`th-${leagueId}-g${g}-p${p}`);
-            if (th) th.innerText = headerName;
-        }
-
         function selectLeaguePlayer(event, inputElem, leagueId, g, p) {
             if (event) event.stopPropagation();
             const league = getLeagueById(leagueId);
             if (!league) return;
             if (!league.players) league.players = {};
 
-            const matchType = getLeagueMatchType(league);
+            const matchType = league.matchType;
             const limit = matchType === 'doubles' ? 2 : (matchType === 'team' ? 999 : 1);
 
             isSinglePickMode = (limit === 1);
             const titleSuffix = (matchType === 'individual' || matchType === 'full_league') ? '선수' : (matchType === 'doubles' ? '복식팀' : '팀');
             const limitText = (matchType === 'individual' || matchType === 'full_league') ? '1명' : (matchType === 'doubles' ? '2명' : '무제한');
-            const selectorConfirmBtn = document.getElementById('btn-selector-confirm');
+            document.getElementById('selector-title').innerText = `${g}조 ${p}번 ${titleSuffix} 선택 (${limitText})`;
 
-            function getGroupSize(groupNo) {
-                const groupSizes = league.groupSizes || {};
-                const size = groupSizes[groupNo] || groupSizes[String(groupNo)] || 4;
-                return Math.max(2, parseInt(size) || 4);
+            if (isSinglePickMode) {
+                document.getElementById('selector-count').classList.add('hidden');
+            } else {
+                document.getElementById('selector-count').classList.remove('hidden');
             }
 
-            function getSlotInput(targetG, targetP) {
-                return document.getElementById(`td-${leagueId}-g${targetG}-p${targetP}`)?.querySelector('input') || null;
+            let excludedNames = [];
+            for (let key in league.players) {
+                if (league.players[key]) {
+                    const names = String(league.players[key].name).split(',').map(n => n.trim());
+                    excludedNames.push(...names);
+                }
             }
+
+            tempSelectorList = [];
+            if (league.players[`g${g}_p${p}`]) {
+                tempSelectorList = String(league.players[`g${g}_p${p}`].name).split(',').map(n => n.trim());
+            }
+
+            currentSelectorTarget = 'league';
+            if (renderSelectorList(true, 'league', excludedNames) === false) return;
+            document.getElementById('member-selector-modal').classList.remove('hidden');
+            updateSelectorCount();
 
             function getNextSlot(currentG, currentP) {
-                const currentSize = getGroupSize(currentG);
+                const currentSize = league.groupSizes[currentG] || 4;
                 if (currentP < currentSize) return { g: currentG, p: currentP + 1 };
                 if (currentG < league.groupCount) return { g: currentG + 1, p: 1 };
                 return null;
             }
 
-            function isEmptyLeagueSlot(targetG, targetP) {
-                const slot = (league.players || {})[`g${targetG}_p${targetP}`];
-                return !slot || !String(slot.name || '').trim();
-            }
-
-            function getLeagueSlotExcludedNames(targetG, targetP) {
-                let excluded = [];
+            function renderLeagueSelectorForSlot(targetG, targetP) {
+                document.getElementById('selector-title').innerText = `${targetG}조 ${targetP}번 ${titleSuffix} 선택 (${limitText})`;
+                let newExcludedNames = [];
                 for (let key in league.players) {
-                    if (key !== `g${targetG}_p${targetP}` && league.players[key]) {
-                        const names = String(league.players[key].name).split(',').map(n => n.trim()).filter(Boolean);
-                        excluded.push(...names);
+                    if (league.players[key]) {
+                        const names = String(league.players[key].name).split(',').map(n => n.trim());
+                        newExcludedNames.push(...names);
                     }
                 }
-                return excluded;
-            }
-
-            function hasAvailableCandidateForSlot(targetG, targetP) {
-                const attendList = (formState.opAttend && formState.opAttend.length > 0) ? formState.opAttend : formState.attend;
-                if (!attendList || attendList.length === 0) return false;
-                const excluded = getLeagueSlotExcludedNames(targetG, targetP);
-                return members.some(m => attendList.includes(m.name) && !excluded.includes(m.name));
-            }
-
-            function getNextSlotWithCandidate(currentG, currentP) {
-                let nextSlot = getNextSlot(currentG, currentP);
-                while (nextSlot) {
-                    const canUseSlot = !isSinglePickMode || isEmptyLeagueSlot(nextSlot.g, nextSlot.p);
-                    if (canUseSlot && hasAvailableCandidateForSlot(nextSlot.g, nextSlot.p)) {
-                        return nextSlot;
-                    }
-                    nextSlot = getNextSlot(nextSlot.g, nextSlot.p);
-                }
-                return null;
-            }
-
-            function renderLeagueSelectorSlot(targetG, targetP, previousSelectionNotice = '') {
-                g = targetG;
-                p = targetP;
-                inputElem = getSlotInput(g, p) || inputElem;
-
-                const autoFillHint = isSinglePickMode ? ' · 이름을 터치하면 바로 입력 후 다음 빈칸으로 이동' : '';
-                document.getElementById('selector-title').innerText = previousSelectionNotice
-                    ? `${previousSelectionNotice} · 다음: ${g}조 ${p}번 ${titleSuffix} 선택 (${limitText})${autoFillHint}`
-                    : `${g}조 ${p}번 ${titleSuffix} 선택 (${limitText})${autoFillHint}`;
-
-                if (isSinglePickMode) {
-                    document.getElementById('selector-count').classList.add('hidden');
-                    if (selectorConfirmBtn) selectorConfirmBtn.classList.add('hidden');
-                } else {
-                    document.getElementById('selector-count').classList.remove('hidden');
-                    if (selectorConfirmBtn) {
-                        selectorConfirmBtn.classList.remove('hidden');
-                        selectorConfirmBtn.innerText = '적용';
-                    }
-                }
-
-                tempSelectorList = [];
-                if (league.players[`g${g}_p${p}`]) {
-                    tempSelectorList = String(league.players[`g${g}_p${p}`].name).split(',').map(n => n.trim()).filter(Boolean);
-                }
-
-                currentSelectorTarget = 'league';
-                if (renderSelectorList(true, 'league', getLeagueSlotExcludedNames(g, p)) === false) {
-                    resetSelectorState({ leagueOnly: true });
-                    return false;
-                }
-                document.getElementById('member-selector-modal').classList.remove('hidden');
+                renderSelectorList(true, 'league', newExcludedNames);
                 updateSelectorCount();
-                return true;
             }
 
-            if (!renderLeagueSelectorSlot(g, p)) return;
-
-            window.singlePickCallback = function (memberId, memberName) {
+            window.singlePickCallback = function (memberId) {
                 if (currentSelectorTarget !== 'league') return;
-                const memberIdText = String(memberId ?? '');
-                const m = members.find(x => memberIdText && String(x.id) === memberIdText) || members.find(x => x.name === memberName);
+                const m = members.find(x => x.id == memberId);
                 if (!m) return;
+                tempSelectorList = [m.name];
+                if (window.leaguePickCallback && window.leaguePickCallback() === false) return;
 
-                syncLeagueStateFromDOM(league);
-                league.players[`g${g}_p${p}`] = {
-                    id: m.id,
-                    name: m.name,
-                    display: getMemberDetailDisplayName(m),
-                    handicap: Number(m.handicap) || 0,
-                    grip: m.grip || '',
-                    frontRubber: m.frontRubber || '',
-                    backRubber: m.backRubber || ''
-                };
-
-                const completedG = g;
-                const completedP = p;
-                updateLeaguePlayerSlotDOM(league, leagueId, completedG, completedP);
-                applyLeagueMedalDisplay(league, completedG, completedP);
-                const tableEl = document.getElementById(`table-${leagueId}-g${completedG}`);
-                if (tableEl) updateMatchOrderDisplay(leagueId, completedG, tableEl.querySelectorAll('tbody tr').length);
-                saveDataToStorage();
-
-                const nextSlot = getNextSlotWithCandidate(completedG, completedP);
+                const nextSlot = getNextSlot(g, p);
                 if (!nextSlot) {
-                    closeLeagueSelector();
+                    closeSelector();
                     return;
                 }
 
-                const previousSelectionNotice = `${completedG}조 ${completedP}번 ${m.name} 선택 완료`;
-                renderLeagueSelectorSlot(nextSlot.g, nextSlot.p, previousSelectionNotice);
+                const nextInput = document.getElementById(`td-${leagueId}-g${nextSlot.g}-p${nextSlot.p}`)?.querySelector('input');
+                if (!nextInput) {
+                    closeSelector();
+                    return;
+                }
+
+                selectLeaguePlayer(null, nextInput, leagueId, nextSlot.g, nextSlot.p);
             };
 
             window.leaguePickCallback = function () {
-                syncLeagueStateFromDOM(league);
-
                 if (tempSelectorList.length === 0) {
                     league.players[`g${g}_p${p}`] = null;
+                    inputElem.value = "";
+                    if (inputElem.nextElementSibling) inputElem.nextElementSibling.innerText = "";
+                    applyLeagueMedalDisplay(league, g, p);
                 } else {
                     if (matchType === 'doubles' && tempSelectorList.length > 2) {
                         alert("복식전은 최대 2명까지만 선택 가능합니다.");
                         return false;
                     }
                     const selectedMembers = tempSelectorList.map(name => members.find(m => m.name === name)).filter(Boolean);
-                    if (selectedMembers.length === 0) {
-                        alert("선택한 회원 정보를 찾지 못했습니다. 참석자 명단을 새로 확인한 뒤 다시 선택해 주세요.");
-                        return false;
-                    }
                     const teamName = selectedMembers.map(m => m.name).join(', ');
-                    const teamDisplay = selectedMembers.map(m => getMemberDetailDisplayName(m)).join(', ');
-                    const avgHandicap = Math.round(selectedMembers.reduce((sum, m) => sum + (Number(m.handicap) || 0), 0) / selectedMembers.length);
+                    const teamDisplay = selectedMembers.map(m => `${m.name}(${m.handicap})`).join(', ');
+                    const avgHandicap = selectedMembers.length > 0 ? Math.round(selectedMembers.reduce((sum, m) => sum + m.handicap, 0) / selectedMembers.length) : 0;
 
                     league.players[`g${g}_p${p}`] = {
-                        id: selectedMembers.length === 1 ? selectedMembers[0].id : 'team_' + Date.now(),
+                        id: 'team_' + Date.now(),
                         name: teamName,
                         display: teamDisplay,
-                        handicap: avgHandicap,
-                        grip: selectedMembers.length === 1 ? selectedMembers[0].grip : '',
-                        frontRubber: selectedMembers.length === 1 ? selectedMembers[0].frontRubber : '',
-                        backRubber: selectedMembers.length === 1 ? selectedMembers[0].backRubber : ''
+                        handicap: avgHandicap
                     };
-                }
-
-                updateLeaguePlayerSlotDOM(league, leagueId, g, p);
-
-                if (!rerenderLeagueContainer(league)) {
-                    updateLeaguePlayerSlotDOM(league, leagueId, g, p);
+                    inputElem.value = teamDisplay;
                     applyLeagueMedalDisplay(league, g, p);
-                    const tableEl = document.getElementById(`table-${leagueId}-g${g}`);
-                    if (tableEl) updateMatchOrderDisplay(leagueId, g, tableEl.querySelectorAll('tbody tr').length);
                 }
-
+                updateMatchOrderDisplay(leagueId, g, document.getElementById(`table-${leagueId}-g${g}`).querySelectorAll('tbody tr').length);
                 saveDataToStorage();
                 return true;
             };
         }
 
 
-        function getLeagueResetTargetGroups(league, groupNo = null) {
-            if (!league) return [];
-            if (groupNo) return [parseInt(groupNo)];
-            return Array.from({ length: league.groupCount }, (_, idx) => idx + 1);
-        }
-
-        function getLeagueResetTargetLabel(groupNo = null) {
-            return groupNo ? `${groupNo}조` : '전체 조';
-        }
-
-        function hideLeagueResetGroupChooser(leagueId) {
-            const panel = document.getElementById(`league-reset-options-${leagueId}`);
-            if (panel) {
-                panel.classList.add('hidden');
-                panel.innerHTML = '';
-            }
-        }
-
-        function openLeagueResetGroupChooser(leagueId, resetType) {
+        function resetLeaguePlayerNames(leagueId) {
             const league = getLeagueById(leagueId);
             if (!league) return;
+            if (!confirm("이 예선 조별 리그전표의 선수명만 초기화하시겠습니까?\n(점수/순위 데이터는 유지됩니다.)")) return;
 
-            if ((league.groupCount || 1) < 2) {
-                if (resetType === 'players') resetLeaguePlayerNames(leagueId, null, true);
-                else if (resetType === 'scores') resetLeagueSetScores(leagueId, null, true);
-                return;
-            }
+            league.players = {};
 
-            const panel = document.getElementById(`league-reset-options-${leagueId}`);
-            if (!panel) return;
-
-            const title = resetType === 'players' ? '선수명을 초기화할 조를 선택하세요.' : '세트스코어를 초기화할 조를 선택하세요.';
-            const action = resetType === 'players' ? 'resetLeaguePlayerNames' : 'resetLeagueSetScores';
-            const accentClass = resetType === 'players'
-                ? 'bg-orange-500 hover:bg-orange-400'
-                : 'bg-yellow-500 hover:bg-yellow-400';
-
-            let buttons = `<button onclick="${action}(${leagueId}, null, true)" class="${accentClass} text-white px-3 py-1.5 rounded-lg font-extrabold btn-press shadow-sm">전체 조</button>`;
             for (let g = 1; g <= league.groupCount; g++) {
-                buttons += `<button onclick="${action}(${leagueId}, ${g}, true)" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3 py-1.5 rounded-lg font-bold btn-press">${g}조</button>`;
-            }
-
-            panel.innerHTML = `<div class="flex flex-col sm:flex-row sm:items-center gap-2 justify-between">
-                <div class="font-extrabold text-slate-700">👇 ${title}</div>
-                <div class="flex flex-wrap gap-1.5">
-                    ${buttons}
-                    <button onclick="hideLeagueResetGroupChooser(${leagueId})" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 rounded-lg font-bold btn-press">취소</button>
-                </div>
-            </div>`;
-            panel.classList.remove('hidden');
-            panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-
-        function resetLeaguePlayerNames(leagueId, groupNo = null, skipChooser = false) {
-            const league = getLeagueById(leagueId);
-            if (!league) return;
-            if ((league.groupCount || 1) >= 2 && !skipChooser) {
-                openLeagueResetGroupChooser(leagueId, 'players');
-                return;
-            }
-
-            const targetLabel = getLeagueResetTargetLabel(groupNo);
-            if (!confirm(`이 예선 조별 리그전표의 ${targetLabel} 선수명만 초기화하시겠습니까?\n(점수/순위 데이터는 유지됩니다.)`)) return;
-
-            const targetGroups = getLeagueResetTargetGroups(league, groupNo);
-            league.players = league.players || {};
-            if (groupNo) {
-                Object.keys(league.players).forEach(key => {
-                    if (key.startsWith(`g${groupNo}_p`)) delete league.players[key];
-                });
-            } else {
-                league.players = {};
-            }
-
-            targetGroups.forEach(g => {
-                const size = (league.groupSizes && (league.groupSizes[g] || league.groupSizes[String(g)])) || 4;
+                const size = (league.groupSizes && league.groupSizes[g]) || 4;
                 for (let p = 1; p <= size; p++) {
                     const td = document.getElementById(`td-${leagueId}-g${g}-p${p}`);
                     const input = td ? td.querySelector('input') : null;
@@ -3368,64 +2947,10 @@
                     if (th) th.innerText = `${p}번`;
                 }
                 updateMatchOrderDisplay(leagueId, g, size);
-            });
-
-            hideLeagueResetGroupChooser(leagueId);
-            saveDataToStorage();
-            alert(`✅ 조별 리그전표 ${targetLabel} 선수명이 초기화되었습니다.`);
-        }
-
-        function resetLeagueSetScores(leagueId, groupNo = null, skipChooser = false) {
-            const league = getLeagueById(leagueId);
-            if (!league) return;
-            if ((league.groupCount || 1) >= 2 && !skipChooser) {
-                openLeagueResetGroupChooser(leagueId, 'scores');
-                return;
             }
 
-            const targetLabel = getLeagueResetTargetLabel(groupNo);
-            if (!confirm(`이 예선 조별 리그전표의 ${targetLabel} 세트스코어를 초기화하시겠습니까?\n(승/패, 득/실, 순위도 함께 비워집니다.)`)) return;
-
-            const targetGroups = getLeagueResetTargetGroups(league, groupNo);
-            league.scores = league.scores || {};
-            league.bulkScores = league.bulkScores || {};
-
-            targetGroups.forEach(g => {
-                const size = (league.groupSizes && (league.groupSizes[g] || league.groupSizes[String(g)])) || 4;
-                league.scores[g] = {};
-
-                for (let p = 1; p <= size; p++) {
-                    league.scores[g][p] = { wl: '', diff: '', rank: '' };
-
-                    ['wl', 'diff', 'rank'].forEach(prefix => {
-                        const cell = document.getElementById(`${prefix}-${leagueId}-g${g}-p${p}`);
-                        if (cell) {
-                            cell.value = '';
-                            syncText(cell);
-                        }
-                    });
-
-                    for (let c = 1; c <= size; c++) {
-                        if (p === c) continue;
-                        league.scores[g][p][c] = '';
-                        const scoreCell = document.getElementById(`score-${leagueId}-g${g}-r${p}-c${c}`);
-                        if (scoreCell) {
-                            scoreCell.value = '';
-                            syncText(scoreCell);
-                        }
-                    }
-                    applyLeagueMedalDisplay(league, g, p, '');
-                }
-
-                league.bulkScores[g] = '';
-                const bulkInput = document.getElementById(`bulk-score-${leagueId}-g${g}`);
-                if (bulkInput) bulkInput.value = '';
-                updateMatchOrderDisplay(leagueId, g, size);
-            });
-
-            hideLeagueResetGroupChooser(leagueId);
             saveDataToStorage();
-            alert(`✅ 조별 리그전표 ${targetLabel} 세트스코어가 초기화되었습니다.`);
+            alert("✅ 조별 리그전표 선수명이 초기화되었습니다.");
         }
 
         function resetLeagueInputs(leagueId) {
@@ -3498,8 +3023,7 @@
                 let n2 = p2Obj ? escapeHTML(p2Obj.display || p2Obj.name) : `선수 미지정`;
                 return `<span class="inline-flex items-center bg-white border border-slate-200 px-2 py-1 rounded shadow-sm mr-1.5 mb-1.5 font-bold text-slate-700 text-[11px]"><span class="text-indigo-600 bg-indigo-50 px-1 rounded mr-1.5">${idx + 1}경기</span> ${n1} <span class="text-slate-300 font-normal mx-1 text-[9px]">vs</span> ${n2}</span>`;
             });
-            const orderContent = document.getElementById(`order-content-${leagueId}-${g}`);
-            if (orderContent) orderContent.innerHTML = blocks.join('');
+            document.getElementById(`order-content-${leagueId}-${g}`).innerHTML = blocks.join('');
         }
 
         let currentPrintLeague = null;
@@ -3648,7 +3172,7 @@
             }
 
             // 예선 순위를 항상 최신 상태로 자동 계산 후 불러오기
-            calculateGroupRankings(null, { silent: true });
+            calculateGroupRankings();
 
             const targetGroups = tournamentState.groups || parseInt(document.getElementById('op-tourn-groups').value);
             const targetAdv = tournamentState.adv || parseInt(document.getElementById('op-tourn-adv').value);
@@ -4124,8 +3648,6 @@
             isSinglePickMode = true;
             document.getElementById('selector-title').innerText = "1라운드 진출자 수동 선택";
             document.getElementById('selector-count').classList.add('hidden');
-            const selectorConfirmBtn = document.getElementById('btn-selector-confirm');
-            if (selectorConfirmBtn) selectorConfirmBtn.classList.add('hidden');
 
             let excludedNames = [];
             tournamentState.tree[0].forEach(cell => {
@@ -4433,8 +3955,6 @@
             if (titleEl) titleEl.innerText = type === 'p1' ? "승자 선택" : "패자 선택";
             const countEl = document.getElementById('selector-count');
             if (countEl) countEl.classList.add('hidden');
-            const selectorConfirmBtn = document.getElementById('btn-selector-confirm');
-            if (selectorConfirmBtn) selectorConfirmBtn.classList.add('hidden');
             
             renderSelectorList(true, 'rated');
             document.getElementById('member-selector-modal').classList.remove('hidden');
@@ -4602,7 +4122,7 @@
                     // 4순위: 이름 가나다순 (위 순위가 모두 동일할 경우)
                     return a.name.localeCompare(b.name);
                 }).forEach(m => {
-                    const isSelected = tempSelectorList.includes(m.name);
+                    const isSelected = !isSinglePickMode && tempSelectorList.includes(m.name);
 
                     let bgClass = '';
                     let subTextClass = '';
@@ -4622,22 +4142,7 @@
                         subTextClass = 'text-slate-400';
                     }
 
-                    const button = document.createElement('button');
-                    button.type = 'button';
-                    button.id = `sel-btn-${m.name}`;
-                    button.className = `py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press ${bgClass}`;
-                    button.innerHTML = `${escapeHTML(m.name)} <span class="text-[9px] ${subTextClass} block mt-0.5 font-medium">${escapeHTML(String(m.handicap ?? ''))}부</span>`;
-                    button.addEventListener('click', () => {
-                        if (isSinglePickMode && currentSelectorTarget === 'league') {
-                            if (window.singlePickCallback) window.singlePickCallback(m.id, m.name);
-                            else setSingleSelectorChoice(m.name);
-                        } else if (isSinglePickMode) {
-                            if (window.singlePickCallback) window.singlePickCallback(m.id, m.name);
-                        } else {
-                            toggleSelect(m.name);
-                        }
-                    });
-                    listEl.appendChild(button);
+                    listEl.innerHTML += `<button onclick="${isSinglePickMode ? `window.singlePickCallback('${m.id}')` : `toggleSelect('${escapeHTML(m.name)}')`}" id="sel-btn-${escapeHTML(m.name)}" class="py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press ${bgClass}">${escapeHTML(m.name)} <span class="text-[9px] ${subTextClass} block mt-0.5 font-medium">${m.handicap}부</span></button>`;
                 });
             }
             return true;
@@ -4646,11 +4151,6 @@
         function openSelector(target, title, onlyAttendees) {
             isSinglePickMode = false;
             document.getElementById('selector-count').classList.remove('hidden');
-            const selectorConfirmBtn = document.getElementById('btn-selector-confirm');
-            if (selectorConfirmBtn) {
-                selectorConfirmBtn.classList.remove('hidden');
-                selectorConfirmBtn.innerText = '적용';
-            }
             currentSelectorTarget = target;
             document.getElementById('selector-title').innerText = title;
             tempSelectorList = [...(formState[target] || [])];
@@ -4658,35 +4158,6 @@
                 updateSelectorCount();
                 document.getElementById('member-selector-modal').classList.remove('hidden');
             }
-        }
-
-        function setSingleSelectorChoice(name) {
-            tempSelectorList = [name];
-            const listEl = document.getElementById('selector-list');
-            if (listEl) {
-                Array.from(listEl.querySelectorAll('button[id^="sel-btn-"]')).forEach(btn => {
-                    const memberName = btn.id.replace('sel-btn-', '');
-                    const m = members.find(x => x.name === memberName);
-                    if (memberName === name) {
-                        btn.className = "py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press bg-indigo-600 text-white border-indigo-700 shadow-inner";
-                        const span = btn.querySelector('span');
-                        if (span) span.className = "text-[9px] text-indigo-200 block mt-0.5 font-medium";
-                    } else if (m && m.type === '연회원') {
-                        btn.className = "py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press bg-blue-50 text-blue-800 border-blue-200 shadow-sm hover:bg-blue-100";
-                        const span = btn.querySelector('span');
-                        if (span) span.className = "text-[9px] text-blue-400 block mt-0.5 font-medium";
-                    } else if (m && m.affiliation === '초청') {
-                        btn.className = "py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press bg-amber-50 text-amber-800 border-amber-200 shadow-sm hover:bg-amber-100";
-                        const span = btn.querySelector('span');
-                        if (span) span.className = "text-[9px] text-amber-400 block mt-0.5 font-medium";
-                    } else {
-                        btn.className = "py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press bg-white text-slate-600 border-slate-200 shadow-sm hover:bg-slate-50";
-                        const span = btn.querySelector('span');
-                        if (span) span.className = "text-[9px] text-slate-400 block mt-0.5 font-medium";
-                    }
-                });
-            }
-            updateSelectorCount();
         }
 
         function toggleSelect(name) {
@@ -4718,52 +4189,11 @@
         function updateSelectorCount() {
             document.getElementById('selector-count').innerText = `${tempSelectorList.length}명 선택됨`;
         }
-
-        function hideSelectorModal() {
-            document.getElementById('member-selector-modal').classList.add('hidden');
-        }
-
-        function resetSelectorState({ leagueOnly = false } = {}) {
-            if (leagueOnly && currentSelectorTarget !== 'league') return;
-            currentSelectorTarget = null;
-            tempSelectorList = [];
-            window.singlePickCallback = null;
-            window.leaguePickCallback = null;
-            isSinglePickMode = false;
-        }
-
-        function closeLeagueSelector() {
-            hideSelectorModal();
-            resetSelectorState({ leagueOnly: true });
-        }
-
-        function closeSelector() {
-            if (currentSelectorTarget === 'league') {
-                closeLeagueSelector();
-                return;
-            }
-            hideSelectorModal();
-        }
-
+        function closeSelector() { document.getElementById('member-selector-modal').classList.add('hidden'); }
         function confirmSelector() {
             if (currentSelectorTarget === 'league') {
-                if (isSinglePickMode) {
-                    const selectedName = tempSelectorList[0];
-                    if (!selectedName) {
-                        alert('적용할 선수를 먼저 선택해 주세요.');
-                        return;
-                    }
-                    const selectedMember = members.find(m => m.name === selectedName);
-                    if (!selectedMember) {
-                        alert('선택한 회원 정보를 찾지 못했습니다. 명단을 새로 열어 다시 선택해 주세요.');
-                        return;
-                    }
-                    if (window.singlePickCallback) window.singlePickCallback(selectedMember.id, selectedMember.name);
-                    return;
-                }
-                if (window.leaguePickCallback) {
-                    if (window.leaguePickCallback() === false) return;
-                }
+                closeSelector();
+                return;
             } else {
                 formState[currentSelectorTarget] = [...tempSelectorList];
                 if (currentSelectorTarget === 'attend' || currentSelectorTarget === 'opAttend') {
@@ -4878,26 +4308,6 @@
             if (!formState.opParticipantChecks[name]) formState.opParticipantChecks[name] = { sincere: false, fee: false };
             formState.opParticipantChecks[name][field] = checked;
             saveDataToStorage();
-        }
-
-        function movePlannedToOperationAttendees() {
-            if (!isAdmin) return;
-
-            const planned = formState.opPlanned || [];
-            if (planned.length === 0) {
-                alert('🚨 이동할 참가예정자가 없습니다.\n먼저 참가예정 명단을 선택해 주세요.');
-                return;
-            }
-
-            formState.opAttend = [...new Set(planned)];
-            formState.opPlanned = [];
-            formState.opParticipantChecks = {};
-
-            generateGroupSizeInputs();
-            updateFormUI();
-            saveDataToStorage();
-
-            alert(`✅ 오늘 경기 참석자 명단을 초기화하고 참가예정자 ${formState.opAttend.length}명만 참석자로 선택했습니다.`);
         }
 
         function resetOperationInputs() {
@@ -6942,17 +6352,14 @@ function renderMembersList() {
                 const p = index + 1;
                 // 기존 회원 중에서 찾기
                 const m = members.find(x => x.name === playerName);
-                let displayName = m ? getMemberDetailDisplayName(m) : playerName;
+                let displayName = m ? `${m.name}(${m.handicap})` : playerName;
                 let handicap = m ? m.handicap : 5;
 
                 targetLeague.players[`g${g}_p${p}`] = {
                     id: m ? m.id : 'ai_' + Date.now() + p,
                     name: playerName,
                     display: displayName,
-                    handicap: handicap,
-                    grip: m ? m.grip : '',
-                    frontRubber: m ? m.frontRubber : '',
-                    backRubber: m ? m.backRubber : ''
+                    handicap: handicap
                 };
             });
 
