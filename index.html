@@ -2090,6 +2090,10 @@
             }).join(', ');
         }
 
+        function getLeagueMatchType(league) {
+            return (league && league.matchType) || (document.getElementById('op-match-type') ? document.getElementById('op-match-type').value : 'individual') || 'individual';
+        }
+
         function createLeague() {
             const count = parseInt(document.getElementById('op-group-count').value) || 2;
             const matchTypeEl = document.getElementById('op-match-type');
@@ -3080,15 +3084,17 @@
             if (!league) return;
             if (!league.players) league.players = {};
 
-            const matchType = league.matchType;
+            const matchType = getLeagueMatchType(league);
+            const isIndividualFlow = matchType === 'individual';
             const limit = matchType === 'doubles' ? 2 : (matchType === 'team' ? 999 : 1);
 
             isSinglePickMode = (limit === 1);
             const titleSuffix = (matchType === 'individual' || matchType === 'full_league') ? '선수' : (matchType === 'doubles' ? '복식팀' : '팀');
             const limitText = (matchType === 'individual' || matchType === 'full_league') ? '1명' : (matchType === 'doubles' ? '2명' : '무제한');
+            const autoFillHint = isIndividualFlow ? ' · 이름을 누르면 다음 빈 칸으로 자동 이동' : '';
             document.getElementById('selector-title').innerText = previousSelectionNotice
-                ? `${previousSelectionNotice} · 다음: ${g}조 ${p}번 ${titleSuffix} 선택 (${limitText})`
-                : `${g}조 ${p}번 ${titleSuffix} 선택 (${limitText})`;
+                ? `${previousSelectionNotice} · 다음: ${g}조 ${p}번 ${titleSuffix} 선택 (${limitText})${autoFillHint}`
+                : `${g}조 ${p}번 ${titleSuffix} 선택 (${limitText})${autoFillHint}`;
 
             const selectorConfirmBtn = document.getElementById('btn-selector-confirm');
             if (isSinglePickMode) {
@@ -3133,6 +3139,11 @@
                 return null;
             }
 
+            function isEmptyLeagueSlot(targetG, targetP) {
+                const slot = (league.players || {})[`g${targetG}_p${targetP}`];
+                return !slot || !String(slot.name || '').trim();
+            }
+
             function getLeagueSlotExcludedNames(targetG, targetP) {
                 let excluded = [];
                 for (let key in league.players) {
@@ -3154,7 +3165,8 @@
             function getNextSlotWithCandidate(currentG, currentP) {
                 let nextSlot = getNextSlot(currentG, currentP);
                 while (nextSlot) {
-                    if (hasAvailableCandidateForSlot(nextSlot.g, nextSlot.p)) {
+                    const canUseSlot = !isIndividualFlow || isEmptyLeagueSlot(nextSlot.g, nextSlot.p);
+                    if (canUseSlot && hasAvailableCandidateForSlot(nextSlot.g, nextSlot.p)) {
                         return nextSlot;
                     }
                     nextSlot = getNextSlot(nextSlot.g, nextSlot.p);
@@ -3172,7 +3184,7 @@
                 const m = members.find(x => memberIdText && String(x.id) === memberIdText) || members.find(x => x.name === memberName);
                 if (!m) return;
 
-                // 단식/풀리그 선수 카드는 '적용' 버튼 없이 누르는 즉시 현재 칸에 반영한다.
+                // 개인전/풀리그 선수 카드는 '적용' 버튼 없이 누르는 즉시 현재 칸에 반영한다.
                 // 이전 구현은 전역 tempSelectorList와 확인 콜백을 우회 호출해, 모바일/특수문자 이름/재렌더 타이밍에
                 // 따라 카드 터치가 표에 반영되지 않는 경우가 있었다. 여기서는 선택한 회원 객체로 슬롯 데이터를
                 // 직접 저장하고 현재 DOM만 갱신한 뒤 다음 슬롯 선택으로 이동한다.
