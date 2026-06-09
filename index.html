@@ -2031,6 +2031,29 @@
             return window.multiLeagues.find(l => l.id == leagueId);
         }
 
+        function getLeagueSetupSignature(league) {
+            if (!league) return '';
+            const groupCount = parseInt(league.groupCount) || 1;
+            const matchType = league.matchType || 'individual';
+            const groupSizes = league.groupSizes || {};
+            const sizes = [];
+            for (let g = 1; g <= groupCount; g++) {
+                sizes.push(parseInt(groupSizes[g]) || 4);
+            }
+            return `${matchType}|${groupCount}|${sizes.join(',')}`;
+        }
+
+        function focusExistingLeague(leagueId) {
+            const existingContainer = document.getElementById(`league-container-${leagueId}`);
+            if (!existingContainer) {
+                renderOperationLeagues();
+                return;
+            }
+            existingContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            existingContainer.classList.add('ring-4', 'ring-indigo-200');
+            setTimeout(() => existingContainer.classList.remove('ring-4', 'ring-indigo-200'), 1200);
+        }
+
         function createLeague() {
             const count = parseInt(document.getElementById('op-group-count').value) || 2;
             const matchTypeEl = document.getElementById('op-match-type');
@@ -2067,6 +2090,14 @@
                         }
                     });
                 }
+            }
+
+            syncMultiLeaguesFromDOM();
+            const newLeagueSignature = getLeagueSetupSignature(newLeague);
+            const existingEmptyLeague = window.multiLeagues.find(league => isLeagueEmpty(league) && getLeagueSetupSignature(league) === newLeagueSignature);
+            if (existingEmptyLeague) {
+                focusExistingLeague(existingEmptyLeague.id);
+                return;
             }
 
             window.multiLeagues.push(newLeague);
