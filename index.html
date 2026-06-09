@@ -3054,6 +3054,26 @@
             }
         }
 
+        function updateLeaguePlayerSlotDOM(league, leagueId, g, p) {
+            if (!league) return;
+            const player = (league.players || {})[`g${g}_p${p}`];
+            const displayVal = player ? getLeaguePlayerDisplayName(player) : '';
+            const headerName = player ? player.name : `${p}번`;
+
+            const td = document.getElementById(`td-${leagueId}-g${g}-p${p}`);
+            const input = td ? td.querySelector('input') : null;
+            if (input) {
+                input.value = displayVal;
+                syncText(input);
+            }
+
+            const captureText = td ? td.querySelector('.capture-text') : null;
+            if (captureText) captureText.innerText = displayVal || '터치👉';
+
+            const th = document.getElementById(`th-${leagueId}-g${g}-p${p}`);
+            if (th) th.innerText = headerName;
+        }
+
         function selectLeaguePlayer(event, inputElem, leagueId, g, p, previousSelectionNotice = '') {
             if (event) event.stopPropagation();
             const league = getLeagueById(leagueId);
@@ -3191,9 +3211,13 @@
                         return false;
                     }
                     const selectedMembers = tempSelectorList.map(name => members.find(m => m.name === name)).filter(Boolean);
+                    if (selectedMembers.length === 0) {
+                        alert("선택한 회원 정보를 찾지 못했습니다. 참석자 명단을 새로 확인한 뒤 다시 선택해 주세요.");
+                        return false;
+                    }
                     const teamName = selectedMembers.map(m => m.name).join(', ');
                     const teamDisplay = selectedMembers.map(m => getMemberDetailDisplayName(m)).join(', ');
-                    const avgHandicap = selectedMembers.length > 0 ? Math.round(selectedMembers.reduce((sum, m) => sum + m.handicap, 0) / selectedMembers.length) : 0;
+                    const avgHandicap = Math.round(selectedMembers.reduce((sum, m) => sum + (Number(m.handicap) || 0), 0) / selectedMembers.length);
 
                     league.players[`g${g}_p${p}`] = {
                         id: selectedMembers.length === 1 ? selectedMembers[0].id : 'team_' + Date.now(),
@@ -3206,12 +3230,10 @@
                     };
                 }
 
+                updateLeaguePlayerSlotDOM(league, leagueId, g, p);
+
                 if (!rerenderLeagueContainer(league)) {
-                    const targetInput = document.querySelector(`#td-${leagueId}-g${g}-p${p} input`) || inputElem;
-                    if (targetInput && tempSelectorList.length === 0) {
-                        targetInput.value = '';
-                        syncText(targetInput);
-                    }
+                    updateLeaguePlayerSlotDOM(league, leagueId, g, p);
                     applyLeagueMedalDisplay(league, g, p);
                     const tableEl = document.getElementById(`table-${leagueId}-g${g}`);
                     if (tableEl) updateMatchOrderDisplay(leagueId, g, tableEl.querySelectorAll('tbody tr').length);
