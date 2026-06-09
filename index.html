@@ -2560,7 +2560,18 @@
                 for (let g = 1; g <= league.groupCount; g++) {
                     let size = (league.groupSizes || {})[g] || 4;
                     let players = [];
-                    for (let i = 1; i <= size; i++) players.push({ id: i, matchWins: 0, matchLosses: 0, setsWon: 0, setsLost: 0, matches: {} });
+                    for (let i = 1; i <= size; i++) {
+                        players.push({ id: i, matchWins: 0, matchLosses: 0, setsWon: 0, setsLost: 0, matches: {} });
+
+                        // 재계산 전 기존 승/패·세트·순위 표시값을 먼저 비워서 이전 결과가 남지 않도록 한다.
+                        ['wl', 'diff', 'rank'].forEach(prefix => {
+                            const calcInput = document.getElementById(`${prefix}-${league.id}-g${g}-p${i}`);
+                            if (calcInput) {
+                                calcInput.value = '';
+                                syncText(calcInput);
+                            }
+                        });
+                    }
 
                     for (let i = 1; i <= size; i++) {
                         for (let j = i + 1; j <= size; j++) {
@@ -2573,6 +2584,8 @@
                                 const { mySets: w, opponentSets: l } = getLeagueMatchSetScores(valIJ, valJI);
                                 players[i - 1].setsWon += w; players[i - 1].setsLost += l; players[i - 1].matches[j] = { w: w, l: l };
                                 players[j - 1].setsWon += l; players[j - 1].setsLost += w; players[j - 1].matches[i] = { w: l, l: w };
+
+                                // 저장된 승/패 값은 사용하지 않고, 현재 입력된 세트 수만 비교하여 승/패를 다시 산정한다.
                                 const outcome = getLeagueMatchOutcome(w, l);
                                 if (outcome === 'win') { players[i - 1].matchWins++; players[j - 1].matchLosses++; }
                                 else if (outcome === 'loss') { players[j - 1].matchWins++; players[i - 1].matchLosses++; }
