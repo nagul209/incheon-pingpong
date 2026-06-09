@@ -3091,18 +3091,24 @@
             isSinglePickMode = (limit === 1);
             const titleSuffix = (matchType === 'individual' || matchType === 'full_league') ? '선수' : (matchType === 'doubles' ? '복식팀' : '팀');
             const limitText = (matchType === 'individual' || matchType === 'full_league') ? '1명' : (matchType === 'doubles' ? '2명' : '무제한');
-            const autoFillHint = isIndividualFlow ? ' · 이름을 누르면 다음 빈 칸으로 자동 이동' : '';
+            const autoFillHint = isIndividualFlow ? ' · 이름 선택 후 하단 적용을 누르면 다음 빈 칸으로 이동' : '';
             document.getElementById('selector-title').innerText = previousSelectionNotice
                 ? `${previousSelectionNotice} · 다음: ${g}조 ${p}번 ${titleSuffix} 선택 (${limitText})${autoFillHint}`
                 : `${g}조 ${p}번 ${titleSuffix} 선택 (${limitText})${autoFillHint}`;
 
             const selectorConfirmBtn = document.getElementById('btn-selector-confirm');
             if (isSinglePickMode) {
-                document.getElementById('selector-count').classList.add('hidden');
-                if (selectorConfirmBtn) selectorConfirmBtn.classList.add('hidden');
+                document.getElementById('selector-count').classList.remove('hidden');
+                if (selectorConfirmBtn) {
+                    selectorConfirmBtn.classList.remove('hidden');
+                    selectorConfirmBtn.innerText = '적용하고 다음 빈칸으로';
+                }
             } else {
                 document.getElementById('selector-count').classList.remove('hidden');
-                if (selectorConfirmBtn) selectorConfirmBtn.classList.remove('hidden');
+                if (selectorConfirmBtn) {
+                    selectorConfirmBtn.classList.remove('hidden');
+                    selectorConfirmBtn.innerText = '적용';
+                }
             }
 
             let excludedNames = [];
@@ -3184,10 +3190,9 @@
                 const m = members.find(x => memberIdText && String(x.id) === memberIdText) || members.find(x => x.name === memberName);
                 if (!m) return;
 
-                // 개인전/풀리그 선수 카드는 '적용' 버튼 없이 누르는 즉시 현재 칸에 반영한다.
-                // 이전 구현은 전역 tempSelectorList와 확인 콜백을 우회 호출해, 모바일/특수문자 이름/재렌더 타이밍에
-                // 따라 카드 터치가 표에 반영되지 않는 경우가 있었다. 여기서는 선택한 회원 객체로 슬롯 데이터를
-                // 직접 저장하고 현재 DOM만 갱신한 뒤 다음 슬롯 선택으로 이동한다.
+                // 개인전/풀리그 선수 카드는 이름을 먼저 선택하고 하단 [적용] 버튼을 눌러 현재 칸에 반영한다.
+                // 이름 카드의 즉시 반영이 기기별 터치/재렌더 타이밍에 따라 누락될 수 있어, 명시적인 적용 단계로
+                // 현재 칸 저장과 다음 빈칸 이동을 안정적으로 처리한다.
                 syncLeagueStateFromDOM(league);
                 league.players[`g${g}_p${p}`] = {
                     id: m.id,
@@ -4121,6 +4126,8 @@
             isSinglePickMode = true;
             document.getElementById('selector-title').innerText = "1라운드 진출자 수동 선택";
             document.getElementById('selector-count').classList.add('hidden');
+            const selectorConfirmBtn = document.getElementById('btn-selector-confirm');
+            if (selectorConfirmBtn) selectorConfirmBtn.classList.add('hidden');
 
             let excludedNames = [];
             tournamentState.tree[0].forEach(cell => {
@@ -4428,6 +4435,8 @@
             if (titleEl) titleEl.innerText = type === 'p1' ? "승자 선택" : "패자 선택";
             const countEl = document.getElementById('selector-count');
             if (countEl) countEl.classList.add('hidden');
+            const selectorConfirmBtn = document.getElementById('btn-selector-confirm');
+            if (selectorConfirmBtn) selectorConfirmBtn.classList.add('hidden');
             
             renderSelectorList(true, 'rated');
             document.getElementById('member-selector-modal').classList.remove('hidden');
@@ -4621,7 +4630,9 @@
                     button.className = `py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press ${bgClass}`;
                     button.innerHTML = `${escapeHTML(m.name)} <span class="text-[9px] ${subTextClass} block mt-0.5 font-medium">${escapeHTML(String(m.handicap ?? ''))}부</span>`;
                     button.addEventListener('click', () => {
-                        if (isSinglePickMode) {
+                        if (isSinglePickMode && currentSelectorTarget === 'league') {
+                            setSingleSelectorChoice(m.name);
+                        } else if (isSinglePickMode) {
                             if (window.singlePickCallback) window.singlePickCallback(m.id, m.name);
                         } else {
                             toggleSelect(m.name);
@@ -4637,7 +4648,10 @@
             isSinglePickMode = false;
             document.getElementById('selector-count').classList.remove('hidden');
             const selectorConfirmBtn = document.getElementById('btn-selector-confirm');
-            if (selectorConfirmBtn) selectorConfirmBtn.classList.remove('hidden');
+            if (selectorConfirmBtn) {
+                selectorConfirmBtn.classList.remove('hidden');
+                selectorConfirmBtn.innerText = '적용';
+            }
             currentSelectorTarget = target;
             document.getElementById('selector-title').innerText = title;
             tempSelectorList = [...(formState[target] || [])];
@@ -4645,6 +4659,35 @@
                 updateSelectorCount();
                 document.getElementById('member-selector-modal').classList.remove('hidden');
             }
+        }
+
+        function setSingleSelectorChoice(name) {
+            tempSelectorList = [name];
+            const listEl = document.getElementById('selector-list');
+            if (listEl) {
+                Array.from(listEl.querySelectorAll('button[id^="sel-btn-"]')).forEach(btn => {
+                    const memberName = btn.id.replace('sel-btn-', '');
+                    const m = members.find(x => x.name === memberName);
+                    if (memberName === name) {
+                        btn.className = "py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press bg-indigo-600 text-white border-indigo-700 shadow-inner";
+                        const span = btn.querySelector('span');
+                        if (span) span.className = "text-[9px] text-indigo-200 block mt-0.5 font-medium";
+                    } else if (m && m.type === '연회원') {
+                        btn.className = "py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press bg-blue-50 text-blue-800 border-blue-200 shadow-sm hover:bg-blue-100";
+                        const span = btn.querySelector('span');
+                        if (span) span.className = "text-[9px] text-blue-400 block mt-0.5 font-medium";
+                    } else if (m && m.affiliation === '초청') {
+                        btn.className = "py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press bg-amber-50 text-amber-800 border-amber-200 shadow-sm hover:bg-amber-100";
+                        const span = btn.querySelector('span');
+                        if (span) span.className = "text-[9px] text-amber-400 block mt-0.5 font-medium";
+                    } else {
+                        btn.className = "py-3 px-1 border rounded-xl text-[12px] font-extrabold transition-all btn-press bg-white text-slate-600 border-slate-200 shadow-sm hover:bg-slate-50";
+                        const span = btn.querySelector('span');
+                        if (span) span.className = "text-[9px] text-slate-400 block mt-0.5 font-medium";
+                    }
+                });
+            }
+            updateSelectorCount();
         }
 
         function toggleSelect(name) {
@@ -4705,6 +4748,20 @@
 
         function confirmSelector() {
             if (currentSelectorTarget === 'league') {
+                if (isSinglePickMode) {
+                    const selectedName = tempSelectorList[0];
+                    if (!selectedName) {
+                        alert('적용할 선수를 먼저 선택해 주세요.');
+                        return;
+                    }
+                    const selectedMember = members.find(m => m.name === selectedName);
+                    if (!selectedMember) {
+                        alert('선택한 회원 정보를 찾지 못했습니다. 명단을 새로 열어 다시 선택해 주세요.');
+                        return;
+                    }
+                    if (window.singlePickCallback) window.singlePickCallback(selectedMember.id, selectedMember.name);
+                    return;
+                }
                 if (window.leaguePickCallback) {
                     if (window.leaguePickCallback() === false) return;
                 }
