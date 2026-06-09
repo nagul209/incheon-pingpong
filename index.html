@@ -2262,7 +2262,7 @@
                 for (let i = 1; i <= currentSize; i++) {
                     let players = league.players || {};
                     let player = players[`g${g}_p${i}`];
-                    let headerName = player ? escapeHTML(player.name) : `${i}번`;
+                    let headerName = player ? escapeHTML(getLeaguePlayerDisplayName(player)) : `${i}번`;
                     html += `<th class="px-1 py-1 border-r border-sky-100 font-bold text-[11px] whitespace-nowrap w-px text-sky-900 cursor-pointer hover:bg-sky-200" id="th-${league.id}-g${g}-p${i}" onclick="selectLeaguePlayer(event, document.getElementById('td-${league.id}-g${g}-p${i}').querySelector('input'), ${league.id}, ${g}, ${i})">${headerName}</th>`;
                 }
 
@@ -2286,7 +2286,7 @@
                     }
                     html += `<td class="border-r border-sky-100 p-0 w-px"><input type="text" id="wl-${league.id}-g${g}-p${i}" class="w-full min-w-[40px] h-full px-1.5 py-1 text-center outline-none font-bold text-slate-700 bg-transparent drop-shadow-none" placeholder="/" oninput="syncText(this)"><span class="capture-text font-bold text-slate-700 px-1.5 py-1 bg-sky-50 drop-shadow-none">/</span></td>
                     <td class="border-r border-sky-100 p-0 w-px"><input type="text" id="diff-${league.id}-g${g}-p${i}" class="w-full min-w-[36px] h-full px-1.5 py-1 text-center outline-none font-bold text-slate-700 bg-transparent drop-shadow-none" placeholder="/" oninput="syncText(this)"><span class="capture-text font-bold text-slate-700 px-1.5 py-1 bg-sky-50 drop-shadow-none">/</span></td>
-                    <td class="bg-sky-100/50 p-0 w-px"><input type="text" id="rank-${league.id}-g${g}-p${i}" class="w-full min-w-[36px] h-full px-1.5 py-1 text-center outline-none font-black text-sky-600 text-sm bg-transparent border-0 drop-shadow-none" placeholder="" oninput="syncText(this)"><span class="capture-text font-black text-sky-600 px-1.5 py-1 bg-sky-100 drop-shadow-none"></span></td></tr>`;
+                    <td class="bg-sky-100/50 p-0 w-px"><input type="text" id="rank-${league.id}-g${g}-p${i}" class="w-full min-w-[36px] h-full px-1.5 py-1 text-center outline-none font-black text-sky-600 text-sm bg-transparent border-0 drop-shadow-none" placeholder="" oninput="syncText(this); applyLeagueMedalDisplay(getLeagueById(${league.id}), ${g}, ${i})"><span class="capture-text font-black text-sky-600 px-1.5 py-1 bg-sky-100 drop-shadow-none"></span></td></tr>`;
                 }
                 html += `</tbody></table></div>`;
 
@@ -2819,11 +2819,10 @@
             }
 
             const nameText = playerObj.name || '';
-            const displayText = playerObj.display || '';
-            const nameWithMedal = medal ? `${medal} ${nameText}` : nameText;
+            const displayText = getLeaguePlayerDisplayName(playerObj) || playerObj.display || nameText;
             const displayWithMedal = medal ? `${medal} ${displayText}` : displayText;
 
-            if (th) th.innerText = nameWithMedal;
+            if (th) th.innerText = displayWithMedal;
             if (tdInput) tdInput.value = displayWithMedal;
             if (tdSpan) tdSpan.innerText = displayWithMedal;
         }
@@ -3067,7 +3066,7 @@
             if (!league) return;
             const player = (league.players || {})[`g${g}_p${p}`];
             const displayVal = player ? getLeaguePlayerDisplayName(player) : '';
-            const headerName = player ? player.name : `${p}번`;
+            const headerName = player ? displayVal : `${p}번`;
 
             const td = document.getElementById(`td-${leagueId}-g${g}-p${p}`);
             const input = td ? td.querySelector('input') : null;
