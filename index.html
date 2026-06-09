@@ -3348,10 +3348,9 @@
         }
 
         function handleTournamentClick(round, idx) {
-            if (!isAdmin) return;
-            
-            // 자리 변경 모드 처리 (1라운드 시드만 가능)
+            // 자리 변경 모드는 관리자만 가능하지만, 승자 선택은 대진표 운영 중 바로 입력할 수 있게 허용합니다.
             if (isSwapMode) {
+                if (!isAdmin) return alert("자리 변경(Swap)은 관리자 모드에서만 사용 가능합니다.");
                 if (round === 0) {
                     handleSwap(idx);
                 } else {
@@ -3645,33 +3644,38 @@
 
                     const isP1Winner = nextWinner && nextWinner === p1 && p1 !== "부전승(BYE)";
                     const isP2Winner = nextWinner && nextWinner === p2 && p2 !== "부전승(BYE)";
+                    const isP1Loser = nextWinner && p1 && nextWinner !== p1 && p1 !== "부전승(BYE)";
+                    const isP2Loser = nextWinner && p2 && nextWinner !== p2 && p2 !== "부전승(BYE)";
                     const isBye = p2 === "부전승(BYE)";
                     const winnerBadge = '<span class="absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-md border-2 border-white">승</span>';
+                    const loserBadge = '<span class="absolute -top-2 -right-2 bg-slate-300 text-slate-600 text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm border-2 border-white">패</span>';
 
                     const isP1Selected = isSwapMode && vRound === 0 && swapFirstPick === p1Idx;
                     const isP2Selected = isSwapMode && vRound === 0 && swapFirstPick === p2Idx;
+                    const p1StateClass = isP1Selected ? 'bg-orange-100 border-orange-500 shadow-inner' : (isP1Winner ? 'bg-blue-100 border-blue-500 shadow-sm ring-2 ring-blue-200' : (isP1Loser ? 'bg-slate-100 border-slate-200 opacity-55 grayscale' : 'bg-slate-50 border-transparent'));
+                    const p2StateClass = isP2Selected ? 'bg-orange-100 border-orange-500 shadow-inner' : (isP2Winner ? 'bg-blue-100 border-blue-500 shadow-sm ring-2 ring-blue-200' : (isP2Loser ? 'bg-slate-100 border-slate-200 opacity-55 grayscale' : (isBye ? 'bg-slate-100 border-slate-200 opacity-50' : 'bg-slate-50 border-transparent')));
 
                     html += `
                         <div class="bg-white rounded-2xl shadow-sm p-4 border border-slate-100 transition-all ${isSwapMode && vRound === 0 ? 'ring-2 ring-orange-200' : ''}">
                             <div class="flex items-center justify-between gap-3 relative">
                                 <div onclick="handleTournamentClick(${vRound}, ${p1Idx})" 
-                                     class="relative flex-1 p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-center min-h-[60px] ${isP1Selected ? 'bg-orange-100 border-orange-500 shadow-inner' : (isP1Winner ? 'bg-blue-100 border-blue-500 shadow-sm' : 'bg-slate-50 border-transparent')}">
-                                    ${isP1Winner ? winnerBadge : ''}
-                                    <span class="text-xs font-black break-all whitespace-normal text-center ${isP1Winner ? 'text-blue-800' : (isP1Selected ? 'text-orange-800' : 'text-slate-700')}">${p1 || (vRound === 0 ? '터치선택' : '대기중')}</span>
+                                     class="relative flex-1 p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-center min-h-[60px] ${p1StateClass}">
+                                    ${isP1Winner ? winnerBadge : (isP1Loser ? loserBadge : '')}
+                                    <span class="text-xs font-black break-all whitespace-normal text-center ${isP1Winner ? 'text-blue-800' : (isP1Selected ? 'text-orange-800' : (isP1Loser ? 'text-slate-400 line-through' : 'text-slate-700'))}">${p1 || (vRound === 0 ? '터치선택' : '대기중')}</span>
                                 </div>
                                 <div class="flex flex-col items-center px-1">
                                     <span class="text-[10px] font-black text-slate-300 italic">VS</span>
                                     ${isBye ? '<span class="text-[8px] font-bold text-indigo-500 mt-1">BYE</span>' : ''}
                                 </div>
                                 <div onclick="handleTournamentClick(${vRound}, ${p2Idx})" 
-                                     class="relative flex-1 p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-center min-h-[60px] ${isP2Selected ? 'bg-orange-100 border-orange-500 shadow-inner' : (isP2Winner ? 'bg-blue-100 border-blue-500 shadow-sm' : (isBye ? 'bg-slate-100 border-slate-200 opacity-50' : 'bg-slate-50 border-transparent'))}">
-                                    ${isP2Winner ? winnerBadge : ''}
-                                    <span class="text-xs font-black break-all whitespace-normal text-center ${isP2Winner ? 'text-blue-800' : (isP2Selected ? 'text-orange-800' : 'text-slate-700')}">${p2 || (vRound === 0 ? '터치선택' : '대기중')}</span>
+                                     class="relative flex-1 p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-center min-h-[60px] ${p2StateClass}">
+                                    ${isP2Winner ? winnerBadge : (isP2Loser ? loserBadge : '')}
+                                    <span class="text-xs font-black break-all whitespace-normal text-center ${isP2Winner ? 'text-blue-800' : (isP2Selected ? 'text-orange-800' : (isP2Loser ? 'text-slate-400 line-through' : 'text-slate-700'))}">${p2 || (vRound === 0 ? '터치선택' : '대기중')}</span>
                                 </div>
                             </div>
                             <div class="mt-3 flex justify-between items-center px-1">
                                 <span class="bg-indigo-600 text-white text-[9px] px-2 py-0.5 rounded-md font-bold shadow-sm">${roundBadgeText}</span>
-                                <span class="text-slate-300 text-[9px] font-bold uppercase tracking-widest">Match ${m + 1}</span>
+                                <span class="text-slate-300 text-[9px] font-bold uppercase tracking-widest">${nextWinner && nextWinner !== '부전승(BYE)' ? `진출 → ${escapeHTML(nextWinner)}` : `Match ${m + 1}`}</span>
                             </div>
                         </div>`;
                 }
@@ -3696,24 +3700,20 @@
         }
 
         function toggleTournamentWinner(round, idx) {
-            if (!isAdmin) return;
-            
             const player = tournamentState.tree[round][idx];
             if (!player || player === "부전승(BYE)") return;
 
             const nextRound = round + 1;
+            if (!tournamentState.tree[nextRound]) return;
             const nextIdx = Math.floor(idx / 2);
             const currentWinner = tournamentState.tree[nextRound][nextIdx];
+            const nextWinner = currentWinner === player ? "" : player;
 
-            // 토글 로직
-            if (currentWinner === player) {
-                tournamentState.tree[nextRound][nextIdx] = "";
-            } else {
-                tournamentState.tree[nextRound][nextIdx] = player;
-            }
+            // 클릭한 선수를 다음 라운드 칸에 즉시 올리고, 한 번 더 누르면 선택을 취소합니다.
+            tournamentState.tree[nextRound][nextIdx] = nextWinner;
 
-            // 하위 라운드에서 승자가 바뀜에 따라 상위 라운드의 연쇄적 초기화
-            cascadeClearTournament(round + 1, nextIdx);
+            // 승자가 바뀌거나 취소되면 이후 라운드 결과는 더 이상 유효하지 않으므로 연쇄 초기화합니다.
+            cascadeClearTournament(nextRound, nextIdx);
 
             propagateByes();
             renderTournamentUI();
@@ -3916,21 +3916,23 @@
                     const isP2Bye = p2 === "부전승(BYE)";
                     const isP1Winner = nextWinner && nextWinner === p1 && !isP1Bye;
                     const isP2Winner = nextWinner && nextWinner === p2 && !isP2Bye;
+                    const isP1Loser = nextWinner && p1 && nextWinner !== p1 && !isP1Bye;
+                    const isP2Loser = nextWinner && p2 && nextWinner !== p2 && !isP2Bye;
                     const p1Highlight = showSwapHighlight && isSwapMode && r === 0 && swapFirstPick === p1Idx;
                     const p2Highlight = showSwapHighlight && isSwapMode && r === 0 && swapFirstPick === p2Idx;
 
-                    const cellHtml = (player, idx, isWinner, isBye, isHighlighted) => `
+                    const cellHtml = (player, idx, isWinner, isLoser, isBye, isHighlighted) => `
                         <div${getCellClick(r, idx)}
-                             class="relative z-10 w-full border ${isWinner ? 'border-blue-500 bg-blue-50' : (isBye ? 'border-slate-200 bg-slate-100 opacity-60' : 'border-slate-300 bg-white')} rounded p-1.5 text-center shadow-sm transition-all ${getCellCursor} ${isHighlighted ? 'ring-4 ring-orange-500 border-orange-500 scale-105 shadow-md' : ''}"
+                             class="relative z-10 w-full border ${isWinner ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-100' : (isLoser ? 'border-slate-200 bg-slate-100 opacity-55 grayscale' : (isBye ? 'border-slate-200 bg-slate-100 opacity-60' : 'border-slate-300 bg-white'))} rounded p-1.5 text-center shadow-sm transition-all ${getCellCursor} ${isHighlighted ? 'ring-4 ring-orange-500 border-orange-500 scale-105 shadow-md' : ''}"
                              style="min-height:${cellMinHeight}px; display:flex; align-items:center; justify-content:center;">
-                            ${isWinner ? '<span class="absolute -top-2 -right-2 bg-blue-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shadow border border-white">승</span>' : ''}
-                            <span class="text-[10px] font-black ${isWinner ? 'text-blue-700' : 'text-slate-700'} tracking-tight break-all">${safeText(player)}</span>
+                            ${isWinner ? '<span class="absolute -top-2 -right-2 bg-blue-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shadow border border-white">승</span>' : (isLoser ? '<span class="absolute -top-2 -right-2 bg-slate-300 text-slate-600 text-[9px] font-black px-1.5 py-0.5 rounded-full shadow border border-white">패</span>' : '')}
+                            <span class="text-[10px] font-black ${isWinner ? 'text-blue-700' : (isLoser ? 'text-slate-400 line-through' : 'text-slate-700')} tracking-tight break-all">${safeText(player)}</span>
                         </div>`;
 
                     html += `
                         <div class="relative flex flex-col justify-center gap-2 py-1" style="grid-row: ${rowStart} / span ${spanRows};">
-                            ${cellHtml(p1, p1Idx, isP1Winner, isP1Bye, p1Highlight)}
-                            ${cellHtml(p2, p2Idx, isP2Winner, isP2Bye, p2Highlight)}
+                            ${cellHtml(p1, p1Idx, isP1Winner, isP1Loser, isP1Bye, p1Highlight)}
+                            ${cellHtml(p2, p2Idx, isP2Winner, isP2Loser, isP2Bye, p2Highlight)}
                             <div class="absolute top-1/2 -right-10 w-10 border-t-2 ${borderColor} z-0"></div>
                         </div>
                     `;
