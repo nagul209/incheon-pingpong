@@ -1752,19 +1752,7 @@
                                     val2 = String(p2.scores[p1.idx] || p2.scores[p1.id] || "").trim();
                                 }
                                 
-                                let s1 = 0, s2 = 0;
-                                if (val1.includes(':') || val1.includes('-')) {
-                                    const parts = val1.split(/[:\-]/);
-                                    s1 = parseInt(parts[0]) || 0;
-                                    s2 = parseInt(parts[1]) || 0;
-                                } else if (val2.includes(':') || val2.includes('-')) {
-                                    const parts = val2.split(/[:\-]/);
-                                    s1 = parseInt(parts[1]) || 0;
-                                    s2 = parseInt(parts[0]) || 0;
-                                } else {
-                                    s1 = parseInt(val1) || 0;
-                                    s2 = parseInt(val2) || 0;
-                                }
+                                const { mySets: s1, opponentSets: s2 } = getLeagueMatchSetScores(val1, val2);
                                 
                                 if (s1 > 0 || s2 > 0) {
                                     games.push({ p1: p1.name, p2: p2.name, s1, s2 });
@@ -2519,6 +2507,43 @@
             });
         }
 
+        function parseLeagueSetScore(value) {
+            const score = parseInt(String(value || '').trim(), 10);
+            return isNaN(score) ? 0 : score;
+        }
+
+        function getLeagueMatchSetScores(myValue, opponentValue) {
+            const myScoreText = String(myValue || '').trim();
+            const opponentScoreText = String(opponentValue || '').trim();
+
+            if (myScoreText.includes(':') || myScoreText.includes('-')) {
+                const parts = myScoreText.split(/[:\-]/);
+                return {
+                    mySets: parseLeagueSetScore(parts[0]),
+                    opponentSets: parseLeagueSetScore(parts[1])
+                };
+            }
+
+            if (opponentScoreText.includes(':') || opponentScoreText.includes('-')) {
+                const parts = opponentScoreText.split(/[:\-]/);
+                return {
+                    mySets: parseLeagueSetScore(parts[1]),
+                    opponentSets: parseLeagueSetScore(parts[0])
+                };
+            }
+
+            return {
+                mySets: parseLeagueSetScore(myScoreText),
+                opponentSets: parseLeagueSetScore(opponentScoreText)
+            };
+        }
+
+        function getLeagueMatchOutcome(mySets, opponentSets) {
+            if (mySets > opponentSets) return 'win';
+            if (opponentSets > mySets) return 'loss';
+            return 'draw';
+        }
+
         function calculateGroupRankings(leagueId = null) {
             const targetLeagues = leagueId ? [getLeagueById(leagueId)] : window.multiLeagues;
             if (!targetLeagues.length || !targetLeagues[0]) return alert("진행할 리그전표가 없습니다.");
@@ -2537,11 +2562,12 @@
                             let valJI = inputJI ? inputJI.value.trim() : "";
 
                             if (valIJ !== "" || valJI !== "") {
-                                let w = parseInt(valIJ) || 0; let l = parseInt(valJI) || 0;
+                                const { mySets: w, opponentSets: l } = getLeagueMatchSetScores(valIJ, valJI);
                                 players[i - 1].setsWon += w; players[i - 1].setsLost += l; players[i - 1].matches[j] = { w: w, l: l };
                                 players[j - 1].setsWon += l; players[j - 1].setsLost += w; players[j - 1].matches[i] = { w: l, l: w };
-                                if (w > l) { players[i - 1].matchWins++; players[j - 1].matchLosses++; }
-                                else if (l > w) { players[j - 1].matchWins++; players[i - 1].matchLosses++; }
+                                const outcome = getLeagueMatchOutcome(w, l);
+                                if (outcome === 'win') { players[i - 1].matchWins++; players[j - 1].matchLosses++; }
+                                else if (outcome === 'loss') { players[j - 1].matchWins++; players[i - 1].matchLosses++; }
                             }
                         }
                     }
