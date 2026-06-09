@@ -328,7 +328,8 @@
                     </button>
                 </div>
             </div>
-            <div class="mb-2 px-1 text-right">
+            <div class="mb-2 px-1 flex justify-between items-center">
+                <span id="ranking-reference-date" class="text-[10px] text-slate-500 font-bold tracking-tight bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100 shadow-sm">기준일(기록 없음)</span>
                 <span id="ranking-instruction"
                     class="text-[11px] text-indigo-600 font-bold bg-white/80 backdrop-blur-sm px-2.5 py-1.5 rounded-lg border border-indigo-100 shadow-sm transition-all">👆
                     이름을 터치하면 상세기록</span>
@@ -1681,7 +1682,7 @@
         let formState = { attend: [], lazy: [], lg1: [], lg2: [], lg3: [], tm1: [], tm2: [], tm3: [], tn1: [], tn2: [], tn3: [], utn1: [], utn2: [], utn3: [], ltn1: [], ltn2: [], ltn3: [], db1: [], db2: [], db3: [], ev1: [], opAttend: [], opPlanned: [], opParticipantChecks: {}, ratedGames: [], isRatedMatch: false, kFactor: (appConfig.defaultKFactor || 32), autoExtractRated: true };
         let currentSelectorTarget = ''; let tempSelectorList = []; let isSinglePickMode = false;
         window.multiLeagues = [];
-        function getLeagueById(id) { return window.multiLeagues.find(lg => lg.id === id); }
+        function getLeagueById(id) { return (window.multiLeagues || []).find(lg => String(lg.id) === String(id)); }
 
         let isPcMode = sessionStorage.getItem('isPcMode') === 'true';
         function applyViewMode() {
@@ -2058,7 +2059,7 @@
         }
 
         function getLeagueById(leagueId) {
-            return window.multiLeagues.find(l => l.id == leagueId);
+            return (window.multiLeagues || []).find(l => String(l.id) === String(leagueId));
         }
 
         function getMemberDetailDisplayName(m, fallbackName = '') {
@@ -2220,7 +2221,7 @@
                 <div class="flex flex-wrap justify-between items-center mb-4 pb-2 border-b border-slate-100 gap-2">
                     <div class="flex items-center gap-2 flex-1 min-w-[200px]">
                         <span class="text-xl">🏆</span>
-                        <input type="text" id="league-title-${league.id}" value="${league.title}" placeholder="여기를 터치하여 대회명/그룹명 수정" class="text-lg font-extrabold text-slate-800 border-b-2 border-indigo-200 focus:border-indigo-500 outline-none w-full max-w-[250px] bg-transparent transition-colors px-1" onchange="updateLeagueTitle(${league.id}, this.value)" onkeydown="if(event.key === 'Enter') { event.preventDefault(); this.blur(); }">
+                        <input type="text" id="league-title-${league.id}" value="${league.title}" placeholder="여기를 터치하여 대회명/그룹명 수정" class="text-lg font-extrabold text-slate-800 border-b-2 border-indigo-200 focus:border-indigo-500 outline-none w-full max-w-[250px] bg-transparent transition-colors px-1" oninput="updateLeagueTitle(${league.id}, this.value)" onkeydown="if(event.key === 'Enter') { event.preventDefault(); this.blur(); }">
                     </div>
                     <div class="flex gap-1.5 flex-wrap">
                         <button onclick="calculateGroupRankings(${league.id})" class="text-[11px] bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg font-bold transition-colors btn-press">🧮 자동순위</button>
@@ -2899,7 +2900,11 @@
             });
         }
 
-        function syncText(inputElem) { inputElem.nextElementSibling.innerText = inputElem.value || inputElem.placeholder; }
+        function syncText(inputElem) {
+            if (inputElem && inputElem.nextElementSibling) {
+                inputElem.nextElementSibling.innerText = inputElem.value || inputElem.placeholder;
+            }
+        }
 
         async function copyGroupTableImage(leagueId, g) {
             const containerId = `table-container-${leagueId}-g${g}`;
@@ -3078,64 +3083,28 @@
             if (th) th.innerText = headerName;
         }
 
-        function selectLeaguePlayer(event, inputElem, leagueId, g, p, previousSelectionNotice = '') {
+        function selectLeaguePlayer(event, inputElem, leagueId, g, p) {
             if (event) event.stopPropagation();
             const league = getLeagueById(leagueId);
             if (!league) return;
             if (!league.players) league.players = {};
 
             const matchType = getLeagueMatchType(league);
-            const isIndividualFlow = matchType === 'individual';
             const limit = matchType === 'doubles' ? 2 : (matchType === 'team' ? 999 : 1);
 
             isSinglePickMode = (limit === 1);
             const titleSuffix = (matchType === 'individual' || matchType === 'full_league') ? '선수' : (matchType === 'doubles' ? '복식팀' : '팀');
             const limitText = (matchType === 'individual' || matchType === 'full_league') ? '1명' : (matchType === 'doubles' ? '2명' : '무제한');
-            const autoFillHint = isIndividualFlow ? ' · 이름 선택 후 하단 적용을 누르면 다음 빈 칸으로 이동' : '';
-            document.getElementById('selector-title').innerText = previousSelectionNotice
-                ? `${previousSelectionNotice} · 다음: ${g}조 ${p}번 ${titleSuffix} 선택 (${limitText})${autoFillHint}`
-                : `${g}조 ${p}번 ${titleSuffix} 선택 (${limitText})${autoFillHint}`;
-
             const selectorConfirmBtn = document.getElementById('btn-selector-confirm');
-            if (isSinglePickMode) {
-                document.getElementById('selector-count').classList.remove('hidden');
-                if (selectorConfirmBtn) {
-                    selectorConfirmBtn.classList.remove('hidden');
-                    selectorConfirmBtn.innerText = '적용하고 다음 빈칸으로';
-                }
-            } else {
-                document.getElementById('selector-count').classList.remove('hidden');
-                if (selectorConfirmBtn) {
-                    selectorConfirmBtn.classList.remove('hidden');
-                    selectorConfirmBtn.innerText = '적용';
-                }
-            }
-
-            let excludedNames = [];
-            for (let key in league.players) {
-                if (key !== `g${g}_p${p}` && league.players[key]) {
-                    const names = String(league.players[key].name).split(',').map(n => n.trim());
-                    excludedNames.push(...names);
-                }
-            }
-
-            tempSelectorList = [];
-            if (league.players[`g${g}_p${p}`]) {
-                tempSelectorList = String(league.players[`g${g}_p${p}`].name).split(',').map(n => n.trim());
-            }
-
-            currentSelectorTarget = 'league';
-            if (renderSelectorList(true, 'league', excludedNames) === false) {
-                resetSelectorState({ leagueOnly: true });
-                return;
-            }
-            document.getElementById('member-selector-modal').classList.remove('hidden');
-            updateSelectorCount();
 
             function getGroupSize(groupNo) {
                 const groupSizes = league.groupSizes || {};
                 const size = groupSizes[groupNo] || groupSizes[String(groupNo)] || 4;
                 return Math.max(2, parseInt(size) || 4);
+            }
+
+            function getSlotInput(targetG, targetP) {
+                return document.getElementById(`td-${leagueId}-g${targetG}-p${targetP}`)?.querySelector('input') || null;
             }
 
             function getNextSlot(currentG, currentP) {
@@ -3171,7 +3140,7 @@
             function getNextSlotWithCandidate(currentG, currentP) {
                 let nextSlot = getNextSlot(currentG, currentP);
                 while (nextSlot) {
-                    const canUseSlot = !isIndividualFlow || isEmptyLeagueSlot(nextSlot.g, nextSlot.p);
+                    const canUseSlot = !isSinglePickMode || isEmptyLeagueSlot(nextSlot.g, nextSlot.p);
                     if (canUseSlot && hasAvailableCandidateForSlot(nextSlot.g, nextSlot.p)) {
                         return nextSlot;
                     }
@@ -3180,63 +3149,77 @@
                 return null;
             }
 
-            function finishLeagueSinglePickFlow() {
-                closeLeagueSelector();
+            function renderLeagueSelectorSlot(targetG, targetP, previousSelectionNotice = '') {
+                g = targetG;
+                p = targetP;
+                inputElem = getSlotInput(g, p) || inputElem;
+
+                const autoFillHint = isSinglePickMode ? ' · 이름을 터치하면 바로 입력 후 다음 빈칸으로 이동' : '';
+                document.getElementById('selector-title').innerText = previousSelectionNotice
+                    ? `${previousSelectionNotice} · 다음: ${g}조 ${p}번 ${titleSuffix} 선택 (${limitText})${autoFillHint}`
+                    : `${g}조 ${p}번 ${titleSuffix} 선택 (${limitText})${autoFillHint}`;
+
+                if (isSinglePickMode) {
+                    document.getElementById('selector-count').classList.add('hidden');
+                    if (selectorConfirmBtn) selectorConfirmBtn.classList.add('hidden');
+                } else {
+                    document.getElementById('selector-count').classList.remove('hidden');
+                    if (selectorConfirmBtn) {
+                        selectorConfirmBtn.classList.remove('hidden');
+                        selectorConfirmBtn.innerText = '적용';
+                    }
+                }
+
+                tempSelectorList = [];
+                if (league.players[`g${g}_p${p}`]) {
+                    tempSelectorList = String(league.players[`g${g}_p${p}`].name).split(',').map(n => n.trim()).filter(Boolean);
+                }
+
+                currentSelectorTarget = 'league';
+                if (renderSelectorList(true, 'league', getLeagueSlotExcludedNames(g, p)) === false) {
+                    resetSelectorState({ leagueOnly: true });
+                    return false;
+                }
+                document.getElementById('member-selector-modal').classList.remove('hidden');
+                updateSelectorCount();
+                return true;
             }
 
-            function applyLeagueSinglePick(memberId, memberName, league, leagueId, g, p, inputElem) {
+            if (!renderLeagueSelectorSlot(g, p)) return;
+
+            window.singlePickCallback = function (memberId, memberName) {
                 if (currentSelectorTarget !== 'league') return;
                 const memberIdText = String(memberId ?? '');
                 const m = members.find(x => memberIdText && String(x.id) === memberIdText) || members.find(x => x.name === memberName);
                 if (!m) return;
 
-                // 개인전/풀리그 선수 카드는 이름을 먼저 선택하고 하단 [적용] 버튼을 눌러 현재 칸에 반영한다.
-                // 이름 카드의 즉시 반영이 기기별 터치/재렌더 타이밍에 따라 누락될 수 있어, 명시적인 적용 단계로
-                // 현재 칸 저장과 다음 빈칸 이동을 안정적으로 처리한다.
                 syncLeagueStateFromDOM(league);
                 league.players[`g${g}_p${p}`] = {
                     id: m.id,
                     name: m.name,
                     display: getMemberDetailDisplayName(m),
                     handicap: Number(m.handicap) || 0,
-                    grip: m.grip,
-                    frontRubber: m.frontRubber,
-                    backRubber: m.backRubber
+                    grip: m.grip || '',
+                    frontRubber: m.frontRubber || '',
+                    backRubber: m.backRubber || ''
                 };
 
-                tempSelectorList = [];
-                updateLeaguePlayerSlotDOM(league, leagueId, g, p);
-                applyLeagueMedalDisplay(league, g, p);
-                const tableEl = document.getElementById(`table-${leagueId}-g${g}`);
-                if (tableEl) updateMatchOrderDisplay(leagueId, g, tableEl.querySelectorAll('tbody tr').length);
+                const completedG = g;
+                const completedP = p;
+                updateLeaguePlayerSlotDOM(league, leagueId, completedG, completedP);
+                applyLeagueMedalDisplay(league, completedG, completedP);
+                const tableEl = document.getElementById(`table-${leagueId}-g${completedG}`);
+                if (tableEl) updateMatchOrderDisplay(leagueId, completedG, tableEl.querySelectorAll('tbody tr').length);
                 saveDataToStorage();
 
-                const selectedCard = document.getElementById(`sel-btn-${m.name}`);
-                if (selectedCard) {
-                    selectedCard.disabled = true;
-                    selectedCard.classList.add('opacity-50', 'pointer-events-none');
-                }
-                updateSelectorCount();
-                document.getElementById('selector-title').innerText = `${g}조 ${p}번 ${m.name} 선택 완료`;
-
-                const nextSlot = getNextSlotWithCandidate(g, p);
+                const nextSlot = getNextSlotWithCandidate(completedG, completedP);
                 if (!nextSlot) {
-                    window.setTimeout(finishLeagueSinglePickFlow, 120);
+                    closeLeagueSelector();
                     return;
                 }
 
-                const nextInput = document.getElementById(`td-${leagueId}-g${nextSlot.g}-p${nextSlot.p}`)?.querySelector('input');
-                if (!nextInput) {
-                    window.setTimeout(finishLeagueSinglePickFlow, 120);
-                    return;
-                }
-
-                const previousSelectionNotice = `${g}조 ${p}번 ${m.name} 선택 완료`;
-                window.setTimeout(() => selectLeaguePlayer(null, nextInput, leagueId, nextSlot.g, nextSlot.p, previousSelectionNotice), 120);
-            }
-
-            window.singlePickCallback = function (memberId, memberName) {
-                applyLeagueSinglePick(memberId, memberName, league, leagueId, g, p, inputElem);
+                const previousSelectionNotice = `${completedG}조 ${completedP}번 ${m.name} 선택 완료`;
+                renderLeagueSelectorSlot(nextSlot.g, nextSlot.p, previousSelectionNotice);
             };
 
             window.leaguePickCallback = function () {
@@ -3501,7 +3484,8 @@
                 let n2 = p2Obj ? escapeHTML(p2Obj.display || p2Obj.name) : `선수 미지정`;
                 return `<span class="inline-flex items-center bg-white border border-slate-200 px-2 py-1 rounded shadow-sm mr-1.5 mb-1.5 font-bold text-slate-700 text-[11px]"><span class="text-indigo-600 bg-indigo-50 px-1 rounded mr-1.5">${idx + 1}경기</span> ${n1} <span class="text-slate-300 font-normal mx-1 text-[9px]">vs</span> ${n2}</span>`;
             });
-            document.getElementById(`order-content-${leagueId}-${g}`).innerHTML = blocks.join('');
+            const orderContent = document.getElementById(`order-content-${leagueId}-${g}`);
+            if (orderContent) orderContent.innerHTML = blocks.join('');
         }
 
         let currentPrintLeague = null;
@@ -4631,7 +4615,8 @@
                     button.innerHTML = `${escapeHTML(m.name)} <span class="text-[9px] ${subTextClass} block mt-0.5 font-medium">${escapeHTML(String(m.handicap ?? ''))}부</span>`;
                     button.addEventListener('click', () => {
                         if (isSinglePickMode && currentSelectorTarget === 'league') {
-                            setSingleSelectorChoice(m.name);
+                            if (window.singlePickCallback) window.singlePickCallback(m.id, m.name);
+                            else setSingleSelectorChoice(m.name);
                         } else if (isSinglePickMode) {
                             if (window.singlePickCallback) window.singlePickCallback(m.id, m.name);
                         } else {
