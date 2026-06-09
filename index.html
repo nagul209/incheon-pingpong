@@ -3425,7 +3425,8 @@
                 pinchStartDistance: 0,
                 pinchStartScale: 1,
                 pinchStartCenter: { x: 0, y: 0 },
-                pinchStartOffset: { x: 0, y: 0 }
+                pinchStartOffset: { x: 0, y: 0 },
+                clickTarget: null
             };
 
             const clamp = () => {
@@ -3454,6 +3455,7 @@
                 state.pointers.set(e.pointerId, e);
                 container.setPointerCapture?.(e.pointerId);
                 state.moved = false;
+                state.clickTarget = e.target;
 
                 if (state.pointers.size === 1) {
                     state.dragging = true;
@@ -3503,8 +3505,22 @@
             };
 
             const onPointerUp = (e) => {
+                const shouldSelectCell = !state.moved && state.pointers.size === 1;
+                const clickTarget = state.clickTarget;
                 state.pointers.delete(e.pointerId);
                 container.releasePointerCapture?.(e.pointerId);
+
+                if (shouldSelectCell) {
+                    const cell = clickTarget && clickTarget.closest ? clickTarget.closest('[data-tourn-round][data-tourn-idx]') : null;
+                    if (cell && container.contains(cell)) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        container._tournSuppressNextClick = true;
+                        handleTournamentClick(parseInt(cell.dataset.tournRound, 10), parseInt(cell.dataset.tournIdx, 10));
+                        state.clickTarget = null;
+                        return;
+                    }
+                }
                 if (state.pointers.size === 1) {
                     const remaining = [...state.pointers.values()][0];
                     state.dragging = true;
@@ -3512,7 +3528,16 @@
                     state.lastY = remaining.clientY;
                 } else {
                     state.dragging = false;
+                    state.clickTarget = null;
                 }
+            };
+
+            const onPointerCancel = (e) => {
+                state.pointers.delete(e.pointerId);
+                container.releasePointerCapture?.(e.pointerId);
+                state.dragging = false;
+                state.moved = false;
+                state.clickTarget = null;
             };
 
             const onWheel = (e) => {
@@ -3531,10 +3556,25 @@
             };
 
             const onClickCapture = (e) => {
-                if (!state.moved) return;
+                if (container._tournSuppressNextClick) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    container._tournSuppressNextClick = false;
+                    return;
+                }
+
+                if (state.moved) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    state.moved = false;
+                    return;
+                }
+
+                const cell = e.target && e.target.closest ? e.target.closest('[data-tourn-round][data-tourn-idx]') : null;
+                if (!cell || !container.contains(cell)) return;
                 e.preventDefault();
                 e.stopPropagation();
-                state.moved = false;
+                handleTournamentClick(parseInt(cell.dataset.tournRound, 10), parseInt(cell.dataset.tournIdx, 10));
             };
 
             const onResize = () => applyTransform();
@@ -3542,7 +3582,7 @@
             container.addEventListener('pointerdown', onPointerDown);
             container.addEventListener('pointermove', onPointerMove);
             container.addEventListener('pointerup', onPointerUp);
-            container.addEventListener('pointercancel', onPointerUp);
+            container.addEventListener('pointercancel', onPointerCancel);
             container.addEventListener('wheel', onWheel, { passive: false });
             container.addEventListener('click', onClickCapture, true);
             window.addEventListener('resize', onResize);
@@ -3552,7 +3592,7 @@
                 container.removeEventListener('pointerdown', onPointerDown);
                 container.removeEventListener('pointermove', onPointerMove);
                 container.removeEventListener('pointerup', onPointerUp);
-                container.removeEventListener('pointercancel', onPointerUp);
+                container.removeEventListener('pointercancel', onPointerCancel);
                 container.removeEventListener('wheel', onWheel);
                 container.removeEventListener('click', onClickCapture, true);
                 window.removeEventListener('resize', onResize);
@@ -3658,7 +3698,7 @@
                     html += `
                         <div class="bg-white rounded-2xl shadow-sm p-4 border border-slate-100 transition-all ${isSwapMode && vRound === 0 ? 'ring-2 ring-orange-200' : ''}">
                             <div class="flex items-center justify-between gap-3 relative">
-                                <div onclick="handleTournamentClick(${vRound}, ${p1Idx})" 
+                                <div data-tourn-round="${vRound}" data-tourn-idx="${p1Idx}"
                                      class="relative flex-1 p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-center min-h-[60px] ${p1StateClass}">
                                     ${isP1Winner ? winnerBadge : (isP1Loser ? loserBadge : '')}
                                     <span class="text-xs font-black break-all whitespace-normal text-center ${isP1Winner ? 'text-blue-800' : (isP1Selected ? 'text-orange-800' : (isP1Loser ? 'text-slate-400 line-through' : 'text-slate-700'))}">${p1 || (vRound === 0 ? '터치선택' : '대기중')}</span>
@@ -3667,7 +3707,7 @@
                                     <span class="text-[10px] font-black text-slate-300 italic">VS</span>
                                     ${isBye ? '<span class="text-[8px] font-bold text-indigo-500 mt-1">BYE</span>' : ''}
                                 </div>
-                                <div onclick="handleTournamentClick(${vRound}, ${p2Idx})" 
+                                <div data-tourn-round="${vRound}" data-tourn-idx="${p2Idx}"
                                      class="relative flex-1 p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-center min-h-[60px] ${p2StateClass}">
                                     ${isP2Winner ? winnerBadge : (isP2Loser ? loserBadge : '')}
                                     <span class="text-xs font-black break-all whitespace-normal text-center ${isP2Winner ? 'text-blue-800' : (isP2Selected ? 'text-orange-800' : (isP2Loser ? 'text-slate-400 line-through' : 'text-slate-700'))}">${p2 || (vRound === 0 ? '터치선택' : '대기중')}</span>
@@ -3888,7 +3928,7 @@
             const enableClick = !!options.enableClick;
             const showSwapHighlight = !!options.showSwapHighlight;
             const borderColor = options.borderColor || "border-slate-300";
-            const getCellClick = (round, idx) => enableClick ? ` onclick="handleTournamentClick(${round}, ${idx})"` : "";
+            const getCellClick = (round, idx) => enableClick ? ` data-tourn-round="${round}" data-tourn-idx="${idx}"` : "";
             const getCellCursor = enableClick ? "cursor-pointer hover:border-indigo-400" : "";
             const safeText = (text) => text ? escapeHTML(text) : "-";
 
