@@ -3174,6 +3174,7 @@
             originalTemplate: []  // 예선 결과 재매칭을 위한 원본 템플릿 저장용
         };
         let isFullView = false;    // 전체 대진표 보기 모드
+        let isTournamentResultMode = true; // 결과 입력 모드
         let isSwapMode = false;    // 자리 변경 모드
         let isTournamentResultMode = false; // 결과입력 모드
         let swapFirstPick = null;  // 스왑 대상을 상징하는 인덱스 (선택 시 저장)
@@ -3652,6 +3653,7 @@
             let filterHtml = `
                 <div class="flex flex-col w-full gap-2">
                     <div class="flex gap-2 justify-end">
+                        <button onclick="toggleTournamentResultMode()" class="text-[11px] px-3 py-1.5 rounded-lg font-bold border transition-all ${isTournamentResultMode ? 'bg-blue-600 text-white border-blue-700 shadow-inner' : 'bg-white text-slate-700 border-slate-200'}">✍️ 결과입력</button>
                         <button onclick="toggleFullView()" class="text-[11px] px-3 py-1.5 rounded-lg font-bold border transition-all ${isFullView ? 'bg-indigo-600 text-white border-indigo-700 shadow-inner' : 'bg-white text-slate-700 border-slate-200'}">🌳 전체 보기</button>
                         <button onclick="toggleTournamentResultMode()" class="text-[11px] px-3 py-1.5 rounded-lg font-bold border transition-all ${isTournamentResultMode ? 'bg-blue-600 text-white border-blue-700 shadow-inner' : 'bg-white text-slate-700 border-slate-200'}">🏆 결과입력</button>
                         <button onclick="toggleSwapMode()" class="text-[11px] px-3 py-1.5 rounded-lg font-bold border transition-all ${isSwapMode ? 'bg-orange-500 text-white border-orange-600 shadow-inner' : 'bg-white text-slate-700 border-slate-200'}">🔄 자리 변경 모드</button>
