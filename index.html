@@ -3175,6 +3175,7 @@
         };
         let isFullView = false;    // 전체 대진표 보기 모드
         let isSwapMode = false;    // 자리 변경 모드
+        let isTournamentResultMode = false; // 결과입력 모드
         let swapFirstPick = null;  // 스왑 대상을 상징하는 인덱스 (선택 시 저장)
 
         function initTournamentState() {
@@ -3339,7 +3340,17 @@
         function toggleSwapMode() {
             if (!isAdmin) return alert("관리자 모드에서만 사용 가능합니다.");
             isSwapMode = !isSwapMode;
+            if (isSwapMode) isTournamentResultMode = false;
             swapFirstPick = null;
+            renderTournamentUI();
+        }
+
+        function toggleTournamentResultMode() {
+            isTournamentResultMode = !isTournamentResultMode;
+            if (isTournamentResultMode) {
+                isSwapMode = false;
+                swapFirstPick = null;
+            }
             renderTournamentUI();
         }
 
@@ -3360,7 +3371,12 @@
                 return;
             }
 
-            // 일반 모드: 승자 선택/취소
+            if (!isTournamentResultMode) {
+                alert("결과입력 모드를 켠 뒤 승패를 변경할 수 있습니다.");
+                return;
+            }
+
+            // 결과입력 모드: 승자 선택/취소
             toggleTournamentWinner(round, idx);
         }
 
@@ -3637,6 +3653,7 @@
                 <div class="flex flex-col w-full gap-2">
                     <div class="flex gap-2 justify-end">
                         <button onclick="toggleFullView()" class="text-[11px] px-3 py-1.5 rounded-lg font-bold border transition-all ${isFullView ? 'bg-indigo-600 text-white border-indigo-700 shadow-inner' : 'bg-white text-slate-700 border-slate-200'}">🌳 전체 보기</button>
+                        <button onclick="toggleTournamentResultMode()" class="text-[11px] px-3 py-1.5 rounded-lg font-bold border transition-all ${isTournamentResultMode ? 'bg-blue-600 text-white border-blue-700 shadow-inner' : 'bg-white text-slate-700 border-slate-200'}">🏆 결과입력</button>
                         <button onclick="toggleSwapMode()" class="text-[11px] px-3 py-1.5 rounded-lg font-bold border transition-all ${isSwapMode ? 'bg-orange-500 text-white border-orange-600 shadow-inner' : 'bg-white text-slate-700 border-slate-200'}">🔄 자리 변경 모드</button>
                     </div>
                     <div class="flex overflow-x-auto pb-2 gap-2 no-scrollbar">
@@ -3695,14 +3712,16 @@
                     const isP2Selected = isSwapMode && vRound === 0 && swapFirstPick === p2Idx;
                     const p1StateClass = isP1Selected ? 'bg-orange-100 border-orange-500 shadow-inner' : (isP1Winner ? 'bg-blue-100 border-blue-500 shadow-sm ring-2 ring-blue-200' : (isP1Loser ? 'bg-slate-100 border-slate-200 opacity-55 grayscale' : 'bg-slate-50 border-transparent'));
                     const p2StateClass = isP2Selected ? 'bg-orange-100 border-orange-500 shadow-inner' : (isP2Winner ? 'bg-blue-100 border-blue-500 shadow-sm ring-2 ring-blue-200' : (isP2Loser ? 'bg-slate-100 border-slate-200 opacity-55 grayscale' : (isBye ? 'bg-slate-100 border-slate-200 opacity-50' : 'bg-slate-50 border-transparent')));
-                    const p1WinButton = (!isSwapMode && p1 && p1 !== "부전승(BYE)") ? `<button type="button" class="tourn-win-button mt-2 px-3 py-1 rounded-full text-[10px] font-black shadow-sm border transition-all btn-press ${isP1Winner ? 'bg-blue-600 text-white border-blue-700' : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'}" aria-label="${escapeHTML(p1)} 승리 처리">승</button>` : '';
-                    const p2WinButton = (!isSwapMode && p2 && p2 !== "부전승(BYE)") ? `<button type="button" class="tourn-win-button mt-2 px-3 py-1 rounded-full text-[10px] font-black shadow-sm border transition-all btn-press ${isP2Winner ? 'bg-blue-600 text-white border-blue-700' : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'}" aria-label="${escapeHTML(p2)} 승리 처리">승</button>` : '';
+                    const isCellClickable = isTournamentResultMode || isSwapMode;
+                    const cellCursorClass = isCellClickable ? 'cursor-pointer' : 'cursor-default';
+                    const p1WinButton = (isTournamentResultMode && !isSwapMode && p1 && p1 !== "부전승(BYE)") ? `<button type="button" class="tourn-win-button mt-2 px-3 py-1 rounded-full text-[10px] font-black shadow-sm border transition-all btn-press ${isP1Winner ? 'bg-blue-600 text-white border-blue-700' : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'}" aria-label="${escapeHTML(p1)} 승리 처리">승</button>` : '';
+                    const p2WinButton = (isTournamentResultMode && !isSwapMode && p2 && p2 !== "부전승(BYE)") ? `<button type="button" class="tourn-win-button mt-2 px-3 py-1 rounded-full text-[10px] font-black shadow-sm border transition-all btn-press ${isP2Winner ? 'bg-blue-600 text-white border-blue-700' : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'}" aria-label="${escapeHTML(p2)} 승리 처리">승</button>` : '';
 
                     html += `
                         <div class="bg-white rounded-2xl shadow-sm p-4 border border-slate-100 transition-all ${isSwapMode && vRound === 0 ? 'ring-2 ring-orange-200' : ''}">
                             <div class="flex items-center justify-between gap-3 relative">
                                 <div data-tourn-round="${vRound}" data-tourn-idx="${p1Idx}"
-                                     class="relative flex-1 p-3 rounded-xl border-2 transition-all cursor-pointer flex flex-col items-center justify-center min-h-[72px] ${p1StateClass}">
+                                     class="relative flex-1 p-3 rounded-xl border-2 transition-all ${cellCursorClass} flex flex-col items-center justify-center min-h-[72px] ${p1StateClass}">
                                     ${isP1Winner ? winnerBadge : (isP1Loser ? loserBadge : '')}
                                     <span class="text-xs font-black break-all whitespace-normal text-center ${isP1Winner ? 'text-blue-800' : (isP1Selected ? 'text-orange-800' : (isP1Loser ? 'text-slate-400 line-through' : 'text-slate-700'))}">${p1 || (vRound === 0 ? '터치선택' : '대기중')}</span>
                                     ${p1WinButton}
@@ -3712,7 +3731,7 @@
                                     ${isBye ? '<span class="text-[8px] font-bold text-indigo-500 mt-1">BYE</span>' : ''}
                                 </div>
                                 <div data-tourn-round="${vRound}" data-tourn-idx="${p2Idx}"
-                                     class="relative flex-1 p-3 rounded-xl border-2 transition-all cursor-pointer flex flex-col items-center justify-center min-h-[72px] ${p2StateClass}">
+                                     class="relative flex-1 p-3 rounded-xl border-2 transition-all ${cellCursorClass} flex flex-col items-center justify-center min-h-[72px] ${p2StateClass}">
                                     ${isP2Winner ? winnerBadge : (isP2Loser ? loserBadge : '')}
                                     <span class="text-xs font-black break-all whitespace-normal text-center ${isP2Winner ? 'text-blue-800' : (isP2Selected ? 'text-orange-800' : (isP2Loser ? 'text-slate-400 line-through' : 'text-slate-700'))}">${p2 || (vRound === 0 ? '터치선택' : '대기중')}</span>
                                     ${p2WinButton}
@@ -3912,7 +3931,7 @@
                 rowHeight: 76,
                 cellMinHeight: 34,
                 outerClass: "flex items-stretch justify-center min-w-max p-10 bg-white gap-10",
-                enableClick: true,
+                enableClick: isTournamentResultMode || isSwapMode,
                 showSwapHighlight: true,
                 borderColor: "border-slate-400"
             });
