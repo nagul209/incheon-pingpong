@@ -3190,6 +3190,7 @@
             matchResults: {}       // 매치별 실제 스코어 저장용 (key: r{round}_m{matchIndex})
         };
         let isFullView = false;    // 전체 대진표 보기 모드
+        let isTournamentResultMode = true; // 결과 입력 모드
         let isSwapMode = false;    // 자리 변경 모드
         let swapFirstPick = null;  // 스왑 대상을 상징하는 인덱스 (선택 시 저장)
 
@@ -3356,7 +3357,17 @@
         function toggleSwapMode() {
             if (!isAdmin) return alert("관리자 모드에서만 사용 가능합니다.");
             isSwapMode = !isSwapMode;
+            if (isSwapMode) isTournamentResultMode = false;
             swapFirstPick = null;
+            renderTournamentUI();
+        }
+
+        function toggleTournamentResultMode() {
+            isTournamentResultMode = !isTournamentResultMode;
+            if (isTournamentResultMode) {
+                isSwapMode = false;
+                swapFirstPick = null;
+            }
             renderTournamentUI();
         }
 
@@ -3377,7 +3388,12 @@
                 return;
             }
 
-            // 일반 모드: 승자 선택/취소
+            if (!isTournamentResultMode) {
+                alert("결과입력 모드가 꺼져 있어 승자 입력을 할 수 없습니다. 상단의 [결과입력] 버튼을 켜 주세요.");
+                return;
+            }
+
+            // 결과입력 모드: 승자 선택/취소
             toggleTournamentWinner(round, idx);
         }
 
@@ -3662,6 +3678,7 @@
             let filterHtml = `
                 <div class="flex flex-col w-full gap-2">
                     <div class="flex gap-2 justify-end">
+                        <button onclick="toggleTournamentResultMode()" class="text-[11px] px-3 py-1.5 rounded-lg font-bold border transition-all ${isTournamentResultMode ? 'bg-blue-600 text-white border-blue-700 shadow-inner' : 'bg-white text-slate-700 border-slate-200'}">✍️ 결과입력</button>
                         <button onclick="toggleFullView()" class="text-[11px] px-3 py-1.5 rounded-lg font-bold border transition-all ${isFullView ? 'bg-indigo-600 text-white border-indigo-700 shadow-inner' : 'bg-white text-slate-700 border-slate-200'}">🌳 전체 보기</button>
                         <button onclick="toggleSwapMode()" class="text-[11px] px-3 py-1.5 rounded-lg font-bold border transition-all ${isSwapMode ? 'bg-orange-500 text-white border-orange-600 shadow-inner' : 'bg-white text-slate-700 border-slate-200'}">🔄 자리 변경 모드</button>
                     </div>
