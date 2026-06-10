@@ -1766,35 +1766,21 @@
             return games;
         }
 
-        function getTournamentMatchKey(round, matchIndex) {
-            return `r${round}_m${matchIndex}`;
-        }
-
         function extractGamesFromTournament(tournamentResults) {
             const games = [];
             if (!tournamentResults || !tournamentResults.tree) return games;
             const tree = tournamentResults.tree;
-            const matchResults = tournamentResults.matchResults || {};
             for (let r = 0; r < tree.length - 1; r++) {
                 const currentRound = tree[r];
                 const nextRound = tree[r + 1];
                 if (!currentRound || !nextRound) continue;
                 for (let i = 0; i < nextRound.length; i++) {
                     const winner = nextRound[i];
+                    if (!winner || winner === "부전승(BYE)") continue;
                     let p1 = currentRound[i * 2];
                     let p2 = currentRound[i * 2 + 1];
                     if (!p1 || !p2 || p1 === "부전승(BYE)" || p2 === "부전승(BYE)") continue;
-
-                    const savedScore = matchResults[getTournamentMatchKey(r, i)];
-                    const savedS1 = savedScore ? parseInt(savedScore.s1, 10) : NaN;
-                    const savedS2 = savedScore ? parseInt(savedScore.s2, 10) : NaN;
-                    if (Number.isFinite(savedS1) && Number.isFinite(savedS2) && (savedS1 > 0 || savedS2 > 0)) {
-                        games.push({ p1, p2, s1: savedS1, s2: savedS2 });
-                        continue;
-                    }
-
-                    // 기존 데이터 호환: 저장된 스코어가 없으면 승자 선택만으로 1:0 결과를 생성합니다.
-                    if (!winner || winner === "부전승(BYE)") continue;
+                    
                     const nW = normalizeName(winner);
                     const nP1 = normalizeName(p1);
                     const nP2 = normalizeName(p2);
@@ -1887,7 +1873,6 @@
             if (!appConfig.pastSeasons) appConfig.pastSeasons = [];
             scoreRules = { ...defaultScoreRules, ...(parsed.scoreRules || {}) };
             tournamentState = parsed.tournamentState || tournamentState;
-            if (!tournamentState.matchResults) tournamentState.matchResults = {};
             if (parsed.opAttend) formState.opAttend = parsed.opAttend;
             if (parsed.opPlanned) formState.opPlanned = parsed.opPlanned;
             formState.opParticipantChecks = parsed.opParticipantChecks || {};
@@ -3186,13 +3171,10 @@
             visibleRound: 0,
             groups: 0,
             adv: 0,
-            originalTemplate: [],  // 예선 결과 재매칭을 위한 원본 템플릿 저장용
-            matchResults: {}       // 매치별 실제 스코어 저장용 (key: r{round}_m{matchIndex})
+            originalTemplate: []  // 예선 결과 재매칭을 위한 원본 템플릿 저장용
         };
         let isFullView = false;    // 전체 대진표 보기 모드
-        let isTournamentResultMode = true; // 결과 입력 모드
         let isSwapMode = false;    // 자리 변경 모드
-        let isTournamentResultMode = false; // 결과입력 모드
         let swapFirstPick = null;  // 스왑 대상을 상징하는 인덱스 (선택 시 저장)
 
         function initTournamentState() {
@@ -3208,7 +3190,6 @@
             tournamentState.visibleRound = 0;
             tournamentState.groups = groups;
             tournamentState.adv = adv;
-            tournamentState.matchResults = {};
 
             const infoBox = document.getElementById('op-tourn-info');
             infoBox.classList.remove('hidden');
@@ -3358,17 +3339,7 @@
         function toggleSwapMode() {
             if (!isAdmin) return alert("관리자 모드에서만 사용 가능합니다.");
             isSwapMode = !isSwapMode;
-            if (isSwapMode) isTournamentResultMode = false;
             swapFirstPick = null;
-            renderTournamentUI();
-        }
-
-        function toggleTournamentResultMode() {
-            isTournamentResultMode = !isTournamentResultMode;
-            if (isTournamentResultMode) {
-                isSwapMode = false;
-                swapFirstPick = null;
-            }
             renderTournamentUI();
         }
 
@@ -3389,12 +3360,7 @@
                 return;
             }
 
-            if (!isTournamentResultMode) {
-                alert("결과입력 모드를 켠 뒤 승패를 변경할 수 있습니다.");
-                return;
-            }
-
-            // 결과입력 모드: 승자 선택/취소
+            // 일반 모드: 승자 선택/취소
             toggleTournamentWinner(round, idx);
         }
 
@@ -3427,17 +3393,11 @@
 
         function cascadeClearTournament(round, idx) {
             if (!tournamentState || !tournamentState.tree) return;
-            if (!tournamentState.matchResults) tournamentState.matchResults = {};
-            if (round < tournamentState.rounds) {
-                delete tournamentState.matchResults[getTournamentMatchKey(round, Math.floor(idx / 2))];
-            }
             for (let r = round + 1; r <= tournamentState.rounds; r++) {
                 const affectedIdx = Math.floor(idx / Math.pow(2, r - round));
                 if (tournamentState.tree[r] && tournamentState.tree[r][affectedIdx] !== undefined) {
                     tournamentState.tree[r][affectedIdx] = "";
                 }
-                const affectedMatchIdx = Math.floor(affectedIdx / 2);
-                delete tournamentState.matchResults[getTournamentMatchKey(r, affectedMatchIdx)];
             }
         }
 
@@ -3493,7 +3453,6 @@
 
             const onPointerDown = (e) => {
                 if (e.pointerType === 'mouse' && e.button !== 0) return;
-                if (e.target && e.target.closest && e.target.closest('.tourn-score-control')) return;
                 state.pointers.set(e.pointerId, e);
                 container.setPointerCapture?.(e.pointerId);
                 state.moved = false;
@@ -3612,8 +3571,6 @@
                     return;
                 }
 
-                if (e.target && e.target.closest && e.target.closest('.tourn-score-control')) return;
-
                 const cell = e.target && e.target.closest ? e.target.closest('[data-tourn-round][data-tourn-idx]') : null;
                 if (!cell || !container.contains(cell)) return;
                 e.preventDefault();
@@ -3679,9 +3636,7 @@
             let filterHtml = `
                 <div class="flex flex-col w-full gap-2">
                     <div class="flex gap-2 justify-end">
-                        <button onclick="toggleTournamentResultMode()" class="text-[11px] px-3 py-1.5 rounded-lg font-bold border transition-all ${isTournamentResultMode ? 'bg-blue-600 text-white border-blue-700 shadow-inner' : 'bg-white text-slate-700 border-slate-200'}">✍️ 결과입력</button>
                         <button onclick="toggleFullView()" class="text-[11px] px-3 py-1.5 rounded-lg font-bold border transition-all ${isFullView ? 'bg-indigo-600 text-white border-indigo-700 shadow-inner' : 'bg-white text-slate-700 border-slate-200'}">🌳 전체 보기</button>
-                        <button onclick="toggleTournamentResultMode()" class="text-[11px] px-3 py-1.5 rounded-lg font-bold border transition-all ${isTournamentResultMode ? 'bg-blue-600 text-white border-blue-700 shadow-inner' : 'bg-white text-slate-700 border-slate-200'}">🏆 결과입력</button>
                         <button onclick="toggleSwapMode()" class="text-[11px] px-3 py-1.5 rounded-lg font-bold border transition-all ${isSwapMode ? 'bg-orange-500 text-white border-orange-600 shadow-inner' : 'bg-white text-slate-700 border-slate-200'}">🔄 자리 변경 모드</button>
                     </div>
                     <div class="flex overflow-x-auto pb-2 gap-2 no-scrollbar">
@@ -3740,16 +3695,14 @@
                     const isP2Selected = isSwapMode && vRound === 0 && swapFirstPick === p2Idx;
                     const p1StateClass = isP1Selected ? 'bg-orange-100 border-orange-500 shadow-inner' : (isP1Winner ? 'bg-blue-100 border-blue-500 shadow-sm ring-2 ring-blue-200' : (isP1Loser ? 'bg-slate-100 border-slate-200 opacity-55 grayscale' : 'bg-slate-50 border-transparent'));
                     const p2StateClass = isP2Selected ? 'bg-orange-100 border-orange-500 shadow-inner' : (isP2Winner ? 'bg-blue-100 border-blue-500 shadow-sm ring-2 ring-blue-200' : (isP2Loser ? 'bg-slate-100 border-slate-200 opacity-55 grayscale' : (isBye ? 'bg-slate-100 border-slate-200 opacity-50' : 'bg-slate-50 border-transparent')));
-                    const isCellClickable = isTournamentResultMode || isSwapMode;
-                    const cellCursorClass = isCellClickable ? 'cursor-pointer' : 'cursor-default';
-                    const p1WinButton = (isTournamentResultMode && !isSwapMode && p1 && p1 !== "부전승(BYE)") ? `<button type="button" class="tourn-win-button mt-2 px-3 py-1 rounded-full text-[10px] font-black shadow-sm border transition-all btn-press ${isP1Winner ? 'bg-blue-600 text-white border-blue-700' : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'}" aria-label="${escapeHTML(p1)} 승리 처리">승</button>` : '';
-                    const p2WinButton = (isTournamentResultMode && !isSwapMode && p2 && p2 !== "부전승(BYE)") ? `<button type="button" class="tourn-win-button mt-2 px-3 py-1 rounded-full text-[10px] font-black shadow-sm border transition-all btn-press ${isP2Winner ? 'bg-blue-600 text-white border-blue-700' : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'}" aria-label="${escapeHTML(p2)} 승리 처리">승</button>` : '';
+                    const p1WinButton = (!isSwapMode && p1 && p1 !== "부전승(BYE)") ? `<button type="button" class="tourn-win-button mt-2 px-3 py-1 rounded-full text-[10px] font-black shadow-sm border transition-all btn-press ${isP1Winner ? 'bg-blue-600 text-white border-blue-700' : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'}" aria-label="${escapeHTML(p1)} 승리 처리">승</button>` : '';
+                    const p2WinButton = (!isSwapMode && p2 && p2 !== "부전승(BYE)") ? `<button type="button" class="tourn-win-button mt-2 px-3 py-1 rounded-full text-[10px] font-black shadow-sm border transition-all btn-press ${isP2Winner ? 'bg-blue-600 text-white border-blue-700' : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'}" aria-label="${escapeHTML(p2)} 승리 처리">승</button>` : '';
 
                     html += `
                         <div class="bg-white rounded-2xl shadow-sm p-4 border border-slate-100 transition-all ${isSwapMode && vRound === 0 ? 'ring-2 ring-orange-200' : ''}">
                             <div class="flex items-center justify-between gap-3 relative">
                                 <div data-tourn-round="${vRound}" data-tourn-idx="${p1Idx}"
-                                     class="relative flex-1 p-3 rounded-xl border-2 transition-all ${cellCursorClass} flex flex-col items-center justify-center min-h-[72px] ${p1StateClass}">
+                                     class="relative flex-1 p-3 rounded-xl border-2 transition-all cursor-pointer flex flex-col items-center justify-center min-h-[72px] ${p1StateClass}">
                                     ${isP1Winner ? winnerBadge : (isP1Loser ? loserBadge : '')}
                                     <span class="text-xs font-black break-all whitespace-normal text-center ${isP1Winner ? 'text-blue-800' : (isP1Selected ? 'text-orange-800' : (isP1Loser ? 'text-slate-400 line-through' : 'text-slate-700'))}">${p1 || (vRound === 0 ? '터치선택' : '대기중')}</span>
                                     ${p1WinButton}
@@ -3759,27 +3712,11 @@
                                     ${isBye ? '<span class="text-[8px] font-bold text-indigo-500 mt-1">BYE</span>' : ''}
                                 </div>
                                 <div data-tourn-round="${vRound}" data-tourn-idx="${p2Idx}"
-                                     class="relative flex-1 p-3 rounded-xl border-2 transition-all ${cellCursorClass} flex flex-col items-center justify-center min-h-[72px] ${p2StateClass}">
+                                     class="relative flex-1 p-3 rounded-xl border-2 transition-all cursor-pointer flex flex-col items-center justify-center min-h-[72px] ${p2StateClass}">
                                     ${isP2Winner ? winnerBadge : (isP2Loser ? loserBadge : '')}
                                     <span class="text-xs font-black break-all whitespace-normal text-center ${isP2Winner ? 'text-blue-800' : (isP2Selected ? 'text-orange-800' : (isP2Loser ? 'text-slate-400 line-through' : 'text-slate-700'))}">${p2 || (vRound === 0 ? '터치선택' : '대기중')}</span>
                                     ${p2WinButton}
                                 </div>
-                            </div>
-                            <div class="mt-3 rounded-xl border border-slate-100 bg-slate-50 p-2 tourn-score-control">
-                                <div class="flex items-center justify-between gap-2">
-                                    <label class="flex-1 text-[9px] font-black text-slate-500">P1 점수
-                                        <input id="tourn-score-${vRound}-${m}-p1" type="number" min="0" inputmode="numeric" value="${p1ScoreValue}" ${scoreSaveDisabled ? 'disabled' : ''}
-                                               class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-center text-xs font-black text-slate-700 disabled:bg-slate-100 disabled:text-slate-300">
-                                    </label>
-                                    <span class="pt-5 text-[10px] font-black text-slate-300">:</span>
-                                    <label class="flex-1 text-[9px] font-black text-slate-500">P2 점수
-                                        <input id="tourn-score-${vRound}-${m}-p2" type="number" min="0" inputmode="numeric" value="${p2ScoreValue}" ${scoreSaveDisabled ? 'disabled' : ''}
-                                               class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-center text-xs font-black text-slate-700 disabled:bg-slate-100 disabled:text-slate-300">
-                                    </label>
-                                    <button type="button" onclick="saveTournamentMatchScore(${vRound}, ${m})" ${scoreSaveDisabled ? 'disabled' : ''}
-                                            class="mt-4 rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-black text-white shadow-sm transition-all btn-press disabled:bg-slate-300">저장</button>
-                                </div>
-                                <p class="mt-1 text-[9px] font-bold text-slate-400">점수 저장 시 높은 점수 선수가 자동 진출합니다. 동점은 점수만 저장됩니다.</p>
                             </div>
                             <div class="mt-3 flex justify-between items-center px-1">
                                 <span class="bg-indigo-600 text-white text-[9px] px-2 py-0.5 rounded-md font-bold shadow-sm">${roundBadgeText}</span>
@@ -3807,46 +3744,6 @@
             initTournamentPanZoom(container);
         }
 
-        function saveTournamentMatchScore(round, matchIndex) {
-            if (!tournamentState || !tournamentState.tree) return;
-            const p1 = tournamentState.tree[round] && tournamentState.tree[round][matchIndex * 2];
-            const p2 = tournamentState.tree[round] && tournamentState.tree[round][matchIndex * 2 + 1];
-            if (!p1 || !p2 || p1 === "부전승(BYE)" || p2 === "부전승(BYE)") {
-                alert("스코어를 저장할 수 없는 매치입니다.");
-                return;
-            }
-
-            const s1Input = document.getElementById(`tourn-score-${round}-${matchIndex}-p1`);
-            const s2Input = document.getElementById(`tourn-score-${round}-${matchIndex}-p2`);
-            const s1 = parseInt(s1Input ? s1Input.value : '', 10);
-            const s2 = parseInt(s2Input ? s2Input.value : '', 10);
-            if (!Number.isFinite(s1) || !Number.isFinite(s2) || s1 < 0 || s2 < 0) {
-                alert("양쪽 점수를 0 이상의 숫자로 입력해 주세요.");
-                return;
-            }
-
-            if (!tournamentState.matchResults) tournamentState.matchResults = {};
-            tournamentState.matchResults[getTournamentMatchKey(round, matchIndex)] = { s1, s2 };
-
-            const nextRound = round + 1;
-            if (tournamentState.tree[nextRound]) {
-                if (s1 > s2) {
-                    tournamentState.tree[nextRound][matchIndex] = p1;
-                    cascadeClearTournament(nextRound, matchIndex);
-                } else if (s2 > s1) {
-                    tournamentState.tree[nextRound][matchIndex] = p2;
-                    cascadeClearTournament(nextRound, matchIndex);
-                } else {
-                    tournamentState.tree[nextRound][matchIndex] = "";
-                    cascadeClearTournament(nextRound, matchIndex);
-                }
-            }
-
-            propagateByes();
-            renderTournamentUI();
-            saveDataToStorage();
-        }
-
         function toggleTournamentWinner(round, idx) {
             const player = tournamentState.tree[round][idx];
             if (!player || player === "부전승(BYE)") return;
@@ -3856,8 +3753,6 @@
             const nextIdx = Math.floor(idx / 2);
             const currentWinner = tournamentState.tree[nextRound][nextIdx];
             const nextWinner = currentWinner === player ? "" : player;
-            if (!tournamentState.matchResults) tournamentState.matchResults = {};
-            delete tournamentState.matchResults[getTournamentMatchKey(round, Math.floor(idx / 2))];
 
             // 클릭한 선수를 다음 라운드 칸에 즉시 올리고, 한 번 더 누르면 선택을 취소합니다.
             tournamentState.tree[nextRound][nextIdx] = nextWinner;
@@ -4017,7 +3912,7 @@
                 rowHeight: 76,
                 cellMinHeight: 34,
                 outerClass: "flex items-stretch justify-center min-w-max p-10 bg-white gap-10",
-                enableClick: isTournamentResultMode || isSwapMode,
+                enableClick: true,
                 showSwapHighlight: true,
                 borderColor: "border-slate-400"
             });
@@ -4070,10 +3965,6 @@
                     const isP2Loser = nextWinner && p2 && nextWinner !== p2 && !isP2Bye;
                     const p1Highlight = showSwapHighlight && isSwapMode && r === 0 && swapFirstPick === p1Idx;
                     const p2Highlight = showSwapHighlight && isSwapMode && r === 0 && swapFirstPick === p2Idx;
-                    const savedScore = (data.matchResults || {})[getTournamentMatchKey(r, m)];
-                    const scoreHtml = savedScore && Number.isFinite(parseInt(savedScore.s1, 10)) && Number.isFinite(parseInt(savedScore.s2, 10))
-                        ? `<div class="relative z-20 mx-auto -my-0.5 w-fit rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[9px] font-black text-emerald-700 shadow-sm">${parseInt(savedScore.s1, 10)} : ${parseInt(savedScore.s2, 10)}</div>`
-                        : '';
 
                     const cellHtml = (player, idx, isWinner, isLoser, isBye, isHighlighted) => `
                         <div${getCellClick(r, idx)}
@@ -4086,7 +3977,6 @@
                     html += `
                         <div class="relative flex flex-col justify-center gap-2 py-1" style="grid-row: ${rowStart} / span ${spanRows};">
                             ${cellHtml(p1, p1Idx, isP1Winner, isP1Loser, isP1Bye, p1Highlight)}
-                            ${scoreHtml}
                             ${cellHtml(p2, p2Idx, isP2Winner, isP2Loser, isP2Bye, p2Highlight)}
                             <div class="absolute top-1/2 -right-10 w-10 border-t-2 ${borderColor} z-0"></div>
                         </div>
@@ -4626,7 +4516,7 @@
             formState.opPlanned = [];
             formState.opParticipantChecks = {};
             window.multiLeagues = [];
-            tournamentState = { size: 0, rounds: 0, tree: [], visibleRound: 0, groups: 0, adv: 0, originalTemplate: [], matchResults: {} };
+            tournamentState = { size: 0, rounds: 0, tree: [], visibleRound: 0, groups: 0, adv: 0, originalTemplate: [] };
             localStorage.removeItem('pingpongTempLeagueData');
             localStorage.removeItem('preliminaryResults');
 
