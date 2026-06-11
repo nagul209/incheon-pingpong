@@ -413,6 +413,9 @@
                         </tbody>
                     </table>
                 </div>
+                <div id="op-planned-stats" class="relative z-10 mt-3 rounded-2xl border border-emerald-100 bg-emerald-50/40 p-3">
+                    <div class="text-xs text-slate-400 font-bold text-center">참가예정자를 선택하면 참가 명단 통계가 표시됩니다.</div>
+                </div>
             </div>
 
             <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6">
@@ -4468,6 +4471,78 @@
             });
         }
 
+        function getOperationPlannedMember(name) {
+            return members.find(m => m.name === name) || null;
+        }
+
+        function getOperationPlannedCardClasses(member) {
+            const isNonMember = member && member.type === '비회원';
+            return isNonMember
+                ? {
+                    chip: 'bg-amber-50 text-amber-800 border border-amber-200',
+                    badge: 'bg-amber-100 text-amber-700 border border-amber-200',
+                    row: 'bg-amber-50/35 hover:bg-amber-50'
+                }
+                : {
+                    chip: 'bg-sky-50 text-sky-800 border border-sky-200',
+                    badge: 'bg-sky-100 text-sky-700 border border-sky-200',
+                    row: 'bg-white hover:bg-sky-50/45'
+                };
+        }
+
+        function renderOperationPlannedStats(planned) {
+            const statsEl = document.getElementById('op-planned-stats');
+            if (!statsEl) return;
+
+            if (planned.length === 0) {
+                statsEl.innerHTML = '<div class="text-xs text-slate-400 font-bold text-center">참가예정자를 선택하면 참가 명단 통계가 표시됩니다.</div>';
+                return;
+            }
+
+            const stats = planned.reduce((acc, name) => {
+                const member = getOperationPlannedMember(name);
+                const gender = member && member.gender ? member.gender : '기타';
+                const handicap = member && member.handicap ? `${member.handicap}부` : '부수 미입력';
+
+                acc.total += 1;
+                if (gender === '남') acc.male += 1;
+                else if (gender === '여') acc.female += 1;
+                else acc.otherGender += 1;
+                acc.handicaps[handicap] = (acc.handicaps[handicap] || 0) + 1;
+                return acc;
+            }, { total: 0, male: 0, female: 0, otherGender: 0, handicaps: {} });
+
+            const handicapEntries = Object.entries(stats.handicaps).sort(([a], [b]) => {
+                const aNum = parseInt(a, 10);
+                const bNum = parseInt(b, 10);
+                if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
+                if (!isNaN(aNum)) return -1;
+                if (!isNaN(bNum)) return 1;
+                return a.localeCompare(b, 'ko');
+            });
+            const otherGenderHtml = stats.otherGender > 0
+                ? `<div class="bg-white rounded-xl border border-slate-100 p-2 text-center shadow-sm"><div class="text-[10px] text-slate-400 font-bold">기타</div><div class="text-lg font-black text-slate-500">${stats.otherGender}</div></div>`
+                : '';
+
+            statsEl.innerHTML = `
+                <div class="flex items-center justify-between mb-2">
+                    <h4 class="text-[12px] font-black text-emerald-800">📊 참가 명단 통계</h4>
+                    <span class="text-[10px] font-bold text-emerald-600 bg-white/80 px-2 py-1 rounded-full border border-emerald-100">참가예정 기준</span>
+                </div>
+                <div class="grid grid-cols-3 ${stats.otherGender > 0 ? 'sm:grid-cols-4' : ''} gap-2 mb-3">
+                    <div class="bg-white rounded-xl border border-emerald-100 p-2 text-center shadow-sm"><div class="text-[10px] text-emerald-500 font-bold">총 인원</div><div class="text-lg font-black text-emerald-700">${stats.total}</div></div>
+                    <div class="bg-white rounded-xl border border-blue-100 p-2 text-center shadow-sm"><div class="text-[10px] text-blue-500 font-bold">남</div><div class="text-lg font-black text-blue-700">${stats.male}</div></div>
+                    <div class="bg-white rounded-xl border border-rose-100 p-2 text-center shadow-sm"><div class="text-[10px] text-rose-500 font-bold">여</div><div class="text-lg font-black text-rose-700">${stats.female}</div></div>
+                    ${otherGenderHtml}
+                </div>
+                <div>
+                    <div class="text-[10px] text-slate-500 font-extrabold mb-1.5">부수별 인원</div>
+                    <div class="flex flex-wrap gap-1.5">
+                        ${handicapEntries.map(([handicap, count]) => `<span class="text-[11px] font-extrabold bg-white text-indigo-700 border border-indigo-100 rounded-full px-2.5 py-1 shadow-sm">${escapeHTML(handicap)} ${count}명</span>`).join('')}
+                    </div>
+                </div>`;
+        }
+
         function renderOperationPlannedTable() {
             normalizeOperationParticipantChecks();
 
@@ -4478,8 +4553,15 @@
             if (summaryEl) {
                 summaryEl.innerHTML = planned.length === 0
                     ? '<span class="name-chip-empty text-emerald-500">👆 버튼을 눌러 참가예정자를 선택하세요.</span>'
-                    : planned.map(name => `<span class="name-chip shadow-sm bg-emerald-100 text-emerald-700">${escapeHTML(name)}</span>`).join('');
+                    : planned.map(name => {
+                        const member = getOperationPlannedMember(name);
+                        const classes = getOperationPlannedCardClasses(member);
+                        const label = member && member.type === '비회원' ? '비회원' : '회원';
+                        return `<span class="name-chip shadow-sm ${classes.chip}">${escapeHTML(name)}<span class="ml-1 text-[9px] opacity-70">${label}</span></span>`;
+                    }).join('');
             }
+
+            renderOperationPlannedStats(planned);
 
             if (!tableBody) return;
             if (planned.length === 0) {
@@ -4489,8 +4571,17 @@
 
             tableBody.innerHTML = planned.map((name, index) => {
                 const checks = formState.opParticipantChecks[name] || { sincere: false, fee: false };
-                return `<tr class="bg-white hover:bg-slate-50 transition-colors">
-                    <td class="px-3 py-2.5 text-sm font-extrabold text-slate-700">${index + 1}. ${escapeHTML(name)}</td>
+                const member = getOperationPlannedMember(name);
+                const classes = getOperationPlannedCardClasses(member);
+                const label = member && member.type === '비회원' ? '비회원' : '회원';
+                const subInfo = member ? `${member.handicap || '-'}부 · ${member.gender || '-'}` : '회원정보 없음';
+                return `<tr class="${classes.row} transition-colors">
+                    <td class="px-3 py-2.5">
+                        <div class="inline-flex flex-col gap-0.5 rounded-xl px-2.5 py-1.5 ${classes.chip} shadow-sm">
+                            <span class="text-sm font-extrabold">${index + 1}. ${escapeHTML(name)} <span class="text-[9px] px-1.5 py-0.5 rounded-full ${classes.badge}">${label}</span></span>
+                            <span class="text-[10px] font-bold opacity-70">${escapeHTML(subInfo)}</span>
+                        </div>
+                    </td>
                     <td class="px-3 py-2.5 text-center">
                         <input type="checkbox" data-name="${escapeHTML(name)}" ${checks.sincere ? 'checked' : ''} onchange="toggleOperationParticipantCheck(this.dataset.name, 'sincere', this.checked)" class="w-5 h-5 accent-emerald-600 rounded cursor-pointer">
                     </td>
