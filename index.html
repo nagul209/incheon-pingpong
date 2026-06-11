@@ -404,12 +404,13 @@
                         <thead class="bg-slate-50 text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">
                             <tr>
                                 <th class="px-3 py-2">이름</th>
-                                <th class="px-3 py-2 text-center w-20">성실</th>
-                                <th class="px-3 py-2 text-center w-20">참가비</th>
+                                <th class="px-3 py-2 text-center w-16">부수</th>
+                                <th class="px-3 py-2 text-center w-16">성실</th>
+                                <th class="px-3 py-2 text-center w-16">참가비</th>
                             </tr>
                         </thead>
                         <tbody id="op-planned-table-body" class="divide-y divide-slate-50">
-                            <tr><td colspan="3" class="px-3 py-4 text-center text-xs text-slate-400 font-bold">참가예정자를 선택하면 표로 표시됩니다.</td></tr>
+                            <tr><td colspan="4" class="px-3 py-4 text-center text-xs text-slate-400 font-bold">참가예정자를 선택하면 표로 표시됩니다.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -4480,12 +4481,10 @@
             return isNonMember
                 ? {
                     chip: 'bg-amber-50 text-amber-800 border border-amber-200',
-                    badge: 'bg-amber-100 text-amber-700 border border-amber-200',
                     row: 'bg-amber-50/35 hover:bg-amber-50'
                 }
                 : {
                     chip: 'bg-sky-50 text-sky-800 border border-sky-200',
-                    badge: 'bg-sky-100 text-sky-700 border border-sky-200',
                     row: 'bg-white hover:bg-sky-50/45'
                 };
         }
@@ -4503,15 +4502,23 @@
                 const member = getOperationPlannedMember(name);
                 const gender = member && member.gender ? member.gender : '기타';
                 const handicap = member && member.handicap ? `${member.handicap}부` : '부수 미입력';
+                const memberType = member && member.type ? member.type : '회원구분 미입력';
+                const affiliation = member && member.affiliation ? member.affiliation : '소속 미입력';
 
                 acc.total += 1;
                 if (gender === '남') acc.male += 1;
                 else if (gender === '여') acc.female += 1;
                 else acc.otherGender += 1;
                 acc.handicaps[handicap] = (acc.handicaps[handicap] || 0) + 1;
+                acc.memberTypes[memberType] = (acc.memberTypes[memberType] || 0) + 1;
+                acc.affiliations[affiliation] = (acc.affiliations[affiliation] || 0) + 1;
                 return acc;
-            }, { total: 0, male: 0, female: 0, otherGender: 0, handicaps: {} });
+            }, { total: 0, male: 0, female: 0, otherGender: 0, handicaps: {}, memberTypes: {}, affiliations: {} });
 
+            const sortCountEntries = entries => Object.entries(entries).sort(([a, aCount], [b, bCount]) => {
+                if (bCount !== aCount) return bCount - aCount;
+                return a.localeCompare(b, 'ko');
+            });
             const handicapEntries = Object.entries(stats.handicaps).sort(([a], [b]) => {
                 const aNum = parseInt(a, 10);
                 const bNum = parseInt(b, 10);
@@ -4520,9 +4527,14 @@
                 if (!isNaN(bNum)) return 1;
                 return a.localeCompare(b, 'ko');
             });
+            const memberTypeEntries = sortCountEntries(stats.memberTypes);
+            const affiliationEntries = sortCountEntries(stats.affiliations);
             const otherGenderHtml = stats.otherGender > 0
                 ? `<div class="bg-white rounded-xl border border-slate-100 p-2 text-center shadow-sm"><div class="text-[10px] text-slate-400 font-bold">기타</div><div class="text-lg font-black text-slate-500">${stats.otherGender}</div></div>`
                 : '';
+            const statChipHtml = (entries, colorClass) => entries.length > 0
+                ? entries.map(([label, count]) => `<span class="text-[11px] font-extrabold bg-white ${colorClass} rounded-full px-2.5 py-1 shadow-sm">${escapeHTML(label)} ${count}명</span>`).join('')
+                : '<span class="text-[11px] font-bold text-slate-400">자료 없음</span>';
 
             statsEl.innerHTML = `
                 <div class="flex items-center justify-between mb-2">
@@ -4535,10 +4547,18 @@
                     <div class="bg-white rounded-xl border border-rose-100 p-2 text-center shadow-sm"><div class="text-[10px] text-rose-500 font-bold">여</div><div class="text-lg font-black text-rose-700">${stats.female}</div></div>
                     ${otherGenderHtml}
                 </div>
-                <div>
-                    <div class="text-[10px] text-slate-500 font-extrabold mb-1.5">부수별 인원</div>
-                    <div class="flex flex-wrap gap-1.5">
-                        ${handicapEntries.map(([handicap, count]) => `<span class="text-[11px] font-extrabold bg-white text-indigo-700 border border-indigo-100 rounded-full px-2.5 py-1 shadow-sm">${escapeHTML(handicap)} ${count}명</span>`).join('')}
+                <div class="space-y-2">
+                    <div>
+                        <div class="text-[10px] text-slate-500 font-extrabold mb-1.5">회원구분별 인원</div>
+                        <div class="flex flex-wrap gap-1.5">${statChipHtml(memberTypeEntries, 'text-emerald-700 border border-emerald-100')}</div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] text-slate-500 font-extrabold mb-1.5">소속별 인원</div>
+                        <div class="flex flex-wrap gap-1.5">${statChipHtml(affiliationEntries, 'text-sky-700 border border-sky-100')}</div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] text-slate-500 font-extrabold mb-1.5">부수별 인원</div>
+                        <div class="flex flex-wrap gap-1.5">${statChipHtml(handicapEntries, 'text-indigo-700 border border-indigo-100')}</div>
                     </div>
                 </div>`;
         }
@@ -4556,8 +4576,7 @@
                     : planned.map(name => {
                         const member = getOperationPlannedMember(name);
                         const classes = getOperationPlannedCardClasses(member);
-                        const label = member && member.type === '비회원' ? '비회원' : '회원';
-                        return `<span class="name-chip shadow-sm ${classes.chip}">${escapeHTML(name)}<span class="ml-1 text-[9px] opacity-70">${label}</span></span>`;
+                        return `<span class="name-chip shadow-sm ${classes.chip}">${escapeHTML(name)}</span>`;
                     }).join('');
             }
 
@@ -4565,7 +4584,7 @@
 
             if (!tableBody) return;
             if (planned.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="3" class="px-3 py-4 text-center text-xs text-slate-400 font-bold">참가예정자를 선택하면 표로 표시됩니다.</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="4" class="px-3 py-4 text-center text-xs text-slate-400 font-bold">참가예정자를 선택하면 표로 표시됩니다.</td></tr>';
                 return;
             }
 
@@ -4573,15 +4592,14 @@
                 const checks = formState.opParticipantChecks[name] || { sincere: false, fee: false };
                 const member = getOperationPlannedMember(name);
                 const classes = getOperationPlannedCardClasses(member);
-                const label = member && member.type === '비회원' ? '비회원' : '회원';
-                const subInfo = member ? `${member.handicap || '-'}부 · ${member.gender || '-'}` : '회원정보 없음';
+                const handicap = member && member.handicap ? `${member.handicap}부` : '-';
                 return `<tr class="${classes.row} transition-colors">
                     <td class="px-3 py-2.5">
-                        <div class="inline-flex flex-col gap-0.5 rounded-xl px-2.5 py-1.5 ${classes.chip} shadow-sm">
-                            <span class="text-sm font-extrabold">${index + 1}. ${escapeHTML(name)} <span class="text-[9px] px-1.5 py-0.5 rounded-full ${classes.badge}">${label}</span></span>
-                            <span class="text-[10px] font-bold opacity-70">${escapeHTML(subInfo)}</span>
+                        <div class="inline-flex items-center rounded-xl px-2.5 py-1.5 ${classes.chip} shadow-sm">
+                            <span class="text-sm font-extrabold">${index + 1}. ${escapeHTML(name)}</span>
                         </div>
                     </td>
+                    <td class="px-3 py-2.5 text-center text-xs font-extrabold text-slate-700">${escapeHTML(handicap)}</td>
                     <td class="px-3 py-2.5 text-center">
                         <input type="checkbox" data-name="${escapeHTML(name)}" ${checks.sincere ? 'checked' : ''} onchange="toggleOperationParticipantCheck(this.dataset.name, 'sincere', this.checked)" class="w-5 h-5 accent-emerald-600 rounded cursor-pointer">
                     </td>
