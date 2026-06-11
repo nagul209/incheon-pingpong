@@ -385,7 +385,7 @@
                 <div class="flex justify-between items-center mb-3 border-b border-emerald-50 pb-2 relative z-10 gap-2">
                     <div>
                         <h3 class="font-extrabold text-emerald-800 text-base">📋 참가예정 명단</h3>
-                        <p class="text-[10px] text-slate-500 font-medium mt-0.5">카드로 참가예정자를 선택하고, 성실/참가비 여부를 체크하세요.</p>
+                        <p class="text-[10px] text-slate-500 font-medium mt-0.5">카드로 참가예정자를 선택하고, 연회원은 성실 여부를, 전체는 참가비 여부를 체크하세요.</p>
                     </div>
                     <div class="flex gap-1.5 shrink-0">
                         <button onclick="openSelector('opPlanned', '참가예정자 선택', false)"
@@ -4467,8 +4467,13 @@
                 if (!planned.includes(name)) delete formState.opParticipantChecks[name];
             });
             planned.forEach(name => {
+                const member = getOperationPlannedMember(name);
+                const isNonMember = member && member.type === '비회원';
                 if (!formState.opParticipantChecks[name]) {
                     formState.opParticipantChecks[name] = { sincere: false, fee: false };
+                }
+                if (isNonMember) {
+                    formState.opParticipantChecks[name].sincere = false;
                 }
             });
         }
@@ -4609,6 +4614,10 @@
                 const checks = formState.opParticipantChecks[name] || { sincere: false, fee: false };
                 const member = getOperationPlannedMember(name);
                 const classes = getOperationPlannedCardClasses(member);
+                const isNonMember = member && member.type === '비회원';
+                const sincereCellHtml = isNonMember
+                    ? '<span class="inline-flex items-center justify-center rounded-full bg-slate-100 px-2 py-1 text-[10px] font-extrabold text-slate-400">제외</span>'
+                    : `<input type="checkbox" data-name="${escapeHTML(name)}" ${checks.sincere ? 'checked' : ''} onchange="toggleOperationParticipantCheck(this.dataset.name, 'sincere', this.checked)" class="w-5 h-5 accent-emerald-600 rounded cursor-pointer">`;
                 const handicap = member && member.handicap ? `${member.handicap}부` : '-';
                 return `<tr class="${classes.row} transition-colors">
                     <td class="px-3 py-2.5">
@@ -4617,7 +4626,7 @@
                         </div>
                     </td>
                     <td class="px-3 py-2.5 text-center">
-                        <input type="checkbox" data-name="${escapeHTML(name)}" ${checks.sincere ? 'checked' : ''} onchange="toggleOperationParticipantCheck(this.dataset.name, 'sincere', this.checked)" class="w-5 h-5 accent-emerald-600 rounded cursor-pointer">
+                        ${sincereCellHtml}
                     </td>
                     <td class="px-3 py-2.5 text-center">
                         <input type="checkbox" data-name="${escapeHTML(name)}" ${checks.fee ? 'checked' : ''} onchange="toggleOperationParticipantCheck(this.dataset.name, 'fee', this.checked)" class="w-5 h-5 accent-indigo-600 rounded cursor-pointer">
@@ -4628,6 +4637,8 @@
 
         function toggleOperationParticipantCheck(name, field, checked) {
             normalizeOperationParticipantChecks();
+            const member = getOperationPlannedMember(name);
+            if (field === 'sincere' && member && member.type === '비회원') return;
             if (!formState.opParticipantChecks[name]) formState.opParticipantChecks[name] = { sincere: false, fee: false };
             formState.opParticipantChecks[name][field] = checked;
             saveDataToStorage();
