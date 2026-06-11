@@ -90,6 +90,8 @@
             border-radius: 9999px;
             margin: 0.15rem;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .name-chip-empty {
@@ -395,7 +397,7 @@
                     </div>
                 </div>
                 <div id="op-planned-summary"
-                    class="min-h-[40px] bg-emerald-50/60 rounded-xl p-2.5 border border-emerald-100 cursor-pointer relative z-10 mb-3"
+                    class="min-h-[40px] bg-emerald-50/60 rounded-xl p-2.5 border border-emerald-100 cursor-pointer relative z-10 mb-3 overflow-x-auto no-scrollbar whitespace-nowrap"
                     onclick="openSelector('opPlanned', '참가예정자 선택', false)">
                     <span class="name-chip-empty text-emerald-500">👆 버튼을 눌러 참가예정자를 선택하세요.</span>
                 </div>
@@ -4532,9 +4534,13 @@
             const otherGenderHtml = stats.otherGender > 0
                 ? `<div class="bg-white rounded-xl border border-slate-100 p-2 text-center shadow-sm"><div class="text-[10px] text-slate-400 font-bold">기타</div><div class="text-lg font-black text-slate-500">${stats.otherGender}</div></div>`
                 : '';
-            const statChipHtml = (entries, colorClass) => entries.length > 0
-                ? entries.map(([label, count]) => `<span class="text-[11px] font-extrabold bg-white ${colorClass} rounded-full px-2.5 py-1 shadow-sm">${escapeHTML(label)} ${count}명</span>`).join('')
-                : '<span class="text-[11px] font-bold text-slate-400">자료 없음</span>';
+            const statCardListHtml = (entries, color) => entries.length > 0
+                ? entries.map(([label, count]) => `
+                    <div class="bg-white rounded-xl border ${color.border} p-2.5 text-center shadow-sm min-w-0">
+                        <div class="text-[10px] ${color.label} font-extrabold truncate" title="${escapeHTML(label)}">${escapeHTML(label)}</div>
+                        <div class="text-lg font-black ${color.count} leading-tight mt-0.5">${count}<span class="text-[10px] font-extrabold ml-0.5">명</span></div>
+                    </div>`).join('')
+                : '<div class="bg-white rounded-xl border border-slate-100 p-3 text-center text-[11px] font-bold text-slate-400 shadow-sm">자료 없음</div>';
 
             statsEl.innerHTML = `
                 <div class="flex items-center justify-between mb-2">
@@ -4547,18 +4553,18 @@
                     <div class="bg-white rounded-xl border border-rose-100 p-2 text-center shadow-sm"><div class="text-[10px] text-rose-500 font-bold">여</div><div class="text-lg font-black text-rose-700">${stats.female}</div></div>
                     ${otherGenderHtml}
                 </div>
-                <div class="space-y-2">
+                <div class="space-y-3">
                     <div>
                         <div class="text-[10px] text-slate-500 font-extrabold mb-1.5">회원구분별 인원</div>
-                        <div class="flex flex-wrap gap-1.5">${statChipHtml(memberTypeEntries, 'text-emerald-700 border border-emerald-100')}</div>
+                        <div class="grid grid-cols-2 gap-2">${statCardListHtml(memberTypeEntries, { border: 'border-emerald-100', label: 'text-emerald-500', count: 'text-emerald-700' })}</div>
                     </div>
                     <div>
                         <div class="text-[10px] text-slate-500 font-extrabold mb-1.5">소속별 인원</div>
-                        <div class="flex flex-wrap gap-1.5">${statChipHtml(affiliationEntries, 'text-sky-700 border border-sky-100')}</div>
+                        <div class="grid grid-cols-2 gap-2">${statCardListHtml(affiliationEntries, { border: 'border-sky-100', label: 'text-sky-500', count: 'text-sky-700' })}</div>
                     </div>
                     <div>
                         <div class="text-[10px] text-slate-500 font-extrabold mb-1.5">부수별 인원</div>
-                        <div class="flex flex-wrap gap-1.5">${statChipHtml(handicapEntries, 'text-indigo-700 border border-indigo-100')}</div>
+                        <div class="grid grid-cols-3 gap-2">${statCardListHtml(handicapEntries, { border: 'border-indigo-100', label: 'text-indigo-500', count: 'text-indigo-700' })}</div>
                     </div>
                 </div>`;
         }
