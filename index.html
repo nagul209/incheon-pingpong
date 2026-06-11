@@ -397,7 +397,7 @@
                     </div>
                 </div>
                 <div id="op-planned-summary"
-                    class="min-h-[40px] bg-emerald-50/60 rounded-xl p-2.5 border border-emerald-100 cursor-pointer relative z-10 mb-3 overflow-x-auto no-scrollbar whitespace-nowrap"
+                    class="min-h-[40px] bg-emerald-50/60 rounded-xl p-2.5 border border-emerald-100 cursor-pointer relative z-10 mb-3 flex flex-wrap gap-1.5"
                     onclick="openSelector('opPlanned', '참가예정자 선택', false)">
                     <span class="name-chip-empty text-emerald-500">👆 버튼을 눌러 참가예정자를 선택하세요.</span>
                 </div>
@@ -405,14 +405,13 @@
                     <table class="w-full text-left text-slate-700">
                         <thead class="bg-slate-50 text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">
                             <tr>
-                                <th class="px-3 py-2">이름</th>
-                                <th class="px-3 py-2 text-center w-16">부수</th>
+                                <th class="px-3 py-2">이름(부수)</th>
                                 <th class="px-3 py-2 text-center w-16">성실</th>
                                 <th class="px-3 py-2 text-center w-16">참가비</th>
                             </tr>
                         </thead>
                         <tbody id="op-planned-table-body" class="divide-y divide-slate-50">
-                            <tr><td colspan="4" class="px-3 py-4 text-center text-xs text-slate-400 font-bold">참가예정자를 선택하면 표로 표시됩니다.</td></tr>
+                            <tr><td colspan="3" class="px-3 py-4 text-center text-xs text-slate-400 font-bold">참가예정자를 선택하면 표로 표시됩니다.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -4514,8 +4513,10 @@
                 acc.handicaps[handicap] = (acc.handicaps[handicap] || 0) + 1;
                 acc.memberTypes[memberType] = (acc.memberTypes[memberType] || 0) + 1;
                 acc.affiliations[affiliation] = (acc.affiliations[affiliation] || 0) + 1;
+                if (!acc.affiliationsByMemberType[memberType]) acc.affiliationsByMemberType[memberType] = {};
+                acc.affiliationsByMemberType[memberType][affiliation] = (acc.affiliationsByMemberType[memberType][affiliation] || 0) + 1;
                 return acc;
-            }, { total: 0, male: 0, female: 0, otherGender: 0, handicaps: {}, memberTypes: {}, affiliations: {} });
+            }, { total: 0, male: 0, female: 0, otherGender: 0, handicaps: {}, memberTypes: {}, affiliations: {}, affiliationsByMemberType: {} });
 
             const sortCountEntries = entries => Object.entries(entries).sort(([a, aCount], [b, bCount]) => {
                 if (bCount !== aCount) return bCount - aCount;
@@ -4530,7 +4531,6 @@
                 return a.localeCompare(b, 'ko');
             });
             const memberTypeEntries = sortCountEntries(stats.memberTypes);
-            const affiliationEntries = sortCountEntries(stats.affiliations);
             const otherGenderHtml = stats.otherGender > 0
                 ? `<div class="bg-white rounded-xl border border-slate-100 p-2 text-center shadow-sm"><div class="text-[10px] text-slate-400 font-bold">기타</div><div class="text-lg font-black text-slate-500">${stats.otherGender}</div></div>`
                 : '';
@@ -4540,6 +4540,17 @@
                         <div class="text-[10px] ${color.label} font-extrabold truncate" title="${escapeHTML(label)}">${escapeHTML(label)}</div>
                         <div class="text-lg font-black ${color.count} leading-tight mt-0.5">${count}<span class="text-[10px] font-extrabold ml-0.5">명</span></div>
                     </div>`).join('')
+                : '<div class="bg-white rounded-xl border border-slate-100 p-3 text-center text-[11px] font-bold text-slate-400 shadow-sm">자료 없음</div>';
+            const affiliationByTypeHtml = memberTypeEntries.length > 0
+                ? memberTypeEntries.map(([memberType]) => {
+                    const affiliationLine = sortCountEntries(stats.affiliationsByMemberType[memberType] || {})
+                        .map(([label, count]) => `<span class="inline-flex items-center rounded-full bg-sky-50 text-sky-700 border border-sky-100 px-2 py-0.5 font-extrabold">${escapeHTML(label)} <b class="ml-1 text-sky-900">${count}명</b></span>`)
+                        .join(' ');
+                    return `<div class="bg-white rounded-xl border border-sky-100 px-3 py-2 shadow-sm text-[11px] leading-6">
+                        <span class="inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 font-black mr-1.5">${escapeHTML(memberType)}</span>
+                        ${affiliationLine || '<span class="font-bold text-slate-400">자료 없음</span>'}
+                    </div>`;
+                }).join('')
                 : '<div class="bg-white rounded-xl border border-slate-100 p-3 text-center text-[11px] font-bold text-slate-400 shadow-sm">자료 없음</div>';
 
             statsEl.innerHTML = `
@@ -4559,8 +4570,8 @@
                         <div class="grid grid-cols-2 gap-2">${statCardListHtml(memberTypeEntries, { border: 'border-emerald-100', label: 'text-emerald-500', count: 'text-emerald-700' })}</div>
                     </div>
                     <div>
-                        <div class="text-[10px] text-slate-500 font-extrabold mb-1.5">소속별 인원</div>
-                        <div class="grid grid-cols-2 gap-2">${statCardListHtml(affiliationEntries, { border: 'border-sky-100', label: 'text-sky-500', count: 'text-sky-700' })}</div>
+                        <div class="text-[10px] text-slate-500 font-extrabold mb-1.5">소속별 인원(구분별)</div>
+                        <div class="space-y-1.5">${affiliationByTypeHtml}</div>
                     </div>
                     <div>
                         <div class="text-[10px] text-slate-500 font-extrabold mb-1.5">부수별 인원</div>
@@ -4590,7 +4601,7 @@
 
             if (!tableBody) return;
             if (planned.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="4" class="px-3 py-4 text-center text-xs text-slate-400 font-bold">참가예정자를 선택하면 표로 표시됩니다.</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="3" class="px-3 py-4 text-center text-xs text-slate-400 font-bold">참가예정자를 선택하면 표로 표시됩니다.</td></tr>';
                 return;
             }
 
@@ -4602,10 +4613,9 @@
                 return `<tr class="${classes.row} transition-colors">
                     <td class="px-3 py-2.5">
                         <div class="inline-flex items-center rounded-xl px-2.5 py-1.5 ${classes.chip} shadow-sm">
-                            <span class="text-sm font-extrabold">${index + 1}. ${escapeHTML(name)}</span>
+                            <span class="text-sm font-extrabold">${index + 1}. ${escapeHTML(name)}(${escapeHTML(handicap)})</span>
                         </div>
                     </td>
-                    <td class="px-3 py-2.5 text-center text-xs font-extrabold text-slate-700">${escapeHTML(handicap)}</td>
                     <td class="px-3 py-2.5 text-center">
                         <input type="checkbox" data-name="${escapeHTML(name)}" ${checks.sincere ? 'checked' : ''} onchange="toggleOperationParticipantCheck(this.dataset.name, 'sincere', this.checked)" class="w-5 h-5 accent-emerald-600 rounded cursor-pointer">
                     </td>
