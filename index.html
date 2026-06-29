@@ -3606,6 +3606,15 @@
                 handleTournamentClick(parseInt(cell.dataset.tournRound, 10), parseInt(cell.dataset.tournIdx, 10));
             };
 
+            const onKeyDown = (e) => {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                const cell = e.target && e.target.closest ? e.target.closest('[data-tourn-round][data-tourn-idx]') : null;
+                if (!cell || !container.contains(cell)) return;
+                e.preventDefault();
+                e.stopPropagation();
+                handleTournamentClick(parseInt(cell.dataset.tournRound, 10), parseInt(cell.dataset.tournIdx, 10));
+            };
+
             const onResize = () => applyTransform();
 
             container.addEventListener('pointerdown', onPointerDown);
@@ -3614,6 +3623,7 @@
             container.addEventListener('pointercancel', onPointerCancel);
             container.addEventListener('wheel', onWheel, { passive: false });
             container.addEventListener('click', onClickCapture, true);
+            container.addEventListener('keydown', onKeyDown);
             window.addEventListener('resize', onResize);
 
             container._tournPanState = state;
@@ -3624,6 +3634,7 @@
                 container.removeEventListener('pointercancel', onPointerCancel);
                 container.removeEventListener('wheel', onWheel);
                 container.removeEventListener('click', onClickCapture, true);
+                container.removeEventListener('keydown', onKeyDown);
                 window.removeEventListener('resize', onResize);
             };
 
@@ -3697,7 +3708,7 @@
             }
 
             // 2. 기존 라운드별 매치업 카드 리스트 렌더링
-            let html = `<div class="tourn-pan-hint">🖱️ 드래그 이동 · 🤏 확대/축소</div><div id="op-tourn-scroll-area" class="tourn-pan-content mt-4 space-y-4 pb-10 px-2 bg-slate-50/50">`;
+            let html = `<div class="tourn-pan-hint">🖱️ 드래그 이동 · 🤏 확대/축소 · 이름 클릭=승리/진출</div><div id="op-tourn-scroll-area" class="tourn-pan-content mt-4 space-y-4 pb-10 px-2 bg-slate-50/50">`;
 
             if (vRound < rounds) {
                 const numMatches = size / Math.pow(2, vRound + 1);
@@ -3730,7 +3741,8 @@
                         <div class="bg-white rounded-2xl shadow-sm p-4 border border-slate-100 transition-all ${isSwapMode && vRound === 0 ? 'ring-2 ring-orange-200' : ''}">
                             <div class="flex items-center justify-between gap-3 relative">
                                 <div data-tourn-round="${vRound}" data-tourn-idx="${p1Idx}"
-                                     class="relative flex-1 p-3 rounded-xl border-2 transition-all cursor-pointer flex flex-col items-center justify-center min-h-[72px] ${p1StateClass}">
+                                     class="relative flex-1 p-3 rounded-xl border-2 transition-all cursor-pointer flex flex-col items-center justify-center min-h-[72px] ${p1StateClass}"
+                                     role="button" tabindex="0" title="${escapeHTML(p1 || '')} 클릭 시 승리 처리 및 다음 라운드 진출">
                                     ${isP1Winner ? winnerBadge : (isP1Loser ? loserBadge : '')}
                                     <span class="text-xs font-black break-all whitespace-normal text-center ${isP1Winner ? 'text-blue-800' : (isP1Selected ? 'text-orange-800' : (isP1Loser ? 'text-slate-400 line-through' : 'text-slate-700'))}">${p1 || (vRound === 0 ? '터치선택' : '대기중')}</span>
                                     ${p1WinButton}
@@ -3740,7 +3752,8 @@
                                     ${isBye ? '<span class="text-[8px] font-bold text-indigo-500 mt-1">BYE</span>' : ''}
                                 </div>
                                 <div data-tourn-round="${vRound}" data-tourn-idx="${p2Idx}"
-                                     class="relative flex-1 p-3 rounded-xl border-2 transition-all cursor-pointer flex flex-col items-center justify-center min-h-[72px] ${p2StateClass}">
+                                     class="relative flex-1 p-3 rounded-xl border-2 transition-all cursor-pointer flex flex-col items-center justify-center min-h-[72px] ${p2StateClass}"
+                                     role="button" tabindex="0" title="${escapeHTML(p2 || '')} 클릭 시 승리 처리 및 다음 라운드 진출">
                                     ${isP2Winner ? winnerBadge : (isP2Loser ? loserBadge : '')}
                                     <span class="text-xs font-black break-all whitespace-normal text-center ${isP2Winner ? 'text-blue-800' : (isP2Selected ? 'text-orange-800' : (isP2Loser ? 'text-slate-400 line-through' : 'text-slate-700'))}">${p2 || (vRound === 0 ? '터치선택' : '대기중')}</span>
                                     ${p2WinButton}
@@ -3965,7 +3978,7 @@
             const getCellCursor = enableClick ? "cursor-pointer hover:border-indigo-400" : "";
             const safeText = (text) => text ? escapeHTML(text) : "-";
 
-            let html = `<div class="tourn-pan-hint">🖱️ 드래그 이동 · 🤏 확대/축소</div><div id="op-tourn-scroll-area" class="tourn-pan-content ${outerClass}">`;
+            let html = `<div class="tourn-pan-hint">🖱️ 드래그 이동 · 🤏 확대/축소 · 이름 클릭=승리/진출</div><div id="op-tourn-scroll-area" class="tourn-pan-content ${outerClass}">`;
 
             for (let r = 0; r < rounds; r++) {
                 const matches = size / Math.pow(2, r + 1);
@@ -3997,6 +4010,7 @@
                     const cellHtml = (player, idx, isWinner, isLoser, isBye, isHighlighted) => `
                         <div${getCellClick(r, idx)}
                              class="relative z-10 w-full border ${isWinner ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-100' : (isLoser ? 'border-slate-200 bg-slate-100 opacity-55 grayscale' : (isBye ? 'border-slate-200 bg-slate-100 opacity-60' : 'border-slate-300 bg-white'))} rounded p-1.5 text-center shadow-sm transition-all ${getCellCursor} ${isHighlighted ? 'ring-4 ring-orange-500 border-orange-500 scale-105 shadow-md' : ''}"
+                             role="button" tabindex="0" title="${safeText(player)} 클릭 시 승리 처리 및 다음 라운드 진출"
                              style="min-height:${cellMinHeight}px; display:flex; align-items:center; justify-content:center;">
                             ${isWinner ? '<span class="absolute -top-2 -right-2 bg-blue-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shadow border border-white">승</span>' : (isLoser ? '<span class="absolute -top-2 -right-2 bg-slate-300 text-slate-600 text-[9px] font-black px-1.5 py-0.5 rounded-full shadow border border-white">패</span>' : '')}
                             <span class="text-[10px] font-black ${isWinner ? 'text-blue-700' : (isLoser ? 'text-slate-400 line-through' : 'text-slate-700')} tracking-tight break-all">${safeText(player)}</span>
