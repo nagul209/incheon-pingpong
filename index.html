@@ -515,6 +515,9 @@
                         <button onclick="printTournament()"
                             class="text-[11px] bg-rose-600 text-white px-3 py-2 rounded-lg font-bold shadow-md btn-press flex items-center gap-1">🖨️
                             대진표 인쇄</button>
+                        <button onclick="deleteActiveTournament()"
+                            class="text-[11px] bg-slate-700 text-white px-3 py-2 rounded-lg font-bold shadow-md btn-press flex items-center gap-1">🗑️
+                            대진표 삭제</button>
                     </div>
                 </div>
 
@@ -3290,9 +3293,53 @@
             tournamentState.subTournaments[idx] = getTournamentBracketSnapshot(tournamentState);
         }
 
+        function resetTournamentView(message = '조건을 선택하고 대진표 생성을 눌러주세요.') {
+            tournamentState = normalizeTournamentState({ ...defaultTournamentState });
+            isFullView = false;
+            isSwapMode = false;
+            swapFirstPick = null;
+            const filterContainer = document.getElementById('tourn-filter-container');
+            if (filterContainer) {
+                filterContainer.innerHTML = '';
+                filterContainer.classList.add('hidden');
+            }
+            document.getElementById('tourn-quick-nav')?.classList.add('hidden');
+            const infoBox = document.getElementById('op-tourn-info');
+            if (infoBox) {
+                infoBox.innerHTML = '';
+                infoBox.classList.add('hidden');
+            }
+            const container = document.getElementById('op-tourn-container');
+            if (container) container.innerHTML = `<div class="text-center text-slate-400 text-xs py-8">${message}</div>`;
+        }
+
+        function syncTournamentControlsFromState() {
+            const groupsSelect = document.getElementById('op-tourn-groups');
+            const advSelect = document.getElementById('op-tourn-adv');
+            const rankStartSelect = document.getElementById('op-tourn-rank-start');
+            const rankEndSelect = document.getElementById('op-tourn-rank-end');
+            const subConfig = document.getElementById('op-sub-tourn-config');
+            if (groupsSelect && tournamentState.groups) groupsSelect.value = String(tournamentState.groups);
+            if (advSelect && tournamentState.adv) advSelect.value = String(tournamentState.adv);
+            if (rankStartSelect) rankStartSelect.value = String(tournamentState.rankStart || 1);
+            if (rankEndSelect) rankEndSelect.value = String(tournamentState.rankEnd || tournamentState.adv || 0);
+            if (subConfig) subConfig.classList.toggle('hidden', (parseInt(tournamentState.rankStart) || 1) === 1);
+            const infoBox = document.getElementById('op-tourn-info');
+            if (infoBox && tournamentState.size > 0) {
+                const rankStart = parseInt(tournamentState.rankStart) || 1;
+                const rankEnd = parseInt(tournamentState.rankEnd) || parseInt(tournamentState.adv) || 0;
+                const groups = parseInt(tournamentState.groups) || 0;
+                const totalPlayers = groups * Math.max(0, rankEnd - rankStart + 1);
+                const rankLabel = rankStart === 1 ? `1위~${rankEnd}위 상위 토너먼트` : `${rankStart}위~${rankEnd}위 하위 토너먼트`;
+                infoBox.innerHTML = `✅ ${rankLabel} · ${groups}조 × ${Math.max(0, rankEnd - rankStart + 1)}명 = <b>${totalPlayers}명 진출</b> 👉 <b>${tournamentState.size}강 대진표</b>`;
+                infoBox.classList.remove('hidden');
+            }
+        }
+
         function loadTournamentBracket(index) {
             tournamentState = normalizeTournamentState(tournamentState);
             persistActiveTournament();
+            index = parseInt(index, 10) || 0;
             const bracket = tournamentState.subTournaments[index];
             if (!bracket) return;
             const allBrackets = tournamentState.subTournaments;
@@ -3307,18 +3354,32 @@
             isFullView = false;
             isSwapMode = false;
             swapFirstPick = null;
+            syncTournamentControlsFromState();
             renderTournamentUI();
+            saveDataToStorage();
         }
 
         function removeTournamentBracket(index) {
             tournamentState = normalizeTournamentState(tournamentState);
-            if (tournamentState.subTournaments.length <= 1) return alert('대진표가 1개뿐이라 삭제할 수 없습니다.');
+            if (tournamentState.size === 0 && tournamentState.subTournaments.length === 0) return alert('삭제할 대진표가 없습니다.');
             if (!confirm('선택한 대진표를 삭제할까요?')) return;
+            persistActiveTournament();
             tournamentState.subTournaments.splice(index, 1);
+            if (tournamentState.subTournaments.length === 0) {
+                resetTournamentView('삭제되었습니다. 조건을 선택하고 대진표 생성을 눌러주세요.');
+                saveDataToStorage();
+                return;
+            }
             const nextIndex = Math.max(0, Math.min(index - 1, tournamentState.subTournaments.length - 1));
             tournamentState.activeTournamentIndex = nextIndex;
             loadTournamentBracket(nextIndex);
-            saveDataToStorage();
+        }
+
+        function deleteActiveTournament() {
+            tournamentState = normalizeTournamentState(tournamentState);
+            if (tournamentState.size === 0 && tournamentState.subTournaments.length === 0) return alert('삭제할 대진표가 없습니다.');
+            const idx = parseInt(tournamentState.activeTournamentIndex) || 0;
+            removeTournamentBracket(idx);
         }
 
         function syncTournamentRankEndFromAdv() {
