@@ -537,7 +537,7 @@
                     <div class="w-px h-4 bg-slate-300"></div>
                     <div class="flex items-center gap-1.5">
                         <span class="text-xs font-bold text-slate-600">진출자(조당)</span>
-                        <select id="op-tourn-adv"
+                        <select id="op-tourn-adv" onchange="syncTournamentRankEndFromAdv()"
                             class="text-xs border border-slate-200 rounded p-1 font-bold text-rose-600 bg-white">
                             <option value="1">1명</option>
                             <option value="2" selected>2명</option>
@@ -551,6 +551,42 @@
                             <option value="10">10명</option>
                             <option value="11">11명</option>
                             <option value="12">12명</option>
+                        </select>
+                    </div>
+                    <button onclick="addSubTournamentConfig()"
+                        class="text-[11px] bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-lg font-extrabold shadow-sm btn-press">➕ 하위 토너먼트</button>
+                    <div id="op-sub-tourn-config" class="hidden flex flex-wrap items-center gap-1.5 bg-white border border-amber-200 rounded-lg px-2 py-1.5">
+                        <span class="text-xs font-extrabold text-amber-700">순위 범위</span>
+                        <select id="op-tourn-rank-start"
+                            class="text-xs border border-slate-200 rounded p-1 font-bold text-amber-700 bg-white">
+                            <option value="1">1위</option>
+                            <option value="2">2위</option>
+                            <option value="3" selected>3위</option>
+                            <option value="4">4위</option>
+                            <option value="5">5위</option>
+                            <option value="6">6위</option>
+                            <option value="7">7위</option>
+                            <option value="8">8위</option>
+                            <option value="9">9위</option>
+                            <option value="10">10위</option>
+                            <option value="11">11위</option>
+                            <option value="12">12위</option>
+                        </select>
+                        <span class="text-xs font-bold text-slate-400">~</span>
+                        <select id="op-tourn-rank-end"
+                            class="text-xs border border-slate-200 rounded p-1 font-bold text-amber-700 bg-white">
+                            <option value="1">1위</option>
+                            <option value="2">2위</option>
+                            <option value="3">3위</option>
+                            <option value="4" selected>4위</option>
+                            <option value="5">5위</option>
+                            <option value="6">6위</option>
+                            <option value="7">7위</option>
+                            <option value="8">8위</option>
+                            <option value="9">9위</option>
+                            <option value="10">10위</option>
+                            <option value="11">11위</option>
+                            <option value="12">12위</option>
                         </select>
                     </div>
                     <button onclick="initTournamentState()"
@@ -1900,7 +1936,7 @@
                 matchHistory: normalizeFirebaseCollection(season.matchHistory)
             }));
             scoreRules = { ...defaultScoreRules, ...(parsed.scoreRules || {}) };
-            tournamentState = parsed.tournamentState || tournamentState;
+            tournamentState = normalizeTournamentState(parsed.tournamentState || tournamentState);
             if (parsed.opAttend) formState.opAttend = parsed.opAttend;
             if (parsed.opPlanned) formState.opPlanned = parsed.opPlanned;
             formState.opParticipantChecks = parsed.opParticipantChecks || {};
@@ -3192,39 +3228,93 @@
         // ==============================================================================
         // 🏆 [스마트 대진표] 상태 관리 및 렌더링 로직
         // ==============================================================================
-        let tournamentState = {
+        const defaultTournamentState = {
             size: 0,
             rounds: 0,
             tree: [],
             visibleRound: 0,
             groups: 0,
             adv: 0,
+            rankStart: 1,
+            rankEnd: 0,
+            type: 'main',
+            subTournaments: [],
             originalTemplate: []  // 예선 결과 재매칭을 위한 원본 템플릿 저장용
         };
+        let tournamentState = { ...defaultTournamentState };
         let isFullView = false;    // 전체 대진표 보기 모드
         let isSwapMode = false;    // 자리 변경 모드
         let swapFirstPick = null;  // 스왑 대상을 상징하는 인덱스 (선택 시 저장)
 
+        function normalizeTournamentState(state) {
+            const normalized = { ...defaultTournamentState, ...(state || {}) };
+            normalized.rankStart = parseInt(normalized.rankStart) || 1;
+            normalized.rankEnd = parseInt(normalized.rankEnd) || parseInt(normalized.adv) || 0;
+            normalized.type = normalized.type || 'main';
+            normalized.subTournaments = Array.isArray(normalized.subTournaments) ? normalized.subTournaments : [];
+            normalized.tree = Array.isArray(normalized.tree) ? normalized.tree : [];
+            normalized.originalTemplate = Array.isArray(normalized.originalTemplate) ? normalized.originalTemplate : [];
+            return normalized;
+        }
+
+        function syncTournamentRankEndFromAdv() {
+            const advSelect = document.getElementById('op-tourn-adv');
+            const rankEndSelect = document.getElementById('op-tourn-rank-end');
+            if (advSelect && rankEndSelect && document.getElementById('op-sub-tourn-config')?.classList.contains('hidden')) {
+                rankEndSelect.value = advSelect.value;
+            }
+        }
+
+        function addSubTournamentConfig() {
+            const config = document.getElementById('op-sub-tourn-config');
+            if (!config) return;
+            config.classList.remove('hidden');
+            const currentAdv = parseInt(document.getElementById('op-tourn-adv')?.value) || 2;
+            const rankStartSelect = document.getElementById('op-tourn-rank-start');
+            const rankEndSelect = document.getElementById('op-tourn-rank-end');
+            if (rankStartSelect) rankStartSelect.value = String(Math.min(currentAdv + 1, 12));
+            if (rankEndSelect) rankEndSelect.value = String(Math.min(currentAdv + 2, 12));
+            alert('하위 토너먼트 모드가 켜졌습니다. 시작/종료 순위를 선택한 뒤 [대진표 생성]을 눌러주세요.');
+        }
+
         function initTournamentState() {
             const groups = parseInt(document.getElementById('op-tourn-groups').value);
             const adv = parseInt(document.getElementById('op-tourn-adv').value);
-            const totalPlayers = groups * adv;
+            const subConfig = document.getElementById('op-sub-tourn-config');
+            const isSubTournament = subConfig && !subConfig.classList.contains('hidden');
+            const rankStart = isSubTournament ? parseInt(document.getElementById('op-tourn-rank-start').value) : 1;
+            const rankEnd = isSubTournament ? parseInt(document.getElementById('op-tourn-rank-end').value) : adv;
+
+            if (rankStart > rankEnd) {
+                alert('진출 순위 시작은 종료 순위보다 클 수 없습니다. 순위 범위를 다시 선택해 주세요.');
+                return;
+            }
+
+            const totalPlayers = groups * (rankEnd - rankStart + 1);
 
             let size = 2;
             while (size < totalPlayers) size *= 2;
 
-            tournamentState.size = size;
-            tournamentState.rounds = Math.log2(size);
-            tournamentState.visibleRound = 0;
-            tournamentState.groups = groups;
-            tournamentState.adv = adv;
+            tournamentState = normalizeTournamentState({
+                ...tournamentState,
+                size,
+                rounds: Math.log2(size),
+                tree: [],
+                visibleRound: 0,
+                groups,
+                adv,
+                rankStart,
+                rankEnd,
+                type: isSubTournament ? 'sub' : 'main'
+            });
 
             const infoBox = document.getElementById('op-tourn-info');
             infoBox.classList.remove('hidden');
-            infoBox.innerHTML = `✅ ${groups}조 × ${adv}명 = <b>${totalPlayers}명 진출</b> 👉 <b>${size}강 대진표</b>`;
+            const rankLabel = rankStart === 1 && rankEnd === adv ? `1위~${rankEnd}위 본선 토너먼트` : `${rankStart}위~${rankEnd}위 하위 토너먼트`;
+            infoBox.innerHTML = `✅ ${rankLabel} · ${groups}조 × ${rankEnd - rankStart + 1}명 = <b>${totalPlayers}명 진출</b> 👉 <b>${size}강 대진표</b>`;
 
             let players = [];
-            for (let rank = 1; rank <= adv; rank++) {
+            for (let rank = rankStart; rank <= rankEnd; rank++) {
                 let grpArr = Array.from({ length: groups }, (_, i) => i + 1);
                 if (rank % 2 === 0) {
                     grpArr.reverse();
@@ -3237,7 +3327,7 @@
             let bracketPlayers = new Array(size).fill(null);
             
             // 3조 8명 진출 (24명) 특수 템플릿 처리
-            if (groups === 3 && adv === 8) {
+            if (groups === 3 && rankStart === 1 && rankEnd === 8) {
                 bracketPlayers = ['1조1위', '부전승(BYE)', '2조6위', '3조6위', '2조3위', '1조8위', '부전승(BYE)', '1조3위', '3조2위', '부전승(BYE)', '3조7위', '1조5위', '3조4위', '2조7위', '부전승(BYE)', '2조2위', '2조1위', '부전승(BYE)', '1조7위', '3조5위', '2조4위', '3조8위', '부전승(BYE)', '1조2위', '3조3위', '부전승(BYE)', '2조8위', '1조4위', '2조5위', '1조6위', '부전승(BYE)', '3조1위'];
             } else {
                 let seeds = [1, 2];
@@ -3295,8 +3385,10 @@
             // 예선 순위를 항상 최신 상태로 자동 계산 후 불러오기
             calculateGroupRankings();
 
+            tournamentState = normalizeTournamentState(tournamentState);
             const targetGroups = tournamentState.groups || parseInt(document.getElementById('op-tourn-groups').value);
-            const targetAdv = tournamentState.adv || parseInt(document.getElementById('op-tourn-adv').value);
+            const targetRankStart = tournamentState.rankStart || 1;
+            const targetRankEnd = tournamentState.rankEnd || tournamentState.adv || parseInt(document.getElementById('op-tourn-adv').value);
             let rankMap = {};
             let globalGroupIndex = 1; // [강력한 로직] 절대적 조 번호 부여
 
@@ -3312,7 +3404,7 @@
                             if (shouldUseGroup && playerObj && rankInput && rankInput.value.trim() !== "") {
                                 // [강력한 로직] 유연한 순위 텍스트 추출 (숫자만 남김)
                                 let rankNum = parseInt(rankInput.value.replace(/[^0-9]/g, ''), 10);
-                                if (rankNum && rankNum <= targetAdv) {
+                                if (rankNum && rankNum >= targetRankStart && rankNum <= targetRankEnd) {
                                     // ${globalGroupIndex}조${rankNum}위 형식의 키로 저장
                                     rankMap[`${globalGroupIndex}조${rankNum}위`] = playerObj.display;
                                 }
@@ -4707,7 +4799,7 @@
             formState.opPlanned = [];
             formState.opParticipantChecks = {};
             window.multiLeagues = [];
-            tournamentState = { size: 0, rounds: 0, tree: [], visibleRound: 0, groups: 0, adv: 0, originalTemplate: [] };
+            tournamentState = { ...defaultTournamentState };
             localStorage.removeItem('pingpongTempLeagueData');
             localStorage.removeItem('preliminaryResults');
 
