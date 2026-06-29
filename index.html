@@ -515,6 +515,9 @@
                         <button onclick="printTournament()"
                             class="text-[11px] bg-rose-600 text-white px-3 py-2 rounded-lg font-bold shadow-md btn-press flex items-center gap-1">🖨️
                             대진표 인쇄</button>
+                        <button onclick="resetActiveTournamentBracket()"
+                            class="text-[11px] bg-amber-500 text-white px-3 py-2 rounded-lg font-bold shadow-md btn-press flex items-center gap-1">↩️
+                            대진표 초기화</button>
                         <button onclick="deleteActiveTournament()"
                             class="text-[11px] bg-slate-700 text-white px-3 py-2 rounded-lg font-bold shadow-md btn-press flex items-center gap-1">🗑️
                             대진표 삭제</button>
@@ -3380,6 +3383,30 @@
             if (tournamentState.size === 0 && tournamentState.subTournaments.length === 0) return alert('삭제할 대진표가 없습니다.');
             const idx = parseInt(tournamentState.activeTournamentIndex) || 0;
             removeTournamentBracket(idx);
+        }
+
+        function resetActiveTournamentBracket() {
+            tournamentState = normalizeTournamentState(tournamentState);
+            if (!tournamentState.size || !tournamentState.tree || !tournamentState.tree[0]) {
+                return alert('초기화할 대진표가 없습니다. 먼저 대진표를 생성해 주세요.');
+            }
+
+            if (!confirm('현재 대진표의 승패/진출 결과를 모두 초기화할까요?\n1라운드 참가자 배치는 유지됩니다.')) return;
+
+            for (let r = 1; r <= tournamentState.rounds; r++) {
+                if (Array.isArray(tournamentState.tree[r])) tournamentState.tree[r].fill('');
+            }
+
+            isFullView = false;
+            isSwapMode = false;
+            swapFirstPick = null;
+            tournamentState.visibleRound = 0;
+
+            propagateByes();
+            persistActiveTournament();
+            renderTournamentUI();
+            saveDataToStorage();
+            alert('✅ 대진표 승패/진출 결과가 초기화되었습니다.');
         }
 
         function syncTournamentRankEndFromAdv() {
