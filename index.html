@@ -3449,7 +3449,17 @@
 
             tournamentState = normalizeTournamentState(tournamentState);
             persistActiveTournament();
-            const existingBrackets = Array.isArray(tournamentState.subTournaments) ? tournamentState.subTournaments : [];
+            // 새 대진표를 생성할 때 이전에 입력된 동일 범위 대진표는 삭제합니다.
+            // 상위(본선) 대진표를 다시 만들면 기존 하위 대진표도 함께 초기화해
+            // 이전 본선 기준으로 입력된 승패/진출 결과가 섞이지 않도록 합니다.
+            const existingBrackets = Array.isArray(tournamentState.subTournaments)
+                ? tournamentState.subTournaments.filter(bracket => {
+                    const bracketRankStart = parseInt(bracket.rankStart) || 1;
+                    const bracketRankEnd = parseInt(bracket.rankEnd) || parseInt(bracket.adv) || 0;
+                    if (rankStart === 1) return false;
+                    return !(bracketRankStart === rankStart && bracketRankEnd === rankEnd);
+                })
+                : [];
             tournamentState = normalizeTournamentState({
                 ...tournamentState,
                 size,
