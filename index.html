@@ -3239,6 +3239,7 @@
             rankEnd: 0,
             type: 'main',
             subTournaments: [],
+            activeTournamentIndex: 0,
             originalTemplate: []  // 예선 결과 재매칭을 위한 원본 템플릿 저장용
         };
         let tournamentState = { ...defaultTournamentState };
@@ -3252,9 +3253,72 @@
             normalized.rankEnd = parseInt(normalized.rankEnd) || parseInt(normalized.adv) || 0;
             normalized.type = normalized.type || 'main';
             normalized.subTournaments = Array.isArray(normalized.subTournaments) ? normalized.subTournaments : [];
+            normalized.activeTournamentIndex = parseInt(normalized.activeTournamentIndex) || 0;
             normalized.tree = Array.isArray(normalized.tree) ? normalized.tree : [];
             normalized.originalTemplate = Array.isArray(normalized.originalTemplate) ? normalized.originalTemplate : [];
             return normalized;
+        }
+
+        function getTournamentBracketSnapshot(state = tournamentState) {
+            const normalized = normalizeTournamentState(state);
+            return {
+                size: normalized.size,
+                rounds: normalized.rounds,
+                tree: JSON.parse(JSON.stringify(normalized.tree || [])),
+                visibleRound: normalized.visibleRound || 0,
+                groups: normalized.groups,
+                adv: normalized.adv,
+                rankStart: normalized.rankStart,
+                rankEnd: normalized.rankEnd,
+                type: normalized.type,
+                originalTemplate: [...(normalized.originalTemplate || [])],
+                title: getTournamentLabel(normalized)
+            };
+        }
+
+        function getTournamentLabel(state = tournamentState) {
+            const start = parseInt(state.rankStart) || 1;
+            const end = parseInt(state.rankEnd) || parseInt(state.adv) || 0;
+            if (!end) return '본선 대진표';
+            if (start === 1) return `상위 토너먼트(${start}~${end}위)`;
+            return `하위 토너먼트(${start}~${end}위)`;
+        }
+
+        function persistActiveTournament() {
+            if (!tournamentState || !Array.isArray(tournamentState.subTournaments) || !tournamentState.tree || tournamentState.size === 0) return;
+            const idx = parseInt(tournamentState.activeTournamentIndex) || 0;
+            tournamentState.subTournaments[idx] = getTournamentBracketSnapshot(tournamentState);
+        }
+
+        function loadTournamentBracket(index) {
+            tournamentState = normalizeTournamentState(tournamentState);
+            persistActiveTournament();
+            const bracket = tournamentState.subTournaments[index];
+            if (!bracket) return;
+            const allBrackets = tournamentState.subTournaments;
+            tournamentState = normalizeTournamentState({
+                ...tournamentState,
+                ...bracket,
+                tree: JSON.parse(JSON.stringify(bracket.tree || [])),
+                originalTemplate: [...(bracket.originalTemplate || [])],
+                subTournaments: allBrackets,
+                activeTournamentIndex: index
+            });
+            isFullView = false;
+            isSwapMode = false;
+            swapFirstPick = null;
+            renderTournamentUI();
+        }
+
+        function removeTournamentBracket(index) {
+            tournamentState = normalizeTournamentState(tournamentState);
+            if (tournamentState.subTournaments.length <= 1) return alert('대진표가 1개뿐이라 삭제할 수 없습니다.');
+            if (!confirm('선택한 대진표를 삭제할까요?')) return;
+            tournamentState.subTournaments.splice(index, 1);
+            const nextIndex = Math.max(0, Math.min(index - 1, tournamentState.subTournaments.length - 1));
+            tournamentState.activeTournamentIndex = nextIndex;
+            loadTournamentBracket(nextIndex);
+            saveDataToStorage();
         }
 
         function syncTournamentRankEndFromAdv() {
@@ -3295,6 +3359,9 @@
             let size = 2;
             while (size < totalPlayers) size *= 2;
 
+            tournamentState = normalizeTournamentState(tournamentState);
+            persistActiveTournament();
+            const existingBrackets = Array.isArray(tournamentState.subTournaments) ? tournamentState.subTournaments : [];
             tournamentState = normalizeTournamentState({
                 ...tournamentState,
                 size,
@@ -3305,12 +3372,14 @@
                 adv,
                 rankStart,
                 rankEnd,
-                type: isSubTournament ? 'sub' : 'main'
+                type: isSubTournament ? 'sub' : 'main',
+                subTournaments: existingBrackets,
+                activeTournamentIndex: existingBrackets.length
             });
 
             const infoBox = document.getElementById('op-tourn-info');
             infoBox.classList.remove('hidden');
-            const rankLabel = rankStart === 1 && rankEnd === adv ? `1위~${rankEnd}위 본선 토너먼트` : `${rankStart}위~${rankEnd}위 하위 토너먼트`;
+            const rankLabel = rankStart === 1 ? `1위~${rankEnd}위 상위 토너먼트` : `${rankStart}위~${rankEnd}위 하위 토너먼트`;
             infoBox.innerHTML = `✅ ${rankLabel} · ${groups}조 × ${rankEnd - rankStart + 1}명 = <b>${totalPlayers}명 진출</b> 👉 <b>${size}강 대진표</b>`;
 
             let players = [];
@@ -3351,7 +3420,9 @@
             }
 
             propagateByes();
+            persistActiveTournament();
             renderTournamentUI();
+            saveDataToStorage();
         }
 
         function propagateByes() {
@@ -3449,6 +3520,7 @@
                 }
                 
                 propagateByes();
+                persistActiveTournament();
                 renderTournamentUI();
                 saveDataToStorage();
             } else {
@@ -3506,6 +3578,7 @@
                 
                 swapFirstPick = null;
                 propagateByes();
+                persistActiveTournament();
                 renderTournamentUI();
                 saveDataToStorage();
             }
@@ -3763,9 +3836,24 @@
             filterContainer.classList.remove('hidden');
             document.getElementById('tourn-quick-nav').classList.add('hidden');
 
+            tournamentState = normalizeTournamentState(tournamentState);
+            if ((!tournamentState.subTournaments || tournamentState.subTournaments.length === 0) && tournamentState.size > 0) {
+                tournamentState.subTournaments = [getTournamentBracketSnapshot(tournamentState)];
+                tournamentState.activeTournamentIndex = 0;
+            }
+            const bracketTabs = (tournamentState.subTournaments || []).map((bracket, idx) => {
+                const active = idx === (parseInt(tournamentState.activeTournamentIndex) || 0);
+                return `<div class="flex items-center rounded-full border ${active ? 'bg-rose-600 text-white border-rose-700 shadow-md' : 'bg-white text-slate-600 border-slate-200'} overflow-hidden">
+                    <button onclick="loadTournamentBracket(${idx})" class="px-3 py-1.5 text-[11px] font-black whitespace-nowrap">${escapeHTML(bracket.title || getTournamentLabel(bracket))}</button>
+                    ${(tournamentState.subTournaments || []).length > 1 ? `<button onclick="removeTournamentBracket(${idx})" class="px-2 py-1.5 text-[10px] font-black ${active ? 'bg-rose-700/60' : 'bg-slate-50 text-slate-400'}">×</button>` : ''}
+                </div>`;
+            }).join('');
+
             // 1. 조작 버튼 및 라운드 필터 렌더링
             let filterHtml = `
                 <div class="flex flex-col w-full gap-2">
+                    <div class="flex overflow-x-auto pb-1 gap-1.5 no-scrollbar">${bracketTabs}</div>
+                    <div class="text-[10px] text-slate-500 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 font-bold">💡 상위 대진표 생성 후, [➕ 하위 토너먼트]에서 순위 범위(예: 3~4위)를 고르고 [대진표 생성]을 누르면 대진표가 추가됩니다.</div>
                     <div class="flex gap-2 justify-end">
                         <button onclick="toggleFullView()" class="text-[11px] px-3 py-1.5 rounded-lg font-bold border transition-all ${isFullView ? 'bg-indigo-600 text-white border-indigo-700 shadow-inner' : 'bg-white text-slate-700 border-slate-200'}">🌳 전체 보기</button>
                         <button onclick="toggleSwapMode()" class="text-[11px] px-3 py-1.5 rounded-lg font-bold border transition-all ${isSwapMode ? 'bg-orange-500 text-white border-orange-600 shadow-inner' : 'bg-white text-slate-700 border-slate-200'}">🔄 자리 변경 모드</button>
@@ -3894,12 +3982,14 @@
             cascadeClearTournament(nextRound, nextIdx);
 
             propagateByes();
+            persistActiveTournament();
             renderTournamentUI();
             saveDataToStorage();
         }
 
         function setTournamentFilter(roundIdx) {
             tournamentState.visibleRound = roundIdx;
+            persistActiveTournament();
             renderTournamentUI();
         }
 
@@ -3939,6 +4029,7 @@
                     tournamentState.tree[0][n] = `${m.name}(${m.handicap})`;
                     cascadeClearTournament(0, n);
                     propagateByes();
+                    persistActiveTournament();
                     renderTournamentUI();
                     closeSelector(); // 한 명 선택 후 모달 닫기
                 }
