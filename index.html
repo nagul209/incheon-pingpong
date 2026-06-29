@@ -4063,12 +4063,14 @@
             initTournamentPanZoom(container);
         }
 
-        function toggleTournamentWinner(round, idx) {
-            const player = tournamentState.tree[round][idx];
-            if (!player || player === "부전승(BYE)") return;
+        function setTournamentMatchWinner(round, idx, winnerName = null) {
+            tournamentState = normalizeTournamentState(tournamentState);
+            const player = winnerName || (tournamentState.tree[round] && tournamentState.tree[round][idx]);
+            if (!player || player === "부전승(BYE)") return false;
 
             const nextRound = round + 1;
-            if (!tournamentState.tree[nextRound]) return;
+            if (!tournamentState.tree[nextRound]) return false;
+
             const nextIdx = Math.floor(idx / 2);
             const currentWinner = tournamentState.tree[nextRound][nextIdx];
             const nextWinner = currentWinner === player ? "" : player;
@@ -4079,10 +4081,16 @@
             // 승자가 바뀌거나 취소되면 이후 라운드 결과는 더 이상 유효하지 않으므로 연쇄 초기화합니다.
             cascadeClearTournament(nextRound, nextIdx);
 
+            // 현재 활성화된 상위/하위 대진표 탭에 결과를 즉시 반영합니다.
+            // 탭을 전환하거나 기록 저장을 할 때 다른 대진표 결과와 섞이지 않도록 합니다.
             propagateByes();
             persistActiveTournament();
-            renderTournamentUI();
             saveDataToStorage();
+            return true;
+        }
+
+        function toggleTournamentWinner(round, idx) {
+            if (setTournamentMatchWinner(round, idx)) renderTournamentUI();
         }
 
         function setTournamentFilter(roundIdx) {
@@ -4167,7 +4175,10 @@
             if (currentWinnerTarget) {
                 tournamentState.tree[currentWinnerTarget.r][currentWinnerTarget.n] = winnerName;
                 cascadeClearTournament(currentWinnerTarget.r, currentWinnerTarget.n);
+                propagateByes();
+                persistActiveTournament();
                 renderTournamentUI();
+                saveDataToStorage();
             }
             closeWinnerSelector();
         }
