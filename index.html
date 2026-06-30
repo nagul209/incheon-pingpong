@@ -3647,7 +3647,16 @@
 
         function toggleFullView() {
             isFullView = !isFullView;
+            if (isFullView) persistActiveTournament();
             renderTournamentUI();
+        }
+
+        function clearTournamentViewportState() {
+            const container = document.getElementById('op-tourn-container');
+            if (!container) return;
+            if (container._tournPanCleanup) container._tournPanCleanup();
+            container._tournPanState = null;
+            container._tournSuppressNextClick = false;
         }
 
         function syncActiveTournamentBracketSnapshot() {
@@ -4004,7 +4013,10 @@
             }
 
             // 2. 기존 라운드별 매치업 카드 리스트 렌더링
-            let html = `<div class="tourn-pan-hint">🖱️ 드래그 이동 · 🤏 확대/축소 · 이름 클릭=승리/진출</div><div id="op-tourn-scroll-area" class="tourn-pan-content mt-4 space-y-4 pb-10 px-2 bg-slate-50/50">`;
+            const currentRoundSize = vRound < rounds ? size / Math.pow(2, vRound) : 1;
+            const currentRoundLabel = vRound === rounds ? '우승자'
+                : (currentRoundSize === 2 ? '결승' : (currentRoundSize === 4 ? '4강' : `${currentRoundSize}강`));
+            let html = `<div class="tourn-pan-hint">🖱️ 드래그 이동 · 🤏 확대/축소 · 이름 클릭=승리/진출</div><div id="op-tourn-scroll-area" class="tourn-pan-content mt-4 space-y-4 pb-10 px-2 bg-slate-50/50"><div class="sticky top-0 z-10 -mx-2 mb-3 bg-white/95 backdrop-blur border border-indigo-100 rounded-2xl px-4 py-3 shadow-sm"><div class="text-[11px] text-indigo-500 font-black tracking-widest">현재 라운드</div><div class="text-lg font-black text-slate-800">${currentRoundLabel}</div><div class="text-[10px] text-slate-400 font-bold mt-0.5">아래 이름을 누르면 승리 처리되어 다음 라운드로 진출합니다.</div></div>`;
 
             if (vRound < rounds) {
                 const numMatches = size / Math.pow(2, vRound + 1);
@@ -4110,13 +4122,21 @@
         }
 
         function setTournamentFilter(roundIdx) {
-            tournamentState.visibleRound = roundIdx;
+            tournamentState = normalizeTournamentState(tournamentState);
+            const parsedRound = parseInt(roundIdx, 10);
+            const maxRound = parseInt(tournamentState.rounds, 10) || 0;
+            tournamentState.visibleRound = Number.isFinite(parsedRound)
+                ? Math.max(0, Math.min(parsedRound, maxRound))
+                : 0;
             persistActiveTournament();
             renderTournamentUI();
         }
 
         function selectTournamentRound(roundIdx) {
+            // 전체보기에서 라운드 버튼(8강/4강/결승 등)을 누르면 반드시
+            // 라운드별 입력 화면으로 전환해, 각 이름 클릭으로 승리/진출 처리를 할 수 있게 한다.
             isFullView = false;
+            clearTournamentViewportState();
             setTournamentFilter(roundIdx);
         }
 
