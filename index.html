@@ -3621,6 +3621,7 @@
 
                 propagateByes();
                 persistActiveTournament();
+                syncActiveTournamentBracketSnapshot();
                 renderTournamentUI();
                 saveDataToStorage();
                 alert(`✅ 총 ${mappedCount}명의 예선 결과가 대진표에 연동되었습니다.`);
@@ -3639,6 +3640,14 @@
         function toggleFullView() {
             isFullView = !isFullView;
             renderTournamentUI();
+        }
+
+        function syncActiveTournamentBracketSnapshot() {
+            tournamentState = normalizeTournamentState(tournamentState);
+            if (!Array.isArray(tournamentState.subTournaments) || tournamentState.subTournaments.length === 0) return;
+            const idx = parseInt(tournamentState.activeTournamentIndex, 10) || 0;
+            if (!tournamentState.subTournaments[idx]) return;
+            tournamentState.subTournaments[idx] = getTournamentBracketSnapshot(tournamentState);
         }
 
         function handleTournamentClick(round, idx) {
@@ -4288,7 +4297,7 @@
 
                 html += `
                     <div class="grid relative" style="width:${columnWidth}px; grid-template-rows: repeat(${firstRoundMatches}, minmax(${rowHeight}px, auto));">
-                        <div class="absolute -top-7 left-0 right-0 text-center text-[10px] font-black text-slate-400 tracking-widest">${roundLabel}</div>
+                        <button type="button" onclick="selectTournamentRound(${r})" class="absolute -top-8 left-0 right-0 text-center text-[10px] font-black text-slate-400 tracking-widest hover:text-indigo-600 transition-colors" title="${roundLabel} 승 입력 화면으로 전환">${roundLabel}</button>
                 `;
 
                 for (let m = 0; m < matches; m++) {
