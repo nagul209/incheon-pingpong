@@ -3296,16 +3296,6 @@
             tournamentState.subTournaments[idx] = getTournamentBracketSnapshot(tournamentState);
         }
 
-        function updateActiveTournamentAfterEdit() {
-            // 상위/하위 어느 탭에서 조작하더라도 현재 활성 대진표 스냅샷을
-            // 즉시 갱신합니다. 특히 상위 토너먼트는 보통 0번 탭이라 falsy 값
-            // 취급이나 오래된 최상위 상태로 덮어쓰기 쉬워 별도 공통 경로로 보호합니다.
-            tournamentState = normalizeTournamentState(tournamentState);
-            propagateByes();
-            persistActiveTournament();
-            saveDataToStorage();
-        }
-
         function resetTournamentView(message = '조건을 선택하고 대진표 생성을 눌러주세요.') {
             tournamentState = normalizeTournamentState({ ...defaultTournamentState });
             isFullView = false;
@@ -3629,9 +3619,11 @@
                 tournamentState.visibleRound = 0;
                 isFullView = false;
 
-                updateActiveTournamentAfterEdit();
+                propagateByes();
+                persistActiveTournament();
                 syncActiveTournamentBracketSnapshot();
                 renderTournamentUI();
+                saveDataToStorage();
                 alert(`✅ 총 ${mappedCount}명의 예선 결과가 대진표에 연동되었습니다.`);
             } else {
                 alert("예선 기록에서 대진표와 일치하는 순위 정보(예: 1조 1위)를 찾지 못했습니다. 자동 순위 계산을 먼저 확인해 주세요.");
@@ -3695,8 +3687,10 @@
                 cascadeClearTournament(0, idx);
                 
                 swapFirstPick = null;
-                updateActiveTournamentAfterEdit();
+                propagateByes();
+                persistActiveTournament();
                 renderTournamentUI();
+                saveDataToStorage();
             }
         }
 
@@ -4101,7 +4095,9 @@
 
             // 현재 활성화된 상위/하위 대진표 탭에 결과를 즉시 반영합니다.
             // 탭을 전환하거나 기록 저장을 할 때 다른 대진표 결과와 섞이지 않도록 합니다.
-            updateActiveTournamentAfterEdit();
+            propagateByes();
+            persistActiveTournament();
+            saveDataToStorage();
             return true;
         }
 
@@ -4196,8 +4192,10 @@
             if (currentWinnerTarget) {
                 tournamentState.tree[currentWinnerTarget.r][currentWinnerTarget.n] = winnerName;
                 cascadeClearTournament(currentWinnerTarget.r, currentWinnerTarget.n);
-                updateActiveTournamentAfterEdit();
+                propagateByes();
+                persistActiveTournament();
                 renderTournamentUI();
+                saveDataToStorage();
             }
             closeWinnerSelector();
         }
@@ -4318,20 +4316,14 @@
                     const p1Highlight = showSwapHighlight && isSwapMode && r === 0 && swapFirstPick === p1Idx;
                     const p2Highlight = showSwapHighlight && isSwapMode && r === 0 && swapFirstPick === p2Idx;
 
-                    const cellHtml = (player, idx, isWinner, isLoser, isBye, isHighlighted) => {
-                        const winButton = (enableClick && !isSwapMode && player && !isBye)
-                            ? `<button type="button" class="tourn-win-button mt-1 px-2 py-0.5 rounded-full text-[9px] font-black shadow-sm border transition-all btn-press ${isWinner ? 'bg-blue-600 text-white border-blue-700' : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'}" aria-label="${escapeHTML(player)} 승리 처리">승</button>`
-                            : '';
-                        return `
+                    const cellHtml = (player, idx, isWinner, isLoser, isBye, isHighlighted) => `
                         <div${getCellClick(r, idx)}
                              class="relative z-10 w-full border ${isWinner ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-100' : (isLoser ? 'border-slate-200 bg-slate-100 opacity-55 grayscale' : (isBye ? 'border-slate-200 bg-slate-100 opacity-60' : 'border-slate-300 bg-white'))} rounded p-1.5 text-center shadow-sm transition-all ${getCellCursor} ${isHighlighted ? 'ring-4 ring-orange-500 border-orange-500 scale-105 shadow-md' : ''}"
                              role="button" tabindex="0" title="${safeText(player)} 클릭 시 승리 처리 및 다음 라운드 진출"
-                             style="min-height:${cellMinHeight}px; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                             style="min-height:${cellMinHeight}px; display:flex; align-items:center; justify-content:center;">
                             ${isWinner ? '<span class="absolute -top-2 -right-2 bg-blue-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shadow border border-white">승</span>' : (isLoser ? '<span class="absolute -top-2 -right-2 bg-slate-300 text-slate-600 text-[9px] font-black px-1.5 py-0.5 rounded-full shadow border border-white">패</span>' : '')}
                             <span class="text-[10px] font-black ${isWinner ? 'text-blue-700' : (isLoser ? 'text-slate-400 line-through' : 'text-slate-700')} tracking-tight break-all">${safeText(player)}</span>
-                            ${winButton}
                         </div>`;
-                    };
 
                     html += `
                         <div class="relative flex flex-col justify-center gap-2 py-1" style="grid-row: ${rowStart} / span ${spanRows};">
