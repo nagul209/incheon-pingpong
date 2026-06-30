@@ -3609,18 +3609,21 @@
             }
 
             if (mappedCount > 0) {
-                // [요구사항] 성공 알림창 및 즉시 갱신
-                alert(`✅ 총 ${mappedCount}명의 예선 결과가 대진표에 연동되었습니다.`);
-                
                 // 남은 라운드 초기화
                 for (let r = 1; r <= tournamentState.rounds; r++) {
                     tournamentState.tree[r].fill("");
                 }
-                
+
+                // 예선 결과를 불러온 직후에는 사용자가 [전체 보기]를 누르지 않아도
+                // 하단의 현재 대진표 입력 화면에서 1라운드 배정 결과를 바로 확인할 수 있게 갱신합니다.
+                tournamentState.visibleRound = 0;
+                isFullView = false;
+
                 propagateByes();
                 persistActiveTournament();
                 renderTournamentUI();
                 saveDataToStorage();
+                alert(`✅ 총 ${mappedCount}명의 예선 결과가 대진표에 연동되었습니다.`);
             } else {
                 alert("예선 기록에서 대진표와 일치하는 순위 정보(예: 1조 1위)를 찾지 못했습니다. 자동 순위 계산을 먼저 확인해 주세요.");
             }
@@ -3963,14 +3966,14 @@
                 let btnText = roundSize === 2 ? "결승" : roundSize === 4 ? "4강" : roundSize + "강";
                 const activeClass = (vRound === r && !isFullView) ? 'bg-indigo-600 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-600';
                 filterHtml += `
-                    <button onclick="isFullView = false; setTournamentFilter(${r})" class="whitespace-nowrap px-5 py-2 rounded-full text-xs font-bold transition-all ${activeClass}">
+                    <button onclick="selectTournamentRound(${r})" class="whitespace-nowrap px-5 py-2 rounded-full text-xs font-bold transition-all ${activeClass}">
                         ${btnText}
                     </button>
                 `;
             }
             const winnerActive = vRound === rounds && !isFullView;
             filterHtml += `
-                <button onclick="isFullView = false; setTournamentFilter(${rounds})" class="whitespace-nowrap px-5 py-2 rounded-full text-xs font-bold transition-all ${winnerActive ? 'bg-amber-500 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-600'}">
+                <button onclick="selectTournamentRound(${rounds})" class="whitespace-nowrap px-5 py-2 rounded-full text-xs font-bold transition-all ${winnerActive ? 'bg-amber-500 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-600'}">
                     🏆 우승자
                 </button>
             </div></div>`;
@@ -4097,6 +4100,11 @@
             tournamentState.visibleRound = roundIdx;
             persistActiveTournament();
             renderTournamentUI();
+        }
+
+        function selectTournamentRound(roundIdx) {
+            isFullView = false;
+            setTournamentFilter(roundIdx);
         }
 
         function scrollTourn(position) {
