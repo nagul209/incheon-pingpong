@@ -3650,38 +3650,6 @@
             tournamentState.subTournaments[idx] = getTournamentBracketSnapshot(tournamentState);
         }
 
-        function ensureActiveTournamentLoaded() {
-            tournamentState = normalizeTournamentState(tournamentState);
-            const idx = parseInt(tournamentState.activeTournamentIndex, 10) || 0;
-            const activeBracket = Array.isArray(tournamentState.subTournaments) ? tournamentState.subTournaments[idx] : null;
-            if (!activeBracket || activeBracket === tournamentState) return;
-
-            const currentSignature = JSON.stringify({
-                size: tournamentState.size,
-                rankStart: tournamentState.rankStart,
-                rankEnd: tournamentState.rankEnd,
-                type: tournamentState.type,
-                tree: tournamentState.tree
-            });
-            const activeSignature = JSON.stringify({
-                size: activeBracket.size,
-                rankStart: activeBracket.rankStart,
-                rankEnd: activeBracket.rankEnd,
-                type: activeBracket.type,
-                tree: activeBracket.tree
-            });
-            if (currentSignature === activeSignature) return;
-
-            tournamentState = normalizeTournamentState({
-                ...tournamentState,
-                ...activeBracket,
-                tree: JSON.parse(JSON.stringify(activeBracket.tree || [])),
-                originalTemplate: [...(activeBracket.originalTemplate || [])],
-                subTournaments: tournamentState.subTournaments,
-                activeTournamentIndex: idx
-            });
-        }
-
         function handleTournamentClick(round, idx) {
             // 자리 변경 모드는 관리자만 가능하지만, 승자 선택은 대진표 운영 중 바로 입력할 수 있게 허용합니다.
             if (isSwapMode) {
@@ -3969,17 +3937,16 @@
         }
 
         function renderTournamentUI() {
-            ensureActiveTournamentLoaded();
             if (!tournamentState.tree) return;
+            const size = tournamentState.size;
+            const rounds = tournamentState.rounds;
+            const vRound = tournamentState.visibleRound;
 
             const filterContainer = document.getElementById('tourn-filter-container');
             filterContainer.classList.remove('hidden');
             document.getElementById('tourn-quick-nav').classList.add('hidden');
 
             tournamentState = normalizeTournamentState(tournamentState);
-            const size = tournamentState.size;
-            const rounds = tournamentState.rounds;
-            const vRound = tournamentState.visibleRound;
             if ((!tournamentState.subTournaments || tournamentState.subTournaments.length === 0) && tournamentState.size > 0) {
                 tournamentState.subTournaments = [getTournamentBracketSnapshot(tournamentState)];
                 tournamentState.activeTournamentIndex = 0;
@@ -4109,7 +4076,6 @@
         }
 
         function setTournamentMatchWinner(round, idx, winnerName = null) {
-            ensureActiveTournamentLoaded();
             tournamentState = normalizeTournamentState(tournamentState);
             const player = winnerName || (tournamentState.tree[round] && tournamentState.tree[round][idx]);
             if (!player || player === "부전승(BYE)") return false;
@@ -4140,7 +4106,6 @@
         }
 
         function setTournamentFilter(roundIdx) {
-            ensureActiveTournamentLoaded();
             tournamentState.visibleRound = roundIdx;
             persistActiveTournament();
             renderTournamentUI();
