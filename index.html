@@ -2623,13 +2623,9 @@
             return 'draw';
         }
 
-        function calculateGroupRankings(leagueId = null, options = {}) {
+        function calculateGroupRankings(leagueId = null) {
             const targetLeagues = leagueId ? [getLeagueById(leagueId)] : window.multiLeagues;
-            const silent = !!(options && options.silent);
-            if (!targetLeagues.length || !targetLeagues[0]) {
-                if (!silent) alert("진행할 리그전표가 없습니다.");
-                return false;
-            }
+            if (!targetLeagues.length || !targetLeagues[0]) return alert("진행할 리그전표가 없습니다.");
 
             targetLeagues.forEach(league => {
                 for (let g = 1; g <= league.groupCount; g++) {
@@ -2717,11 +2713,10 @@
                     });
                 }
             });
-            if (!silent) alert("🧮 선택한/전체 리그 표의 자동 계산이 완료되었습니다.");
+            alert("🧮 선택한/전체 리그 표의 자동 계산이 완료되었습니다.");
             saveDataToStorage();
             // 매번 전체 결과를 취합하여 저장 (전체 버튼이든 개별 버튼이든)
             saveAllPreliminaryResults();
-            return true;
         }
 
         function getMedalEmojiByRank(rank) {
@@ -3550,47 +3545,14 @@
             }
         }
 
-        function hasQualifierRankInputsForTournament(state = tournamentState) {
-            const normalized = normalizeTournamentState(state);
-            const targetGroups = normalized.groups || parseInt(document.getElementById('op-tourn-groups')?.value) || 0;
-            const targetRankStart = normalized.rankStart || 1;
-            const targetRankEnd = normalized.rankEnd || normalized.adv || parseInt(document.getElementById('op-tourn-adv')?.value) || 0;
-            let globalGroupIndex = 1;
-
-            if (!window.multiLeagues || window.multiLeagues.length === 0) return false;
-
-            for (const league of window.multiLeagues) {
-                for (let g = 1; g <= league.groupCount; g++) {
-                    const shouldUseGroup = globalGroupIndex <= targetGroups;
-                    const size = (league.groupSizes || {})[g] || 4;
-                    if (shouldUseGroup) {
-                        for (let p = 1; p <= size; p++) {
-                            const playerObj = (league.players || {})[`g${g}_p${p}`];
-                            const rankInput = document.getElementById(`rank-${league.id}-g${g}-p${p}`);
-                            const rankNum = rankInput && rankInput.value
-                                ? parseInt(String(rankInput.value).replace(/[^0-9]/g, ''), 10)
-                                : 0;
-                            if (playerObj && rankNum >= targetRankStart && rankNum <= targetRankEnd) return true;
-                        }
-                    }
-                    globalGroupIndex++;
-                }
-            }
-            return false;
-        }
-
         function loadQualifierResults() {
             if (!tournamentState || tournamentState.size === 0) {
                 alert("먼저 [대진표 생성] 버튼을 눌러 트리를 초기화해 주세요.");
                 return;
             }
 
-            tournamentState = normalizeTournamentState(tournamentState);
-            const hasRankInputs = hasQualifierRankInputsForTournament(tournamentState);
-            // 이미 입력/계산된 예선 순위가 있으면 그 값을 그대로 사용합니다.
-            // 기존에는 이 버튼을 누를 때마다 자동순위를 다시 계산하면서 수기 입력 순위가 지워져
-            // 대진표에 아무 값도 적용되지 않는 경우가 있었습니다.
-            if (!hasRankInputs) calculateGroupRankings(null, { silent: true });
+            // 예선 순위를 항상 최신 상태로 자동 계산 후 불러오기
+            calculateGroupRankings();
 
             tournamentState = normalizeTournamentState(tournamentState);
             const targetGroups = tournamentState.groups || parseInt(document.getElementById('op-tourn-groups').value);
@@ -3613,7 +3575,7 @@
                                 let rankNum = parseInt(rankInput.value.replace(/[^0-9]/g, ''), 10);
                                 if (rankNum && rankNum >= targetRankStart && rankNum <= targetRankEnd) {
                                     // ${globalGroupIndex}조${rankNum}위 형식의 키로 저장
-                                    rankMap[`${globalGroupIndex}조${rankNum}위`] = playerObj.display || playerObj.name;
+                                    rankMap[`${globalGroupIndex}조${rankNum}위`] = playerObj.display;
                                 }
                             }
                         }
