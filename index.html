@@ -1916,31 +1916,11 @@
             alert(`✅ 재계산 완료!\n\n- 예선 리그: ${qualifierGames}경기\n- 본선 토너먼트: ${tournamentGames}경기\n- 전용 레이팅 기록: ${manualGames}경기\n-------------------\n- 총 반영된 매치: ${totalGamesCount}경기${debugMsg}`);
         }
 
-        function normalizeFirebaseCollection(value) {
-            if (!value) return [];
-            if (Array.isArray(value)) return value.filter(item => item !== null && item !== undefined);
-            if (typeof value !== 'object') return [];
-            return Object.keys(value)
-                .sort((a, b) => {
-                    const na = Number(a);
-                    const nb = Number(b);
-                    if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
-                    return String(a).localeCompare(String(b));
-                })
-                .map(key => value[key])
-                .filter(item => item !== null && item !== undefined);
-        }
-
         function applyParsedData(parsed) {
-            parsed = parsed || {};
-            members = normalizeFirebaseCollection(parsed.members);
-            matchHistory = normalizeFirebaseCollection(parsed.matchHistory).map(m => ({ ...m, attend: m.attend || [], lazy: m.lazy || [], lg1: m.lg1 || [], lg2: m.lg2 || [], lg3: m.lg3 || [], tm1: m.tm1 || [], tm2: m.tm2 || [], tm3: m.tm3 || [], tn1: m.tn1 || [], tn2: m.tn2 || [], tn3: m.tn3 || [], utn1: m.utn1 || [], utn2: m.utn2 || [], utn3: m.utn3 || [], ltn1: m.ltn1 || [], ltn2: m.ltn2 || [], ltn3: m.ltn3 || [], db1: m.db1 || [], db2: m.db2 || [], db3: m.db3 || [], ev1: m.ev1 || [] }));
-            appConfig = { ...defaultAppConfig, ...(parsed.appConfig || {}) };
-            appConfig.pastSeasons = normalizeFirebaseCollection(appConfig.pastSeasons).map(season => ({
-                ...season,
-                members: normalizeFirebaseCollection(season.members),
-                matchHistory: normalizeFirebaseCollection(season.matchHistory)
-            }));
+            members = parsed.members || [];
+            matchHistory = (parsed.matchHistory || []).map(m => ({ ...m, attend: m.attend || [], lazy: m.lazy || [], lg1: m.lg1 || [], lg2: m.lg2 || [], lg3: m.lg3 || [], tm1: m.tm1 || [], tm2: m.tm2 || [], tm3: m.tm3 || [], tn1: m.tn1 || [], tn2: m.tn2 || [], tn3: m.tn3 || [], utn1: m.utn1 || [], utn2: m.utn2 || [], utn3: m.utn3 || [], ltn1: m.ltn1 || [], ltn2: m.ltn2 || [], ltn3: m.ltn3 || [], db1: m.db1 || [], db2: m.db2 || [], db3: m.db3 || [], ev1: m.ev1 || [] }));
+            appConfig = parsed.appConfig || { ...defaultAppConfig };
+            if (!appConfig.pastSeasons) appConfig.pastSeasons = [];
             scoreRules = { ...defaultScoreRules, ...(parsed.scoreRules || {}) };
             tournamentState = normalizeTournamentState(parsed.tournamentState || tournamentState);
             if (parsed.opAttend) formState.opAttend = parsed.opAttend;
@@ -1949,7 +1929,7 @@
             normalizeOperationParticipantChecks();
             
             // Firebase는 빈 객체 {}rk null로 변환되므로 players/groupSizes를 항상 방어
-            if (parsed.multiLeagues) window.multiLeagues = normalizeFirebaseCollection(parsed.multiLeagues).map(lg => ({
+            if (parsed.multiLeagues) window.multiLeagues = parsed.multiLeagues.map(lg => ({
                 ...lg,
                 players: lg.players || {},
                 groupSizes: lg.groupSizes || {},
