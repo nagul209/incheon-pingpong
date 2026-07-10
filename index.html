@@ -404,17 +404,18 @@
                     <span class="name-chip-empty text-emerald-500">👆 버튼을 눌러 참가예정자를 선택하세요.</span>
                 </div>
                 <div class="overflow-x-auto relative z-10 rounded-xl border border-slate-100">
-                    <table class="w-full text-left text-slate-700">
+                    <table class="w-full text-left text-slate-700 whitespace-nowrap">
                         <thead class="bg-slate-50 text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">
                             <tr>
-                                <th class="px-2 py-1.5 w-20">소속</th>
-                                <th class="px-2 py-1.5">이름(부수)</th>
-                                <th class="px-2 py-1.5 text-center w-14">성실</th>
-                                <th class="px-2 py-1.5 text-center w-14">참가비</th>
+                                <th class="px-1.5 py-1.5 text-center w-8">연번</th>
+                                <th class="px-1.5 py-1.5 w-16">소속</th>
+                                <th class="px-1.5 py-1.5">이름(부수)</th>
+                                <th class="px-1 py-1.5 text-center w-10">성실</th>
+                                <th class="px-1 py-1.5 text-center w-12">참가비</th>
                             </tr>
                         </thead>
                         <tbody id="op-planned-table-body" class="divide-y divide-slate-50">
-                            <tr><td colspan="4" class="px-3 py-4 text-center text-xs text-slate-400 font-bold">참가예정자를 선택하면 표로 표시됩니다.</td></tr>
+                            <tr><td colspan="5" class="px-3 py-4 text-center text-xs text-slate-400 font-bold">참가예정자를 선택하면 표로 표시됩니다.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -4967,7 +4968,7 @@
 
             if (!tableBody) return;
             if (planned.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="4" class="px-3 py-4 text-center text-xs text-slate-400 font-bold">참가예정자를 선택하면 표로 표시됩니다.</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="5" class="px-3 py-4 text-center text-xs text-slate-400 font-bold">참가예정자를 선택하면 표로 표시됩니다.</td></tr>';
                 return;
             }
 
@@ -4981,17 +4982,18 @@
                     : `<input type="checkbox" data-name="${escapeHTML(name)}" ${checks.sincere ? 'checked' : ''} onchange="toggleOperationParticipantCheck(this.dataset.name, 'sincere', this.checked)" class="w-4 h-4 accent-emerald-600 rounded cursor-pointer">`;
                 const handicap = member && member.handicap ? `${member.handicap}부` : '-';
                 const affiliation = member && member.affiliation ? member.affiliation : '-';
-                return `<tr class="${classes.row} transition-colors">
-                    <td class="px-2 py-1 text-xs font-extrabold text-slate-500 whitespace-nowrap">${escapeHTML(affiliation)}</td>
-                    <td class="px-2 py-1">
-                        <div class="inline-flex items-center rounded-lg px-2 py-0.5 ${classes.chip} shadow-sm">
-                            <span class="text-xs font-extrabold">${index + 1}. ${escapeHTML(name)}(${escapeHTML(handicap)})</span>
+                return `<tr class="${classes.row} transition-colors whitespace-nowrap">
+                    <td class="px-1.5 py-1 text-center text-[11px] font-black text-slate-400">${index + 1}</td>
+                    <td class="px-1.5 py-1 text-[11px] font-extrabold text-slate-500 max-w-[72px] truncate" title="${escapeHTML(affiliation)}">${escapeHTML(affiliation)}</td>
+                    <td class="px-1.5 py-1">
+                        <div class="inline-flex max-w-full items-center rounded-lg px-1.5 py-0.5 ${classes.chip} shadow-sm">
+                            <span class="truncate text-[11px] font-extrabold">${escapeHTML(name)}(${escapeHTML(handicap)})</span>
                         </div>
                     </td>
-                    <td class="px-2 py-1 text-center">
+                    <td class="px-1 py-1 text-center">
                         ${sincereCellHtml}
                     </td>
-                    <td class="px-2 py-1 text-center">
+                    <td class="px-1 py-1 text-center">
                         <input type="checkbox" data-name="${escapeHTML(name)}" ${checks.fee ? 'checked' : ''} onchange="toggleOperationParticipantCheck(this.dataset.name, 'fee', this.checked)" class="w-4 h-4 accent-indigo-600 rounded cursor-pointer">
                     </td>
                 </tr>`;
