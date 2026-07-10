@@ -385,7 +385,6 @@
                 <div class="flex justify-between items-center mb-3 border-b border-emerald-50 pb-2 relative z-10 gap-2">
                     <div>
                         <h3 class="font-extrabold text-emerald-800 text-base">📋 참가예정 명단</h3>
-                        <p class="text-[10px] text-slate-500 font-medium mt-0.5">카드로 참가예정자를 선택하고, 연회원은 성실 여부를, 전체는 참가비 여부를 체크하세요.</p>
                     </div>
                     <div class="flex gap-1.5 shrink-0 flex-wrap justify-end">
                         <button onclick="openSelector('opPlanned', '참가예정자 선택', false)"
@@ -408,13 +407,14 @@
                     <table class="w-full text-left text-slate-700">
                         <thead class="bg-slate-50 text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">
                             <tr>
-                                <th class="px-3 py-2">이름(부수)</th>
-                                <th class="px-3 py-2 text-center w-16">성실</th>
-                                <th class="px-3 py-2 text-center w-16">참가비</th>
+                                <th class="px-2 py-1.5 w-20">소속</th>
+                                <th class="px-2 py-1.5">이름(부수)</th>
+                                <th class="px-2 py-1.5 text-center w-14">성실</th>
+                                <th class="px-2 py-1.5 text-center w-14">참가비</th>
                             </tr>
                         </thead>
                         <tbody id="op-planned-table-body" class="divide-y divide-slate-50">
-                            <tr><td colspan="3" class="px-3 py-4 text-center text-xs text-slate-400 font-bold">참가예정자를 선택하면 표로 표시됩니다.</td></tr>
+                            <tr><td colspan="4" class="px-3 py-4 text-center text-xs text-slate-400 font-bold">참가예정자를 선택하면 표로 표시됩니다.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -4967,7 +4967,7 @@
 
             if (!tableBody) return;
             if (planned.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="3" class="px-3 py-4 text-center text-xs text-slate-400 font-bold">참가예정자를 선택하면 표로 표시됩니다.</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="4" class="px-3 py-4 text-center text-xs text-slate-400 font-bold">참가예정자를 선택하면 표로 표시됩니다.</td></tr>';
                 return;
             }
 
@@ -4977,20 +4977,22 @@
                 const classes = getOperationPlannedCardClasses(member);
                 const isNonMember = member && member.type === '비회원';
                 const sincereCellHtml = isNonMember
-                    ? '<span class="inline-flex items-center justify-center rounded-full bg-slate-100 px-2 py-1 text-[10px] font-extrabold text-slate-400">제외</span>'
-                    : `<input type="checkbox" data-name="${escapeHTML(name)}" ${checks.sincere ? 'checked' : ''} onchange="toggleOperationParticipantCheck(this.dataset.name, 'sincere', this.checked)" class="w-5 h-5 accent-emerald-600 rounded cursor-pointer">`;
+                    ? '<span class="inline-flex items-center justify-center rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-extrabold text-slate-400">제외</span>'
+                    : `<input type="checkbox" data-name="${escapeHTML(name)}" ${checks.sincere ? 'checked' : ''} onchange="toggleOperationParticipantCheck(this.dataset.name, 'sincere', this.checked)" class="w-4 h-4 accent-emerald-600 rounded cursor-pointer">`;
                 const handicap = member && member.handicap ? `${member.handicap}부` : '-';
+                const affiliation = member && member.affiliation ? member.affiliation : '-';
                 return `<tr class="${classes.row} transition-colors">
-                    <td class="px-3 py-2.5">
-                        <div class="inline-flex items-center rounded-xl px-2.5 py-1.5 ${classes.chip} shadow-sm">
-                            <span class="text-sm font-extrabold">${index + 1}. ${escapeHTML(name)}(${escapeHTML(handicap)})</span>
+                    <td class="px-2 py-1 text-xs font-extrabold text-slate-500 whitespace-nowrap">${escapeHTML(affiliation)}</td>
+                    <td class="px-2 py-1">
+                        <div class="inline-flex items-center rounded-lg px-2 py-0.5 ${classes.chip} shadow-sm">
+                            <span class="text-xs font-extrabold">${index + 1}. ${escapeHTML(name)}(${escapeHTML(handicap)})</span>
                         </div>
                     </td>
-                    <td class="px-3 py-2.5 text-center">
+                    <td class="px-2 py-1 text-center">
                         ${sincereCellHtml}
                     </td>
-                    <td class="px-3 py-2.5 text-center">
-                        <input type="checkbox" data-name="${escapeHTML(name)}" ${checks.fee ? 'checked' : ''} onchange="toggleOperationParticipantCheck(this.dataset.name, 'fee', this.checked)" class="w-5 h-5 accent-indigo-600 rounded cursor-pointer">
+                    <td class="px-2 py-1 text-center">
+                        <input type="checkbox" data-name="${escapeHTML(name)}" ${checks.fee ? 'checked' : ''} onchange="toggleOperationParticipantCheck(this.dataset.name, 'fee', this.checked)" class="w-4 h-4 accent-indigo-600 rounded cursor-pointer">
                     </td>
                 </tr>`;
             }).join('');
