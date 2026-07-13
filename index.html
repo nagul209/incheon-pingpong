@@ -6307,20 +6307,26 @@ function renderMembersList() {
             const rSelector = document.getElementById('season-selector');
             const hSelector = document.getElementById('history-season-selector');
 
-            let html = '';
-            if (isAdmin) html += `<option value="current">📍 현재 진행중인 시즌</option>`;
-            if (appConfig.pastSeasons && appConfig.pastSeasons.length > 0) {
-                [...appConfig.pastSeasons].reverse().forEach((season, index) => {
-                    let originalIndex = appConfig.pastSeasons.length - 1 - index;
-                    html += `<option value="${originalIndex}">🗄️ ${escapeHTML(season.seasonName)}</option>`;
-                });
-            }
-            if (!html) html = `<option value="current">📍 현재 진행중인 시즌</option>`;
+            const buildSeasonOptions = (includeCurrent) => {
+                let optionsHtml = '';
+                if (includeCurrent) optionsHtml += `<option value="current">📍 현재 진행중인 시즌</option>`;
+                if (appConfig.pastSeasons && appConfig.pastSeasons.length > 0) {
+                    [...appConfig.pastSeasons].reverse().forEach((season, index) => {
+                        let originalIndex = appConfig.pastSeasons.length - 1 - index;
+                        optionsHtml += `<option value="${originalIndex}">🗄️ ${escapeHTML(season.seasonName)}</option>`;
+                    });
+                }
+                if (!optionsHtml) optionsHtml = `<option value="current">📍 현재 진행중인 시즌</option>`;
+                return optionsHtml;
+            };
 
-            const applySelectorOptions = (selector) => {
+            const rankingOptionsHtml = buildSeasonOptions(true);
+            const historyOptionsHtml = buildSeasonOptions(isAdmin);
+
+            const applySelectorOptions = (selector, optionsHtml) => {
                 if (!selector) return;
                 const currentVal = selector.value;
-                selector.innerHTML = html;
+                selector.innerHTML = optionsHtml;
                 const hasCurrentOption = !!selector.querySelector('option[value="current"]');
                 if (currentVal === 'current' && !hasCurrentOption) {
                     selector.selectedIndex = selector.options.length > 0 ? 0 : -1;
@@ -6333,8 +6339,8 @@ function renderMembersList() {
                 }
             };
 
-            applySelectorOptions(rSelector);
-            applySelectorOptions(hSelector);
+            applySelectorOptions(rSelector, rankingOptionsHtml);
+            applySelectorOptions(hSelector, historyOptionsHtml);
         }
         function renderPastSeasonList() {
             const listContainer = document.getElementById('past-season-list');
