@@ -2302,7 +2302,7 @@
 
                     for (let j = 1; j <= currentSize; j++) {
                         if (i === j) html += `<td class="border-r border-sky-100 diagonal-strike w-px"></td>`;
-                        else html += `<td class="border-r border-sky-100 p-0 w-px"><input type="text" id="score-${league.id}-g${g}-r${i}-c${j}" class="w-full min-w-[36px] h-full px-1 py-1 text-center bg-transparent outline-none font-medium text-slate-600 focus:bg-yellow-50 drop-shadow-none" placeholder="" oninput="syncText(this)"><span class="capture-text font-medium text-slate-600 px-1 py-1 bg-sky-50 drop-shadow-none"></span></td>`;
+                        else html += `<td class="border-r border-sky-100 p-0 w-px"><input type="text" id="score-${league.id}-g${g}-r${i}-c${j}" class="w-full min-w-[36px] h-full px-1 py-1 text-center bg-transparent outline-none font-medium text-slate-600 focus:bg-yellow-50 drop-shadow-none" placeholder="" oninput="syncText(this)" onchange="calculateGroupRankings(${league.id}, { silent: true })"><span class="capture-text font-medium text-slate-600 px-1 py-1 bg-sky-50 drop-shadow-none"></span></td>`;
                     }
                     html += `<td class="border-r border-sky-100 p-0 w-px"><input type="text" id="wl-${league.id}-g${g}-p${i}" class="w-full min-w-[40px] h-full px-1.5 py-1 text-center outline-none font-bold text-slate-700 bg-transparent drop-shadow-none" placeholder="/" oninput="syncText(this)"><span class="capture-text font-bold text-slate-700 px-1.5 py-1 bg-sky-50 drop-shadow-none">/</span></td>
                     <td class="border-r border-sky-100 p-0 w-px"><input type="text" id="diff-${league.id}-g${g}-p${i}" class="w-full min-w-[36px] h-full px-1.5 py-1 text-center outline-none font-bold text-slate-700 bg-transparent drop-shadow-none" placeholder="/" oninput="syncText(this)"><span class="capture-text font-bold text-slate-700 px-1.5 py-1 bg-sky-50 drop-shadow-none">/</span></td>
@@ -2599,14 +2599,25 @@
         }
 
         function getLeagueMatchOutcome(mySets, opponentSets) {
+            const targetWinSets = Math.max(mySets, opponentSets);
+
+            // 예선 리그는 3판 2선승(2세트 선취)과 5판 3선승(3세트 선취)을 함께 사용한다.
+            // 따라서 실제 승패는 더 큰 세트 수가 2 또는 3에 도달한 경우에만 확정한다.
+            // 예: 2:0, 2:1은 3판 2선승 경기, 3:0~3:2는 5판 3선승 경기로 계산한다.
+            if (![2, 3].includes(targetWinSets)) return 'incomplete';
+            if (mySets === opponentSets) return 'incomplete';
+            if (Math.min(mySets, opponentSets) < 0 || Math.min(mySets, opponentSets) >= targetWinSets) return 'incomplete';
             if (mySets > opponentSets) return 'win';
             if (opponentSets > mySets) return 'loss';
-            return 'draw';
+            return 'incomplete';
         }
 
-        function calculateGroupRankings(leagueId = null) {
+        function calculateGroupRankings(leagueId = null, options = {}) {
             const targetLeagues = leagueId ? [getLeagueById(leagueId)] : window.multiLeagues;
-            if (!targetLeagues.length || !targetLeagues[0]) return alert("진행할 리그전표가 없습니다.");
+            if (!targetLeagues.length || !targetLeagues[0]) {
+                if (!options.silent) alert("진행할 리그전표가 없습니다.");
+                return;
+            }
 
             targetLeagues.forEach(league => {
                 for (let g = 1; g <= league.groupCount; g++) {
@@ -2634,13 +2645,17 @@
 
                             if (valIJ !== "" || valJI !== "") {
                                 const { mySets: w, opponentSets: l } = getLeagueMatchSetScores(valIJ, valJI);
-                                players[i - 1].setsWon += w; players[i - 1].setsLost += l; players[i - 1].matches[j] = { w: w, l: l };
-                                players[j - 1].setsWon += l; players[j - 1].setsLost += w; players[j - 1].matches[i] = { w: l, l: w };
-
-                                // 저장된 승/패 값은 사용하지 않고, 현재 입력된 세트 수만 비교하여 승/패를 다시 산정한다.
                                 const outcome = getLeagueMatchOutcome(w, l);
-                                if (outcome === 'win') { players[i - 1].matchWins++; players[j - 1].matchLosses++; }
-                                else if (outcome === 'loss') { players[j - 1].matchWins++; players[i - 1].matchLosses++; }
+
+                                // 미완성/오입력 스코어(예: 1:0, 2:2, 3:3)는 승패와 순위 계산에서 제외한다.
+                                if (outcome !== 'incomplete') {
+                                    players[i - 1].setsWon += w; players[i - 1].setsLost += l; players[i - 1].matches[j] = { w: w, l: l };
+                                    players[j - 1].setsWon += l; players[j - 1].setsLost += w; players[j - 1].matches[i] = { w: l, l: w };
+
+                                    // 저장된 승/패 값은 사용하지 않고, 현재 입력된 세트 수만 비교하여 승/패를 다시 산정한다.
+                                    if (outcome === 'win') { players[i - 1].matchWins++; players[j - 1].matchLosses++; }
+                                    else if (outcome === 'loss') { players[j - 1].matchWins++; players[i - 1].matchLosses++; }
+                                }
                             }
                         }
                     }
@@ -2694,7 +2709,7 @@
                     });
                 }
             });
-            alert("🧮 선택한/전체 리그 표의 자동 계산이 완료되었습니다.");
+            if (!options.silent) alert("🧮 선택한/전체 리그 표의 자동 계산이 완료되었습니다.");
             saveDataToStorage();
             // 매번 전체 결과를 취합하여 저장 (전체 버튼이든 개별 버튼이든)
             saveAllPreliminaryResults();
