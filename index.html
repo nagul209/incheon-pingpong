@@ -2121,9 +2121,15 @@
             };
 
             for (let g = 1; g <= count; g++) {
-                let sizeInput = document.getElementById(`op-group-size-${g}`);
-                const requestedSize = sizeInput ? parseInt(sizeInput.value) : 4;
-                newLeague.groupSizes[g] = allowedSizes[g] || requestedSize || 4;
+                const sizeInput = document.getElementById(`op-group-size-${g}`);
+                const requestedSize = sizeInput ? parseInt(sizeInput.value, 10) : NaN;
+
+                // 입력 칸이 정상적으로 존재하면 자동 참석 인원 배분값보다 운영자가
+                // 직접 지정한 조 인원을 우선한다. 기존에는 allowedSizes가 항상 먼저
+                // 선택되어 화면의 입력값과 실제 생성된 리그전표 인원이 달라졌다.
+                newLeague.groupSizes[g] = Number.isInteger(requestedSize)
+                    ? Math.min(12, Math.max(2, requestedSize))
+                    : allowedSizes[g];
             }
 
             if (matchType === 'full_league') {
