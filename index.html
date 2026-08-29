@@ -6327,7 +6327,8 @@ function renderMembersList() {
             };
 
             const rankingOptionsHtml = buildSeasonOptions(true);
-            const historyOptionsHtml = buildSeasonOptions(isAdmin);
+            // 기록 탭은 초기 화면에서도 현재 진행 중인 시즌을 우선 표시한다.
+            const historyOptionsHtml = buildSeasonOptions(true);
 
             const applySelectorOptions = (selector, optionsHtml) => {
                 if (!selector) return;
